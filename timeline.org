@@ -146,3 +146,128 @@ auto-updates, etc.
 
 Curiously, in the Modeling Tools distribution, there is another EGit plugin that
 you also have to remove.
+
+** Trying to replicate the ECNA2014 demo                           :emfviews:
+I've got the emfviews plugin building without errors in Eclipse.  Run
+as... application (I guess?)
+
+Now to create an EAdata project, add the travelAgencyEA.xmi.
+
+Uhoh, error:
+
+: http://www.obeonetwork.org/dsl/togaf/contentfwk/9.0.0' not found
+
+Hmm hmm.  Maybe I need [[https://github.com/ObeoNetwork/TOGAF-Designer][this plugin]]?
+
+Getting the source, adding the plugin (subfolders) to the EMFViews workspace,
+and adding them as a dependency for the EMFViews plugin, running "Run as.."
+again.  I can check in Help -> Installation details of the recursive Eclipse
+that EMFViews and TOGAF plugins are both present.
+
+After that, opening the travelAgencyEA.xmi again yields:
+
+: org.eclipse.emf.ecore.xmi.FeatureNotFoundException: Feature 'belongsTo' not found. (platform:/resource/EAdata/models/1_travelAgencyEA.xmi, 26, 270)
+
+A bunch of them.  'isOwnedByUnit', 'communicatedWithFunctions',
+'providesEntities', 'containers', 'labels'.
+
+And some IllegalValueExceptions:
+
+: Value 'BusinessService[TRANSIENT]' is not legal. (platform:/resource/EAdata/models/1_travelAgencyEA.xmi, -1, -1)
+
+Could it be a mismatch between the TOGAF version I'm using and the one used in
+the demo?
+
+Grepping around the TOGAF repo, I can see hits for these strings, especially in
+
+: plugins/org.obeonetwork.dsl.togaf.contentfwk/model/contentfwk.aird
+
+#+BEGIN_EXAMPLE
+1277:      <ownedDiagramElements xmi:type="diagram:DEdge" xmi:id="_eyUzMP63Ed-AK7xgn-H1PA" name="[0..1] isOwnedByUnit - [0..*] ownsFunctions" sourceNode="_ugYTwJ-9Ed-hg-_nMagkzg" targetNode="_zjeaMJ-9Ed-hg-_nMagkzg">
+1280:        <semanticElements xmi:type="ecore:EReference" href="contentfwk.ecore#//Function/isOwnedByUnit"/>
+2562:        <lines xmi:type="table:DLine" xmi:id="_BsDvz6AREd-mRqry0T_xvQ" label="EReference : isOwnedByUnit">
+2563:          <target xmi:type="ecore:EReference" href="contentfwk.ecore#//Function/isOwnedByUnit"/>
+2564:          <semanticElements xmi:type="ecore:EReference" href="contentfwk.ecore#//Function/isOwnedByUnit"/>
+2567:            <target xmi:type="ecore:EReference" href="contentfwk.ecore#//Function/isOwnedByUnit"/>
+#+END_EXAMPLE
+
+I can also see these strings in the EA.ecore metamodel, and these looks like
+definitions.
+
+Maybe the example was self-sufficient after all.  But how to link the XMI file
+to an ECore metamodel?
+
+Further investigation.  If I load up the TOGAF contentfwk model (one I found to
+load it is to create a dummy ECore file, and Right click -> Load resource, and
+look for the obeo URL near the bottom).
+
+I can see the mismatch.  The TOGAF contentfwk has, in the Function class:
+
+- communicatesWithFunctions
+- isOwnedByOrganizationUnit
+
+whereas the EA.ecore has:
+
+- communicatedWithFunctions
+- isOwnedByUnit
+
+So the errors make sense.  And, it would seem that I need to point the XMI files
+to use my EA.ecore metamodel.
+
+Looking for help.. G helpfully answered my questions:
+
+You can't link an XMI to an Ecore as-is.  Eclipse has a global registry of
+metamodels, and there is no way to Right-click on an Ecore file, and add it to
+the registry.
+
+(Unless, possibly maybe, through some ATL plugin, but I don't have it installed
+right now)
+
+The alternative is to generate plugin code from the Ecore metamodel, and "Run
+as.." again.
+
+So:
+
+In the base Eclipse workspace (where the EMFViews plugin resides), create an
+empty EMF project add the EA.ecore file to the model folder.  Create a genmodel
+file, and generate the model code.
+
+Then, launch the recursive Eclipse.  All open projects will be loaded as
+plugins, so no need to add this project (or TOGAF) as dependency to EMFViews.
+
+This time, I can load the XMI without troubles.
+
+The two other XMI files require BPMN2 and ReqIf10.  At this point, I'm
+remembering that the emfviews repo had a "dropins" folder containing JAR files
+for BPMN, ReqIf and.. TOGAF contentfwk.  And eclipse has a dropins folder as
+well.
+
+I'm thinking that the dropins are supposed to be added to Eclipse in order to
+run the examples.
+
+And indeed, it works.
+For BPMN2 and ReqIf.  For TOGAF, I get a NullPointerException when trying to
+open the Ecore file.  So maybe sticking to what I have generated is better.
+
+Next step in the demo is to create an EMF Viewtype through an Eclipse wizard.  I
+don't have that wizard in my recursive Eclipse.  Probably because the "editor"
+and "ui" plugin projects are closed in my base Eclipse.
+
+Let's open them.
+
+Uhoh, compile error.
+
+: Viewtype.getHiddenElements()
+
+is undefined.  There is a ~getHiddenAttributes()~ method though.  Let's try
+that.
+
+Haha!  Now I have the wizard in my recursive Eclipse.  Clicking next
+enthusiastically and:
+
+: java.lang.ArrayIndexOutOfBoundsException: 0
+: 	at fr.inria.atlanmod.emfviews.ui.wizard.view.CreateViewtypeScreen.createControl(CreateViewtypeScreen.java:132)
+
+:(
+
+Time to quit for the day.
