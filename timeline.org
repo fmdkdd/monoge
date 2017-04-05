@@ -86,3 +86,63 @@ more sense to not check it in, and regenerate after a ~build~ step.
 Other discrepancy: copyright attribution on the feature.xml file is for Inria
 Rennes Bretagne Atlantique, while the rest of the plugin, you can see individual
 contributor names.  Which is it?
+
+* [2017-04-05 mer.]
+** Exploring Eclipse                                     :eclipse:
+Specifically, I'm interested in understanding how and where Eclipse saves
+preferences for a project: dependencies, how to build, etc.
+
+That's important when putting these things into a repository.
+
+For instance: when I "Run as.. Eclipse Application" an Eclipse plugin like the
+one from this [[http://eclipsesource.com/blogs/tutorials/emf-tutorial/][EMF tutorial]], it runs the new Eclipse under another workspace.
+The path of this new workspace is specified by the "Eclipse Application" run
+configuration.
+
+By default, it is:
+
+: ${workspace_loc}/../runtime-EclipseApplication
+
+So it creates a folder above the current workspace.  Since my workspace is in
+$HOME, it creates $HOME/runtime-EclipseApplication.  But, for the purpose of the
+tutorial, the files I create in this new workspace should reside inside the
+repository.  So, I rather want:
+
+: ${project_loc}/../runtime-EclipseApplication
+
+so it creates the folder at the same level of the project folder I am running.
+
+Now, where is this preference saved?
+
+: $ rg --hidden "project_loc" ./eclipse/ eclipse/ workspace/ proj/monoge/emftuto/
+: workspace/.metadata/.plugins/org.eclipse.debug.core/.launches/Eclipse Application.launch
+
+In my workspace.  I guess it makes sense since "Run as..." is an Eclipse thing,
+so it should be an Eclipse pref.
+
+But, if you checkout the repository, you would have to manually replicate the
+"Run as..." setting in order to get my examples working.
+
+One solution is to export the workspace preferences and put it in the
+repository.  So at least, if you use Eclipse, you can import these settings as a
+one-click solution.
+
+** Speeding up Eclipse                                              :eclipse:
+Even on a powerful and recent machine, Eclipse is quite slow and feels
+unresponsive.  Things to set in eclipse.ini to ([[https://www.eclipsecon.org/europe2015/sites/default/files/slides/Boosting%2520the%2520Performance%2520of%2520your%2520Eclipse%2520IDE_0.pdf][allegedly]]) speed it up:
+
+#+BEGIN_EXAMPLE
+-server
+-Xms512m
+-Xmx2g
+-Xmn512m
+-Xverify:none
+-XX:+AggressiveOpts
+-XX:+UseParallelGC
+#+END_EXAMPLE
+
+Removing unnecessary stuff also helps: Git control, startup plugins,
+auto-updates, etc.
+
+Curiously, in the Modeling Tools distribution, there is another EGit plugin that
+you also have to remove.
