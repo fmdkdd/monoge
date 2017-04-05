@@ -1,0 +1,88 @@
+* [2017-04-03 lun.]
+** Notes on setting up for the MoNoGe project              :eclipse:emfviews:
+Eclipse 3.8 does not start with Java 9 from Oracle.
+
+: sudo update-alternatives java
+
+-> java8-openjdk was installed on the machine
+
+Installed Eclipse 4.6 anyway.
+
+Additional dependencies for the project:
+
+- ATL
+- Xtext
+- Epsilon (http://download.eclipse.org/epsilon/updates/)
+
+First two can be installed from Eclipse (Help -> Install modeling components).
+Epsilon has an update site.
+
+For running the ECNA2014 demo, I will probably need:
+
+- BPMN 2
+- RMF (ReqIf)
+
+Short-term tasks:
+
+- Re-run the examples from the video with the source code
+- Learn EMF
+- Draw a diagram of how EMFViews works, structurally (what plugin does what, how
+  they fit together, etc.)
+
+** Importing EMFViews into Eclipse                         :eclipse:emfviews:
+For some reason, when importing the plugin projects, Eclipse thinks the packages
+in the src/ folder begin with src.  Save for the very first one.
+
+I just need to open the project properties, go to build path, and click apply.
+The src folder is already the build path, but the setting is not applied
+correctly.
+
+Then, I also need to add the "plugin dependencies" library for each project.
+
+Doing that for all plugins...
+
+There are still errors from missing dependencies.  Why is there no "one-button"
+install?
+
+Finally, some discrepancies in version numbers for our own plugins, that could
+be tracked to the way different versions of the plugins have been merged into
+the repository.
+
+Only 7 errors left out of >1000 thousands when I started.  The remaining errors
+I have to look into the APIs of the libraries to see if some things have changed
+since 2013.
+
+* [2017-04-04 mar.]
+** Inria provided infrastructure                                   :atlanmod:
+R told me about continuous integration server provided by Inria.  They run on
+jenkins, and we can have a decent amount of VMs apparently.
+
+They also host a GitLab service, so we could host repositories there as well.
+
+** Understanding the code                                          :emfviews:
+There's a feature.xml that seem to describe the EMFViews feature, with juicy
+info like dependency with version numbers:
+
+: <import plugin="org.eclipse.uml2" version="4.0.0" match="greaterOrEqual"/>
+: <import plugin="org.eclipse.emf.ecore.xmi" version="2.7.0" match="greaterOrEqual"/>
+: <import plugin="org.eclipse.uml2.uml" version="4.0.0" match="greaterOrEqual"/>
+
+Not all dependencies have explicit version numbers, but that's a start.
+
+There's also a discrepancy in version numbers: in the feature.xml file, all the
+plugins have the version "0.2.0.qualifier", but in the MANIFEST.MF for the
+EMFViews plugin, we ask for 1.0.0 versions:
+
+: Require-Bundle: org.eclipse.emf.ecore,
+:  org.eclipse.emf.ecore.xmi;bundle-version="2.7.0",
+:  fr.inria.atlanmod.emfviews.vlink-mm;bundle-version="1.0.0",
+:  org.eclipse.core.resources;bundle-version="3.8.1",
+:  fr.inria.atlanmod.emfviews.virtuallinksdelegator;bundle-version="1.0.0",
+
+I understand we also have code generated from ECore models (vlink-mm) which is
+checked in the repo.  Since the code is generated from the model, it might make
+more sense to not check it in, and regenerate after a ~build~ step.
+
+Other discrepancy: copyright attribution on the feature.xml file is for Inria
+Rennes Bretagne Atlantique, while the rest of the plugin, you can see individual
+contributor names.  Which is it?
