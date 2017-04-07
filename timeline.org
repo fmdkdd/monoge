@@ -271,3 +271,227 @@ enthusiastically and:
 :(
 
 Time to quit for the day.
+
+* [2017-04-07 ven.]
+** IndexOfOfBounds exception                                       :emfviews:
+Okay so, the incriminating line:
+
+: comboLinksDsl.setText(availableLinksDsls[0]);
+
+We made no provision to check that this array (of strings) had any element, and
+we access the first one.
+
+Let's add a check.  I guess I'll be greeted by an empty window, since it means
+we haven't found any LinkDSL, but at least I won't crash.
+
+(Though, like JavaScript, Eclipse doesn't crash: it just throws an Exception and
+keeps going).
+
+Changing the array value at runtime in the debugger to {"foo"} let me proceed.
+I can add the metamodels.  But I can't select any linking DSL (since there is
+none, and "foo" isn't a valid one I'd wager).
+
+(To change an array of String in the debugger, right-click -> change value, and:
+
+: return new String[]{"foo"}
+
+primitive values are easier to change, usually just click.)
+
+Still, it let me proceed to the next screen.  Of course, "Finish" triggers a
+NullPointerException.
+
+In the demo video, he has "ecl" as DSL language.
+
+Looking at the code that populates availableLinksDsls, it iterates into:
+
+#+BEGIN_SRC java
+extensions = Platform
+				.getExtensionRegistry()
+				.getExtensionPoint(
+						"fr.inria.atlanmod.emfviews.virtuallinksdelegator.type")
+				.getExtensions();
+#+END_SRC
+
+But this is also empty.  I guess because I haven't opened
+virtuallinksepsilondelegate.  Let's do that.
+
+I need ECL to compile it.  It comes from org.eclipse.epsilon.  Let's not install
+that into Eclipse, but put the JAR in dropins instead.  Wait no, I don't want it
+to run as plugin in my Eclipse.  I just need to add it as a dependency to the
+project.
+
+Import errors disappear.  Other errors appear.  Deprecated methods
+and... methods that are not here anymore.  Presumably because I got the latest
+ECL version, and the project used another one.  Is there any trace of the
+versions we used previously?
+
+In emfviews/feature.xml:
+
+: <import plugin="org.eclipse.epsilon.ecl.engine"/>
+: <import plugin="org.eclipse.epsilon.eol.engine" version="1.0.0" match="greaterOrEqual"/>
+
+Let's try the 1.0.0 version then.  It's from 2012.  I guess the project was
+working in 2016, so let's try the 1.3 instead.
+
+1.3 makes one error disappear, still 2 left.  1.2 has only deprecation warnings.
+
+Still errors in the MANIFEST file for unmet dependencies.  But it's for stuff we
+don't need, otherwise we wouldn't compile, right?  Let's ditch them.
+
+Ah!  I've got "ecl" in the dropdown menu now.  But clicking "Finish" triggers a
+NullPointerException in CreateViewtypeWizard.  It's because we want to open the
+newly created .eviewtype using our editor for that file type, and we fail in
+Viewtype.loadFilterMetamodel:
+
+#+BEGIN_SRC java
+private void loadFilterMetamodel(String filtersMetamodel) {
+  ResourceSet filtersResourceSet = new ResourceSetImpl();
+  attributesToHideMM = filtersResourceSet.getResource(URI.createPlatformResourceURI(filtersMetamodel, true), true);
+}
+#+END_SRC
+
+because filtersMetamodel is null at this point.
+
+Culprit: Viewtype.doLoad which pass
+
+: loadFilterMetamodel(properties.getProperty("filtersMetamodel"));
+
+but there is no "filtersMetamodel" property there.  "properties" is created from
+parsing an inputStream which seem to correspond to the contents of the eviewtype
+file.  And the eviewtype file has no filtersMetamodel value.
+
+When is this written?
+
+Line 545, in Viewtype.serialize.  It puts the value of ~filtersMM~, which is a
+String, and populated in the constructor of Viewtype.  Hmm, so that's actually
+just the serialization of a Viewtype, but since the constructor already calls
+loadFilterMetamodel, I guess this is the wrong place.
+
+In CreateViewtypeWizard.performFinish, we are writing to the eviewtype file.
+Then it calls
+
+: serializeViewtype(viewTypeFile, fileContent);
+
+Stepping through CrewteViewtypeWizard.performFinish, there is no code adding the
+"filtersMetamodel" line.  And I see no trace of code that /would/ add these
+lines to the file.
+
+Also, in the video, there are four files created by the wizard: an ECL, an
+Ecore, an EViewtype and an XMI.
+
+I've only got two: EViewtype and XMI.
+
+Strange.
+
+** Reading about Eclipse as a platform                              :eclipse:
+http://www.aosabook.org/en/eclipse.html
+
+All classes in a plugin are not considered part of the plugin API.  You need to
+define extension points for that.  Visibility of class/method/attributes
+is presumably restricted to your plugin.
+
+At Eclipse startup, all plugins manifests are scanned to know the extension
+points in advance, but the plugins themselves are not loaded.  It's very much
+like Emacs autoloads: they give an example of a plugin adding a menu item, and
+only when the user clicks on the menu item will the corresponding plugin be
+actually loaded.
+
+Instead of Swing or AWT, Eclipse uses SWT as widget toolkit.  JFace comes on
+top, and provides frameworks for preferences and wizards.
+
+Hmm the bit about plugin class visibility is somewhat in contradiction in \sect6.2:
+
+#+BEGIN_QUOTE
+If plugin A requires plugin B, plugin A can see all the Java classes and
+resources from B, respecting Java class visibility conventions
+#+END_QUOTE
+
+Ah I get it know: the above describe the situation before the move to OSGi, and
+the paragraph at the start describes the situation after the move.
+
+#+BEGIN_QUOTE
+With the switch to OSGi, Eclipse plugins became known as bundles. A plugin and a
+bundle are the same thing [...]  Previously, dependencies, exported packages and
+the extensions and extension points were described in plugin.xml. With the move
+to OSGi bundles, the extensions and extension points continued to be described
+in plugin.xml since they are Eclipse concepts. The remaining information was
+described in the META-INF/MANIFEST.MF, OSGi's version of the bundle manifest.
+#+END_QUOTE
+
+Good news: OSGi supports semantic versioning, very much like SemVer:
+
+major.minor.service.qualifier
+
+Increment major when breaking API
+Increment minor when adding API
+Increment service for bug fixing
+Qualifier is used to indicate a build tag
+
+It's OSGi that takes care of resolving dependencies for a package.
+
+Ah: apart from the extension registry in Eclipse, there is also a service
+registry provided by OSGi.  Unlike extensions, services can be discovered
+dynamically, after startup.
+
+#+BEGIN_QUOTE
+A feature is a PDE (Plugin Development Environment) artifact that defines a set
+of bundles that are packaged together in a format that can be built or
+installed. Features can also include other features.
+#+END_QUOTE
+
+p2 has replaced Update Manager for provisioning Eclipse.  Might be useful for
+continuous integration.
+
+** What if I provide filtersMetamodel myself?                      :emfviews:
+Since it seems this line is not going to write itself in the eviewtype file,
+might as well put it, just to see if the rest of the demo can work.
+
+Ah yes, of course, it points to an ECore file that was also not generated.
+Let's bring that in.
+
+Hmm, this time I have a NPE in ViewtypeEditor.createViewtypeTreeEditorPage,
+at this line:
+
+: treeViewer.setInput(((Viewtype) viewtypeResource).getResourceSet().getPackageRegistry().values());
+
+because the ~getResourceSet()~ returns null.  The viewtypeResource is populated
+from the file at the beginning of the try block:
+
+: viewtypeResource.load(uri.toURL().openStream(), new HashMap<Object, Object>());
+
+and after that, the resourceSet attribute is null.
+
+Since viewtypeResource is an EMF Resource object, maybe a change in the EMF API?
+
+I am tempted to try archeology and rebuild an environment circa 2014.  Here I've
+got EMF Ecore 2.12.0 and the feature... has no version requirement.
+
+But, there are version requirements for:
+
+: <import plugin="org.eclipse.emf.ecore.editor" version="2.8.0" match="greaterOrEqual"/>
+: <import plugin="org.eclipse.emf.ecore.xmi" version="2.8.1" match="greaterOrEqual"/>
+
+and I've got 2.12 loaded, again.  So since these are part of EMF, a safe guess
+would be to find EMF Ecore 2.8.
+
+2.8 is from 2012.
+
+Now, according to the semantic versioning, that shouldn't change anything,
+right?
+
+Hmm, trying to put the EMF 2.8 JARs into a copy of my Eclipse Neon 3 resulted in
+lots of deep stack straces and an error at launch.  p2 couldn't resolve the
+frankenEclipse I created I guess.
+
+Let's get a MDE Eclipse circa 2012 then.  Luna is the first version supporting
+Java 8.  That's 2014; maybe it will still make a difference.
+
+Ah of course, I have to set up a new workspace.
+
+Hmm, just importing the projects, and everything builds without errors.
+Adding dropins, TOGAF project...
+
+And same exact error!  ViewtypeEditor.createViewtypeTreeEditorPage.
+
+So I guess I would like to know what a ResourceSet is, and what value it should
+take at this point.  Maybe brush up my EMF knowledge.
