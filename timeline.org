@@ -718,3 +718,20 @@ dropins, but that's a BadIdea.  Stuff's missing.  "Install new software" works
 when I pull from the default update sites.
 
 Installing PDE, JDT and EMF is enough to be able to run the tutorials.
+
+** Eclipse plugin tutorial                                   :eclipse:plugin:
+Following "Eclipse 4 plug-in development by example", by Alex Blewitt, Packt
+Open Source.
+
+Plugins which add to the UI or require the UI to operate conventionally have
+'ui.' in their package name.
+
+MANIFEST.MF file is for dependencies (OSGi-related stuff).  While the plugin.xml
+file is for describing extensions and extension points.
+
+Having extensions described as XML speeds up plug-in loading: you don't have to
+execute any code of the plugin (though you do need to parse XML).
+
+** Some links on building plugins with Maven+Tycho           :eclipse:maven:
+https://zeroturnaround.com/rebellabs/building-eclipse-plug-ins-with-maven-3-and-tycho/
+http://www.vogella.com/tutorials/EclipseTycho/article.html
