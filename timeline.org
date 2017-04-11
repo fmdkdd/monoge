@@ -632,3 +632,89 @@ plugins from one pool.
 But I really don't want Eclipse to load /all/ the plugins in the pool.  Even if
 it's "lazy-loading" them, it's still taking ages AND I have no say in how
 what plugins are /actually/ loaded even if I don't use them.
+
+* [2017-04-11 mar.]
+** Trying bundle pools in Eclipse                                   :eclipse:
+For speeding up provisioning, and making updates more sane.
+
+I tried to use Oomph, which is actually the Eclipse Installer, the default
+download provided by Eclipse.  In the advanced mode, you can select the Eclipse
+Platform, and additional projects.  Except, these are pulled from master and put
+/into/ your workspace; not additional plugins.  The use case this solved is when
+you want to contribute to some Eclipse project.
+
+It also works with any Github project, so I guess you could use Oomph to
+somewhat easily provision an Eclipse to work on EMFViews.  You just have to say
+"pick the MDE product, then add EMFviews, done".
+
+But in my case I don't want all the cruft.
+
+What you should be able to do is run Oomph, install an Eclipse platform, and
+that Eclipse will be setup to get its bundles from the bundle pool.  Except
+Oomph fails to install Eclipse platform.
+
+Well, so much for saving bandwidth.
+
+** Installing EMF tools in the platform                             :eclipse:
+So installing the EMF sdk feature is apparently not enough to run the tutorial.
+I lack emf.edit.  Even though they are part of EMF Core, according to [[http://www.eclipse.org/modeling/emf/][the
+website]].
+
+Maybe I'm not pulling from the correct update site?
+
+Adding the update site mentioned on [[http://www.eclipse.org/modeling/emf/updates/][this page]] does not work.  After adding it to
+the available sites list in the preferences, and loading up the preferences
+again, the site has mysteriously disappeared.
+
+But, there is an update site with URL:
+
+: http://www.eclipse.org/modeling/updates/
+
+disabled by default.  Enabling it and going through "Install new software",
+selecting it...
+
+waiting a long time...
+
+Now it has added a bunch of other sites (what?)
+
+And I can install EMF... 2.7.  From 2012.
+
+Gosh, why is this so hard?
+
+On [[http://www.eclipse.org/modeling/emf/downloads/][this page]], it seems I can /download/ an update site containing EMF.  So let's
+try to add this ZIP as a local update site.
+
+It does not disappear from the list when I leave it there.
+
+And it's lightning fast when I go into "Install new software".  And it's version
+2.12
+
+But EMF Edit is grayed out, since it's already installed.
+
+Removing... installing from this local update site...
+
+EMF edit plugin is marked as loaded in Eclipse, but it's marked as not found in
+the plugin.xml dependencies.
+
+Let's remove everything EMF related, and try to load it as a dropin.
+
+There's no dropins folder in my test configuration.  AAArgh.
+
+There's one in eclipsen/platform though.
+
+Hmm, maybe I only have the /runtime/, and not the SDK.  That's another download
+on the page.  Let's try that.
+
+Well, the SDK feature seems to only add documentation and source.  No
+difference.  Other than that, still not finding emf.edit.
+
+Ah, it works!  [[https://www.eclipse.org/forums/index.php/t/134617/][This thread]] was golden.  Apparently, for building plugins, you
+need to setup the Target Platform correctly.  And, for some reason, even though
+in my two workspaces they target platforms are set up correctly, they do not
+find the same plugins.  One finds 190 plugins, the other 316.
+
+Trying to clean up my test configuration now... trying to install things in
+dropins, but that's a BadIdea.  Stuff's missing.  "Install new software" works
+when I pull from the default update sites.
+
+Installing PDE, JDT and EMF is enough to be able to run the tutorials.
