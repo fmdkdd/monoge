@@ -735,3 +735,12 @@ execute any code of the plugin (though you do need to parse XML).
 ** Some links on building plugins with Maven+Tycho           :eclipse:maven:
 https://zeroturnaround.com/rebellabs/building-eclipse-plug-ins-with-maven-3-and-tycho/
 http://www.vogella.com/tutorials/EclipseTycho/article.html
+
+* [2017-04-12 mer.]
+** Eclipse plugin tutorial (cont.)                           :eclipse:plugin:
+Clock tuto.
+
+Some issue with Display.getDisplay() that crashes when launching Eclipse with
+multiple monitors.  Did not happen when hot loading the code.
+
+How are you supposed to get the current display then?
