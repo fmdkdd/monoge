@@ -24,5 +24,11 @@
             restorable="true">
       </view>
    </extension>
+   <extension
+         point="org.eclipse.ui.startup">
+      <startup
+            class="com.packtpub.e4.clock.ui.Startup">
+      </startup>
+   </extension>
 
 </plugin>

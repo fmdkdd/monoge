@@ -744,3 +744,29 @@ Some issue with Display.getDisplay() that crashes when launching Eclipse with
 multiple monitors.  Did not happen when hot loading the code.
 
 How are you supposed to get the current display then?
+
+* [2017-04-14 ven.]
+** Eclipse plugin tutorial (cont.)                           :eclipse:plugin:
+Re: error from last time.  [[http://stackoverflow.com/questions/33157856/getting-swterror-not-implemented-multiple-displays-with-simple-code-sample][Found someone]] who raised the error on SO.  No answer,
+no fix.
+
+From what I gather, you /shouldn't/ use Display.getDisplay, since it creates a
+new display (that you need to dispose of).
+
+(Also, the error has nothing to do with multiple /monitors/, but multiple
+Display objects as understood by Eclipse.)
+
+If I use Display.getCurrent instead, I get null back, since no display has been
+created when Activator.start is called.  Another suggestion is to use:
+
+: PlatformUI.getWorkbench().getDisplay()
+
+this also fails on startup with:
+
+: java.lang.IllegalStateException: Workbench has not been created yet.
+
+Again, it seems the plugin is started very early in the process.  One workaround
+would be to create the tray item as soon as the workbench started.  This is
+[[https://wiki.eclipse.org/FAQ_Can_I_activate_my_plug-in_when_the_workbench_starts%253F][possible]].
+
+Yep, this works nicely.
