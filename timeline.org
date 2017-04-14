@@ -770,3 +770,10 @@ would be to create the tray item as soon as the workbench started.  This is
 [[https://wiki.eclipse.org/FAQ_Can_I_activate_my_plug-in_when_the_workbench_starts%253F][possible]].
 
 Yep, this works nicely.
+
+** Resource management in JFace and SWT
+SWT has manual resource management: when create instance of Color or Image, you
+are supposed to .dispose() of them when you don't need them anymore.  That way,
+SWT, releases the associated native objects.
+
+JFace has resource registries to deal with the allocation and disposal of resources.

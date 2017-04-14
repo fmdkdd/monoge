@@ -17,7 +17,8 @@ public class Startup implements IStartup {
   public void earlyStartup() {
     Display display = PlatformUI.getWorkbench().getDisplay();
     display.asyncExec(() -> {
-      image = new Image(display, Activator.class.getResourceAsStream("/icons/sample.gif"));
+      image = new Image(display,
+          Activator.class.getResourceAsStream("/icons/sample.gif"));
       Tray tray = display.getSystemTray();
       if (tray != null && image != null) {
         trayItem = new TrayItem(tray, SWT.NONE);
@@ -27,7 +28,6 @@ public class Startup implements IStartup {
         trayItem.setImage(image);
       }
     });
-
   }
 
 }
