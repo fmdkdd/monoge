@@ -7,21 +7,20 @@ import org.eclipse.ui.part.ViewPart;
 
 public class TimeZoneTreeView extends ViewPart {
 
-    private TreeViewer treeViewer;
+  private TreeViewer treeViewer;
 
-    public TimeZoneTreeView() {
-    }
-    
+  public TimeZoneTreeView() {
+  }
 
-    @Override
-    public void createPartControl(Composite parent) {
-	treeViewer = new TreeViewer(parent, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
+  @Override
+  public void createPartControl(Composite parent) {
+    treeViewer = new TreeViewer(parent, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
 
-    }
+  }
 
-    @Override
-    public void setFocus() {
-	treeViewer.getControl().setFocus();
-    }
+  @Override
+  public void setFocus() {
+    treeViewer.getControl().setFocus();
+  }
 
 }

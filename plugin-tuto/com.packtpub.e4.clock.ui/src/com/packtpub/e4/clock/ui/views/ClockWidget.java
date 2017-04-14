@@ -11,18 +11,19 @@ import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Composite;
 
 public class ClockWidget extends Canvas {
-    private final Color color;
-    
+  private final Color color;
+
   public ClockWidget(Composite parent, int style, RGB rgb) {
     super(parent, style);
-    
+
     this.color = new Color(parent.getDisplay(), rgb);
-    
-    // Create a dispose listener to dispose of the color when ClockWidget is disposed
+
+    // Create a dispose listener to dispose of the color when ClockWidget is
+    // disposed
     this.addDisposeListener(e -> {
-	if (this.color != null && !this.color.isDisposed()) {
-	    this.color.dispose();
-	}
+      if (this.color != null && !this.color.isDisposed()) {
+        this.color.dispose();
+      }
     });
 
     this.addPaintListener(e -> ClockWidget.this.paintControl(e));
@@ -31,12 +32,12 @@ public class ClockWidget extends Canvas {
       public void run() {
         while (!ClockWidget.this.isDisposed()) {
           ClockWidget.this.getDisplay().asyncExec(new Runnable() {
-              public void run() {
-                if (!ClockWidget.this.isDisposed()) {
-                  ClockWidget.this.redraw();
-                }
+            public void run() {
+              if (!ClockWidget.this.isDisposed()) {
+                ClockWidget.this.redraw();
               }
-            });
+            }
+          });
           try {
             Thread.sleep(1000);
           } catch (InterruptedException ex) {
@@ -59,9 +60,8 @@ public class ClockWidget extends Canvas {
     // Draw hour hand
     int arc = hours * -30 % 360 + 90;
     e.gc.setBackground(e.display.getSystemColor(SWT.COLOR_BLACK));
-    e.gc.fillArc(e.x + ((e.width - 1) / 4),
-                 e.y + ((e.height - 1) / 4),
-                 (e.width - 1) / 2, (e.height - 1) / 2, arc - 2, 4);
+    e.gc.fillArc(e.x + ((e.width - 1) / 4), e.y + ((e.height - 1) / 4), (e.width - 1) / 2, (e.height - 1) / 2, arc - 2,
+        4);
 
     // Draw minute hand
     arc = mins * -6 % 360 + 90;
@@ -77,7 +77,7 @@ public class ClockWidget extends Canvas {
     double cx = e.x + (e.width - 1d) / 2d;
     double cy = e.y + (e.height - 1d) / 2d;
     double r = 0.1;
-    for (int t=0; t < 20; ++t) {
+    for (int t = 0; t < 20; ++t) {
       double angle = t / 20d * Math.PI * 2d;
       int dx0 = (int) (cx + (e.width - 1d) / 2d * Math.cos(angle) * (1d - r));
       int dx1 = (int) (cx + (e.width - 1d) / 2d * Math.cos(angle));

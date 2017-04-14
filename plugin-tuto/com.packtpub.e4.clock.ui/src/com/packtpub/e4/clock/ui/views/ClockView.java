@@ -16,21 +16,21 @@ public class ClockView extends ViewPart {
   }
 
   /**
-   * This is a callback that will allow us
-   * to create the viewer and initialize it.
+   * This is a callback that will allow us to create the viewer and initialize
+   * it.
    */
-  public void createPartControl(Composite parent) {      
-      RowLayout layout = new RowLayout(SWT.HORIZONTAL);
-      parent.setLayout(layout);
+  public void createPartControl(Composite parent) {
+    RowLayout layout = new RowLayout(SWT.HORIZONTAL);
+    parent.setLayout(layout);
     (new ClockWidget(parent, SWT.NONE, new RGB(255, 0, 0))).setLayoutData(new RowData(20, 20));
     new ClockWidget(parent, SWT.NONE, new RGB(0, 255, 0));
     (new ClockWidget(parent, SWT.NONE, new RGB(0, 0, 255))).setLayoutData(new RowData(100, 100));
-    
+
     Object[] oo = parent.getDisplay().getDeviceData().objects;
     int c = 0;
     for (Object o : oo) {
-	  if (o instanceof Color)
-	      ++c;
+      if (o instanceof Color)
+        ++c;
     }
     System.err.println(String.format("%d remaining Color instances", c));
   }
