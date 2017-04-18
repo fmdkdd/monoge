@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>EditorTest</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+	<buildCommand>
+	<name>com.packtpub.e4.minimark.ui.MinimarkBuilder</name>
+	</buildCommand>
+	</buildSpec>
+	<natures>
+	</natures>
+</projectDescription>
