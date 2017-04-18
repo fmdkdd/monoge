@@ -6,7 +6,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.net.URI;
 
+import org.eclipse.core.filesystem.EFS;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
@@ -81,14 +83,18 @@ public class MinimarkVisitor
         ByteArrayInputStream contents = new ByteArrayInputStream(
             baos.toByteArray());
         // Check if there is anything in the file
-        if (baos.size() < 100) {
-          IMarker marker = resource
-              .createMarker("com.packtpub.e4.minimark.ui.MinimarkMarker");
-          marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_ERROR);
-          marker.setAttribute(IMarker.MESSAGE, "Minimark file is empty");
-          marker.setAttribute(IMarker.LINE_NUMBER, 0);
-          marker.setAttribute(IMarker.CHAR_START, 0);
-          marker.setAttribute(IMarker.CHAR_END, 0);
+        URI fileURI = file.getLocationURI();
+        if (fileURI != null) {
+          if (EFS.getLocalFileSystem().getStore(fileURI).fetchInfo()
+              .getLength() == 0) {
+            IMarker marker = resource
+                .createMarker("com.packtpub.e4.minimark.ui.MinimarkMarker");
+            marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_ERROR);
+            marker.setAttribute(IMarker.MESSAGE, "Minimark file is empty");
+            marker.setAttribute(IMarker.LINE_NUMBER, 0);
+            marker.setAttribute(IMarker.CHAR_START, 0);
+            marker.setAttribute(IMarker.CHAR_END, 0);
+          }
         }
         // Write contents to an HTML file
         String htmlName = file.getName().replace(".minimark", ".html");
