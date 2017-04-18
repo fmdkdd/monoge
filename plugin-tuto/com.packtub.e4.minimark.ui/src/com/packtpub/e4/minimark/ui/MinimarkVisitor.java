@@ -14,11 +14,18 @@ import org.eclipse.core.resources.IResourceDeltaVisitor;
 import org.eclipse.core.resources.IResourceProxy;
 import org.eclipse.core.resources.IResourceProxyVisitor;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 
 public class MinimarkVisitor
     implements IResourceProxyVisitor, IResourceDeltaVisitor {
+
+  private IProgressMonitor monitor;
+
+  public MinimarkVisitor(IProgressMonitor monitor) {
+    this.monitor = monitor;
+  }
 
   @Override
   public boolean visit(IResourceDelta delta) throws CoreException {
@@ -31,7 +38,7 @@ public class MinimarkVisitor
         String htmlName = name.replace(".minimark", ".html");
         IFile htmlFile = resource.getParent().getFile(new Path(htmlName));
         if (htmlFile.exists()) {
-          htmlFile.delete(true, null);
+          htmlFile.delete(true, monitor);
         }
         // Modifying the minimark should update the HTML
       } else {
@@ -73,9 +80,9 @@ public class MinimarkVisitor
         String htmlName = file.getName().replace(".minimark", ".html");
         IFile htmlFile = file.getParent().getFile(new Path(htmlName));
         if (htmlFile.exists()) {
-          htmlFile.setContents(contents, true, false, null);
+          htmlFile.setContents(contents, true, false, monitor);
         } else {
-          htmlFile.create(contents, true, null);
+          htmlFile.create(contents, true, monitor);
         }
         // Inform Eclipse this is an automatically generated file
         htmlFile.setDerived(true, null);

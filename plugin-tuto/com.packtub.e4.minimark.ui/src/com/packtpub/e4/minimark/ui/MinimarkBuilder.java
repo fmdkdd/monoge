@@ -34,13 +34,13 @@ public class MinimarkBuilder extends IncrementalProjectBuilder {
     if (delta == null) {
       fullBuild(project, monitor);
     } else {
-      delta.accept(new MinimarkVisitor());
+      delta.accept(new MinimarkVisitor(monitor));
     }
   }
 
   protected void fullBuild(IProject project, IProgressMonitor monitor)
       throws CoreException {
-    project.accept(new MinimarkVisitor(), IResource.NONE);
+    project.accept(new MinimarkVisitor(monitor), IResource.NONE);
   }
 
   @Override
@@ -54,7 +54,7 @@ public class MinimarkBuilder extends IncrementalProjectBuilder {
         String minimarkName = name.replace(".html", ".minimark");
         IFile minimarkFile = proxy.getParent().getFile(new Path(minimarkName));
         if (minimarkFile.exists()) {
-          proxy.delete(true, null);
+          proxy.delete(true, monitor);
         }
       }
 
