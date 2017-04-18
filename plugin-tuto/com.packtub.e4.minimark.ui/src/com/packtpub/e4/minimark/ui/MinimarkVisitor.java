@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceDelta;
 import org.eclipse.core.resources.IResourceDeltaVisitor;
@@ -66,6 +67,9 @@ public class MinimarkVisitor
   }
 
   protected void processResource(IResource resource) throws CoreException {
+    resource.deleteMarkers("com.packtpub.e4.minimark.ui.MinimarkMarker", true,
+        IResource.DEPTH_INFINITE);
+
     if (resource instanceof IFile && resource.exists()) {
       try {
         // Translate the file contents to HTML
@@ -76,6 +80,16 @@ public class MinimarkVisitor
             new OutputStreamWriter(baos));
         ByteArrayInputStream contents = new ByteArrayInputStream(
             baos.toByteArray());
+        // Check if there is anything in the file
+        if (baos.size() < 100) {
+          IMarker marker = resource
+              .createMarker("com.packtpub.e4.minimark.ui.MinimarkMarker");
+          marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_ERROR);
+          marker.setAttribute(IMarker.MESSAGE, "Minimark file is empty");
+          marker.setAttribute(IMarker.LINE_NUMBER, 0);
+          marker.setAttribute(IMarker.CHAR_START, 0);
+          marker.setAttribute(IMarker.CHAR_END, 0);
+        }
         // Write contents to an HTML file
         String htmlName = file.getName().replace(".minimark", ".html");
         IFile htmlFile = file.getParent().getFile(new Path(htmlName));
