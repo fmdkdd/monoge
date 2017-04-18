@@ -12,6 +12,8 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Path;
 
 public class MinimarkBuilder extends IncrementalProjectBuilder {
+  // Should coincide with the builder name in the plugin.xml builder extension
+  public static final String ID = "com.packtpub.e4.minimark.ui.MinimarkBuilder";
 
   public MinimarkBuilder() {
   }

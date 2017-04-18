@@ -5,10 +5,13 @@
 	<projects>
 	</projects>
 	<buildSpec>
-	<buildCommand>
-	<name>com.packtpub.e4.minimark.ui.MinimarkBuilder</name>
-	</buildCommand>
+		<buildCommand>
+			<name>com.packtpub.e4.minimark.ui.MinimarkBuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
 	</buildSpec>
 	<natures>
+		<nature>com.packtpub.e4.minimark.ui.MinimarkNature</nature>
 	</natures>
 </projectDescription>
