@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <application:Application xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:advanced="http://www.eclipse.org/ui/2010/UIModel/application/ui/advanced" xmlns:application="http://www.eclipse.org/ui/2010/UIModel/application" xmlns:basic="http://www.eclipse.org/ui/2010/UIModel/application/ui/basic" xmlns:menu="http://www.eclipse.org/ui/2010/UIModel/application/ui/menu" xmi:id="_6wlLcMgZEeSyMNYR5xypkQ" elementId="com.packtpub.e4.application.application" bindingContexts="_6wlLecgZEeSyMNYR5xypkQ">
-  <children xsi:type="basic:TrimmedWindow" xmi:id="_6wlLccgZEeSyMNYR5xypkQ" elementId="com.packtpub.e4.application.window.main" label="Eclipse 4 RCP Application" width="500" height="400">
+  <children xsi:type="basic:TrimmedWindow" xmi:id="_6wlLccgZEeSyMNYR5xypkQ" elementId="com.packtpub.e4.application.window.main" label="First E4 window" width="500" height="400">
     <children xsi:type="advanced:PerspectiveStack" xmi:id="_6wlLkMgZEeSyMNYR5xypkQ" elementId="org.eclipse.ui.ide.perspectivestack">
       <children xsi:type="advanced:Perspective" xmi:id="_6wlLkcgZEeSyMNYR5xypkQ" elementId="com.packtpub.e4.application.perspective.sample">
         <children xsi:type="basic:PartSashContainer" xmi:id="_6wlLksgZEeSyMNYR5xypkQ" elementId="com.packtpub.e4.application.partsashcontainer.sample">
           <children xsi:type="basic:PartStack" xmi:id="_6wlLk8gZEeSyMNYR5xypkQ" elementId="com.packtpub.e4.application.partstack.sample">
             <children xsi:type="basic:Part" xmi:id="_AruG8CRPEeeJdrmqvuEO-w" elementId="com.packtpub.e4.application.part.hello" contributionURI="bundleclass://com.packtpub.e4.application/com.packtpub.e4.application.parts.Hello" label="Hello"/>
+            <children xsi:type="basic:Part" xmi:id="_9Mw8QCTcEeecPJVno96O_Q" elementId="com.packtpub.e4.application.part.rainbow" contributionURI="bundleclass://com.packtpub.e4.application/com.packtpub.e4.application.parts.Rainbow" label="Rainbow"/>
           </children>
         </children>
       </children>
