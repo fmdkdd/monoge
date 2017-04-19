@@ -23,6 +23,8 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.osgi.service.log.LogService;
 
+import com.packtpub.e4.application.IStringService;
+
 public class Hello {
   @Inject
   private LogService log;
@@ -32,6 +34,9 @@ public class Hello {
 
   @Inject
   private UISynchronize ui;
+
+  @Inject
+  private IStringService stringService;
 
   private Label label;
   private Button button;
@@ -80,7 +85,7 @@ public class Hello {
   @Inject
   @Optional
   public void receiveEvent(@UIEventTopic("rainbow/color") String color) {
-    label.setText(color);
+    label.setText(stringService.process(color));
   }
 
 }
