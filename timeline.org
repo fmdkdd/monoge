@@ -777,3 +777,49 @@ are supposed to .dispose() of them when you don't need them anymore.  That way,
 SWT, releases the associated native objects.
 
 JFace has resource registries to deal with the allocation and disposal of resources.
+
+* [2017-04-19 mer.]
+** Nearly done with the Eclipse Plugin book                  :eclipse:plugin:
+Lots of learning were had.
+
+Chapter 9 touches automated testing with JUnit.  Nothing fancy; plugins just
+need to run with a special JUnit configuration.
+
+More interesting is the UI testing with SWTBot, to simulate click and go through
+the UI programmatically.  It's fun seeing Eclipse launch and crunch through
+dialogs at inhumane speeds.
+
+Although, even if the JUnit bar fills with green, I get a bunch of Exceptions in
+the host console after the tests are run.  Presumably, SWTBot is too fast for
+Eclipse, and does not take care of disposing some resources properly when
+exiting then client instance.
+
+: org.eclipse.swt.SWTException: Failed to execute runnable (org.eclipse.swt.SWTException: Widget is disposed)
+
+** Building the plugins with Maven+Tychon                      :maven:plugin:
+Following Chapter 10 of the book.  Apart from writing XML files, it's rather
+smooth.
+
+: mvn clean package
+
+seems to poll the Eclipse update sites on each build, which takes a loooooooong
+time.  You can avoid that check with the ~--offline~ flag:
+
+: mvn --offline clean package
+
+Hmm can't seem to run the SWTBot tests using Maven.  Might be that the book is
+slightly outdated, as it was tested with Tycho 0.18, whereas we now have Tycho
+1.0.0.
+
+[[http://www.vogella.com/tutorials/EclipseTycho/article.html][This tutorial]] is fresher.
+
+Still have troubles loading requirements for the test... It seems the client
+Eclipse launched by Maven is really barebones (good): there are basically no
+views!
+
+I should at least get the Clock View that the tutorial plugins adds.
+
+From what I understand, Maven /should/ obey the plugin dependencies in the
+MANIFEST file.  But the runtime target configuration is different.
+
+Maybe try to test with a barebones run configuration in Eclipse itself.
