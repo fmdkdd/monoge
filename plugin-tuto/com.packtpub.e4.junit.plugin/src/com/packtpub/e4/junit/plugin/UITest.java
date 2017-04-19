@@ -2,13 +2,13 @@ package com.packtpub.e4.junit.plugin;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.swtbot.swt.finder.SWTBot;
+import org.eclipse.swtbot.eclipse.finder.SWTWorkbenchBot;
 import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotShell;
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -16,11 +16,11 @@ import org.junit.runner.RunWith;
 @RunWith(SWTBotJunit4ClassRunner.class)
 public class UITest {
 
-  private static SWTBot bot;
+  private static SWTWorkbenchBot bot;
 
   @BeforeClass
   public static void beforeClass() {
-    bot = new SWTBot();
+    bot = new SWTWorkbenchBot();
   }
 
   @Test
@@ -53,8 +53,13 @@ public class UITest {
         .exists());
   }
 
-  @AfterClass
-  public static void sleep() {
-    bot.sleep(2000);
+  @Test
+  public void testClockView() {
+    bot.menu("Window").menu("Show View").menu("Other...").click();
+    SWTBotShell shell = bot.shell("Show View");
+    shell.activate();
+    bot.tree().expandNode("Timekeeping").select("Clock View");
+    bot.button("OK").click();
+    assertNotNull(bot.viewByTitle("Clock View"));
   }
 }
