@@ -894,3 +894,123 @@ There's also the @since annotation which is rather useful.
 There are tools for looking at the API of your releases and suggesting the
 correct semantic version increases, like the API baseline in Eclipse.  Maven can
 also do it.
+
+** State of EMFViews                                               :emfviews:
+We have no tests.  But, there are 15 examples in the examples/ folder.  Do they
+still all work?
+
+I've already asserted that the project is not in the state of running the ECNA
+demo from 2014.  (Might not be too far, but things have changed since the demo
+at least).
+
+The examples are mostly models: XMI, Ecore, UML files.  Cloc is in fact totally
+unable to give me a count, as it ignores basically all files except one in this
+folder.
+
+More interesting is when I cloc the plugins directory:
+
+#+BEGIN_EXAMPLE
+-------------------------------------------------------------------------------
+Language                     files          blank        comment           code
+-------------------------------------------------------------------------------
+Java                           223          12613          19404          36444
+Assembly                         3              0              0           6062
+XML                             14             44             18            978
+-------------------------------------------------------------------------------
+SUM:                           240          12657          19422          43484
+#+END_EXAMPLE
+
+That seems like a lot of Java.  And assembly, strangely.  But many Java files
+are in fact generated.  Let's look at only emfviews.* plugins.
+
+#+BEGIN_EXAMPLE
+-------------------------------------------------------------------------------
+Language                     files          blank        comment           code
+-------------------------------------------------------------------------------
+Java                            58           1268           3376           4856
+XML                              7             11              2            149
+-------------------------------------------------------------------------------
+SUM:                            65           1279           3378           5005
+-------------------------------------------------------------------------------
+#+END_EXAMPLE
+
+Less daunting.  Many files are smallish to tiny:
+
+: cloc --by-file plugins/fr.inria.atlanmod.emfviews.* | cut -c180-190
+
+#+BEGIN_EXAMPLE
+588
+272
+234
+204
+188
+179
+173
+167
+154
+153
+139
+134
+129
+126
+126
+113
+110
+106
+98
+93
+83
+82
+77
+77
+74
+73
+70
+65
+60
+58
+56
+55
+54
+51
+50
+48
+43
+38
+37
+31
+24
+24
+21
+20
+20
+19
+16
+15
+15
+15
+15
+15
+15
+12
+11
+11
+10
+10
+10
+9
+7
+7
+6
+5
+5
+#+END_EXAMPLE
+
+The largest one is emfviews.editor.editors.ViewtypeEditor, which looks all hand
+coded and not generated.
+
+[Still have issues with Epsilon missing; have to install 1.2 from the update
+site; ecore, ecore development tools, emf; and also UML2 extenders from the Neon
+update site... it builds!]
+
+Now let's look at the dependencies.

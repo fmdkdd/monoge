@@ -1,0 +1,40 @@
+digraph G {
+  "emfviews.feature" [shape=box]
+
+  "emfviews.feature" -> {
+    emfviews
+    "emfviews.editor"
+    "emfviews.ui"
+    "emfviews.ui"
+    "emfviews.util"
+    "emfviews.virtuallinksdelegator"
+    "emfviews.virtuallinksepsilondelegate"
+    "emfviews.virtuallinksocldelegate"
+    "emfviews.vlink-mm"
+  }
+  emfviews -> {
+    "emfviews.virtuallinksdelegator"
+    "emfviews.vlink-mm"
+  }
+
+  "emfviews.ui" -> {
+    emfviews
+    "emfviews.vlink-mm"
+    "emfviews.util"
+  }
+
+  "emfviews.util" -> {}
+  "emfviews.virtuallinksdelegator" -> {}
+  "emfviews.virtuallinksepsilondelegate" -> {
+    "emfviews.vlink-mm"
+    "emfviews.virtuallinksdelegator"
+    "emfviews.util"
+
+  }
+
+  "emfviews.virtuallinksocldelegate" -> {
+    "emfviews.vlink-mm"
+  }
+
+  "emfviews.vlink-mm" -> {}
+}
