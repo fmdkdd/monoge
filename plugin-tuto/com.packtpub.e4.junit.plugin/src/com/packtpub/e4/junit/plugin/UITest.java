@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.swtbot.eclipse.finder.SWTWorkbenchBot;
 import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
+import org.eclipse.swtbot.swt.finder.waits.DefaultCondition;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotShell;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -44,13 +45,23 @@ public class UITest {
     bot.menu("File").menu("New").menu("Project...").click();
     SWTBotShell shell = bot.shell("New Project");
     shell.activate();
-    bot.tree().expandNode("General").select("Project");
+    bot.tree().select("Project");
     bot.button("Next >").click();
     bot.textWithLabel("Project name:").setText("SWTBot Test Project");
     bot.button("Finish").click();
+    bot.waitUntil(new DefaultCondition() {
+      public boolean test() {
+        return ResourcesPlugin.getWorkspace().getRoot().getProject(projectName)
+            .exists();
+      }
 
+      public String getFailureMessage() {
+        return "Project " + projectName + " was not created";
+      }
+    });
     assertTrue(ResourcesPlugin.getWorkspace().getRoot().getProject(projectName)
         .exists());
+
   }
 
   @Test

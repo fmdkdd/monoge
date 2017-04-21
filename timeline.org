@@ -796,7 +796,7 @@ exiting then client instance.
 
 : org.eclipse.swt.SWTException: Failed to execute runnable (org.eclipse.swt.SWTException: Widget is disposed)
 
-** Building the plugins with Maven+Tychon                      :maven:plugin:
+** Building the plugins with Maven+Tycho                      :maven:plugin:
 Following Chapter 10 of the book.  Apart from writing XML files, it's rather
 smooth.
 
@@ -823,3 +823,48 @@ From what I understand, Maven /should/ obey the plugin dependencies in the
 MANIFEST file.  But the runtime target configuration is different.
 
 Maybe try to test with a barebones run configuration in Eclipse itself.
+
+* [2017-04-21 ven.]
+** Getting Maven+Tycho to run the tests                        :maven:plugin:
+Trying with a barebones run configuration in Eclipse.
+
+Only adding "Required plugins".  Cannot validate due to a not very talkative
+error:
+
+: org.eclipse.e4.ui.workbench.swt [9]
+: Unresolved requirement: Require-Capability: osgi.extender; filter:="(&(osgi.extender=osgi.component)(version>=1.2)(!(version>=2.0)))"
+
+Maybe it's a [[https://bugs.eclipse.org/bugs/show_bug.cgi?id=494913][bug]]?  Anyway, adding org.eclipse.equinox.ds and clicking "Required
+plugins" (for the requirements of equinox) fixes it.
+
+Another way to do it is to add equinox.ds to the dependencies in the MANIFEST,
+saving it, and and clicking "Required plugins".  But at this point I don't know
+if these dependencies should be declared in the MANIFEST itself...!
+
+Now:
+
+: org.eclipse.core.runtime.AssertionFailedException: null argument:Could not find IExtension for application: org.eclipse.ui.ide.workbench
+
+I know that it works if I select all plugins in the Target Platform, so the
+question is: which plugin is missing?
+
+: org.eclipse.ui.ide.application
+
+seems to do it.  At least the client Eclipse runs, but the tests all fail, and
+the console is full of:
+
+: Event Admin service is not available, unable to publish event org.osgi.service.event.Event
+
+Adding org.eclipse.equinox.event to the dependencies solved it.  Thanks [[https://www.eclipse.org/forums/index.php/t/293382/][thread]].
+
+Now only the third test fails:
+
+: org.eclipse.swtbot.swt.finder.exceptions.WidgetNotFoundException: Timed out waiting for tree item General
+
+Because when SWTBot does File->New->Project, the dialog is empty.  There's no
+General folder.  There's only "Project", no categories.  Hmm, then I can just
+use "Project" without adding another dependency.
+
+It works.. not.  It creates the project, but the assertion fails.  Somehow it
+runs too fast and does not wait for the project to be created.  Adding a
+bot.sleep does it, but there's a nicer way with wait conditions.
