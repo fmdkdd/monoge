@@ -868,3 +868,12 @@ use "Project" without adding another dependency.
 It works.. not.  It creates the project, but the assertion fails.  Somehow it
 runs too fast and does not wait for the project to be created.  Adding a
 bot.sleep does it, but there's a nicer way with wait conditions.
+
+Okay so now, back to Maven.
+
+: Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
+
+Actually, before that, I had to remove one testUI that's just too brittle, the
+one testing against the String value of the SWTBot shells.
+
+But, it works.
