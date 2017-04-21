@@ -877,3 +877,20 @@ Actually, before that, I had to remove one testUI that's just too brittle, the
 one testing against the String value of the SWTBot shells.
 
 But, it works.
+
+** General best-practices for Eclipse plugins               :eclipse:plugins:
+In Mastering Eclipse Plugin Development, by the same author as the tutorial book
+I finished this week, there's a chapter Designing Modular Applications with some
+pointers on best practices for Eclipse plugins.
+
+How semantic versioning works for Java.  Like semver, adding a method is a minor
+increase, changing or removing API is a breaking change.  In Java, adding
+methods to interfaces is a breaking change, since classes that implement this
+interface have to be modified.  Interfaces can be @noimplement, and adding
+methods to these is only a minor version increase.
+
+There's also the @since annotation which is rather useful.
+
+There are tools for looking at the API of your releases and suggesting the
+correct semantic version increases, like the API baseline in Eclipse.  Maven can
+also do it.
