@@ -1,20 +1,27 @@
-digraph G {
-  "emfviews.feature" [shape=box]
+digraph {
+  size="8,8"
 
-  "emfviews.feature" -> {
-    emfviews
-    "emfviews.editor"
-    "emfviews.ui"
-    "emfviews.ui"
-    "emfviews.util"
-    "emfviews.virtuallinksdelegator"
-    "emfviews.virtuallinksepsilondelegate"
-    "emfviews.virtuallinksocldelegate"
-    "emfviews.vlink-mm"
-  }
+  node [shape=box,
+        style=filled,
+        color="#ece5ce",
+        fillcolor="#ece5ce",
+        fontcolor="#342015",
+        fontname="TeX Gyre Adventor"]
+
+  edge [arrowhead=empty,
+        style=solid,
+        sametail=true,
+        color="#774f38"]
+
   emfviews -> {
     "emfviews.virtuallinksdelegator"
     "emfviews.vlink-mm"
+  }
+
+  "emfviews.editor" -> {
+    "emfviews.ui"
+    "emfviews"
+    "emfviews.util"
   }
 
   "emfviews.ui" -> {
@@ -23,18 +30,45 @@ digraph G {
     "emfviews.util"
   }
 
-  "emfviews.util" -> {}
+  "emfviews.util" -> {
+    "emfviews.vlink-mm"
+  }
+  "emfviews.util" [shape=egg]
+
   "emfviews.virtuallinksdelegator" -> {}
+
   "emfviews.virtuallinksepsilondelegate" -> {
     "emfviews.vlink-mm"
     "emfviews.virtuallinksdelegator"
     "emfviews.util"
-
   }
 
-  "emfviews.virtuallinksocldelegate" -> {
+  node [fillcolor="#c5e0dc",
+        color="#c5e0dc"]
+
+  edge [color="#c5e0dc"]
+
+  "emfviews.\nvirtuallinksocldelegate" [shape=egg]
+  "emfviews.\nvirtuallinksocldelegate" -> {
     "emfviews.vlink-mm"
   }
 
   "emfviews.vlink-mm" -> {}
+
+  node [fillcolor="#f1d4af",
+        color="#f1d4af"]
+
+  edge [color="#e08e78"]
+
+  "emfviews.ui.linkingview" -> {
+    "emfviews"
+    "emfviews.ui"
+    "emfviews.vlink-mm"
+    "emfviews.util"
+  }
+
+  "emfviews.ui.linkingviewprordelegate" -> {
+    "emfviews.ui.linkingview"
+  }
+
 }
