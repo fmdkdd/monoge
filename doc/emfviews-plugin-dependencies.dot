@@ -22,6 +22,7 @@ digraph {
     "emfviews.ui"
     "emfviews"
     "emfviews.util"
+    "emfviews.vlink-mm"
   }
 
   "emfviews.ui" -> {
@@ -51,6 +52,7 @@ digraph {
   "emfviews.\nvirtuallinksocldelegate" [shape=egg]
   "emfviews.\nvirtuallinksocldelegate" -> {
     "emfviews.vlink-mm"
+    "emfviews.util"
   }
 
   "emfviews.vlink-mm" -> {}
