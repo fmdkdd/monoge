@@ -1056,5 +1056,50 @@ less fleshed out than Vpdl.
 - Remove unnecessary dependencies that come from transitivity (if you include
   emfviews, you don't need to include vlink-mm explicitly).
 
-** Understanding the examples                                      :emfviews:
-Let's see the examples.
+* [2017-04-25 mar.]
+** Cleaning up warnings                                            :emfviews:
+Mostly generics missing, unused vars, and other niceties.
+
+Could not get at everything, since I don't understand the code fully yet.
+
+* [2017-04-26 mer.]
+** Still cleaning up and formatting                                :emfviews:
+The autoformatter of Eclipse is helpful, but for wrapping especially, multiple
+rules can apply, and I'm not sure of the priority between them.  At least, the
+process is deterministic (I hope).
+
+Some things are plain weird in the code.  Pretty sure I am looking at dead code
+sometimes, but Eclipse cannot tell me that because these are all plugins, and
+public methods are part of the API.
+
+Trying to eliminate the dead code...  Eclipse can tell me if a method is used
+in the workspace with Ctrl+Alt+H.  That's helpful.  Then, let's say method M is
+unused and I remove it.  M called A.  Now A is unused, and Eclipse tells me so.
+But if A was the sole caller of B, Eclipse does not immediately tell me by
+transitivity that B is also unused.  A bit annoying.
+
+Wait no.  That's not the good approach.  If B subclasses A, and B is given as an
+A somewhere, Eclipse can't know that the overridden methods in B will be
+called.
+
+Checking for unused constructors I think should be safe.  Static methods as
+well.  And methods that are not overridden.
+
+The case of emfviews.elements.MergeElementsImpl is curious: I can't find any
+calls for its constructor, but there are references to /casts/ to this class.
+Maybe the instances are created through reflection somewhere, but grepping
+around does not help.  Also, it seems it's only partially implemented, as
+presumably emfviews.rules.MergeRule is strongly related, and most of the methods
+there return null.
+
+So, I'm not sure what's truly dead code and what was just forgotten.  Observations:
+
+In emfviews.ui.CreateViewWizard.performFinish, I have a
+EMFViewsFactory.createEView call that's seemingly unused.  Instead, we write
+directly to a file in the code that follows.  Same thing with the createViewtype
+constructor in the factory; it's called nowhere, and in turn one Viewtype
+constructor is never called.  In Viewtype.serialize, there's a bunch of stuff
+that's eerily similar to EView.serialize.
+
+That was a part that didn't seem to work when I tried to replicate the ECNA
+demo... definitely a hot point.
