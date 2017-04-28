@@ -1103,3 +1103,107 @@ that's eerily similar to EView.serialize.
 
 That was a part that didn't seem to work when I tried to replicate the ECNA
 demo... definitely a hot point.
+
+* [2017-04-28 ven.]
+** Looking at the examples                                         :emfviews:
+Okay so from what I can see, the examples all contain model files (ECore, XMI,
+UML).  No code.
+
+Crucially, the only instructions to use the examples are in videos.  Some
+examples contain already-created viewtypes and views.
+
+Opening a viewtype file with the viewtype editor throws an exception:
+
+#+BEGIN_EXAMPLE
+java.lang.NullPointerException
+	at org.eclipse.emf.common.util.URI$URIPool$PlatformAccessUnit.setValue(URI.java:865)
+	at org.eclipse.emf.common.util.URI$URIPool.intern(URI.java:1949)
+	at org.eclipse.emf.common.util.URI.createPlatformResourceURI(URI.java:2680)
+	at fr.inria.atlanmod.emfviews.core.Viewtype.loadFilterMetamodel(Viewtype.java:171)
+	at fr.inria.atlanmod.emfviews.core.Viewtype.doLoad(Viewtype.java:160)
+	at org.eclipse.emf.ecore.resource.impl.ResourceImpl.load(ResourceImpl.java:1518)
+	at fr.inria.atlanmod.emfviews.editor.editors.ViewtypeEditor.createViewtypeTreeEditorPage(ViewtypeEditor.java:118)
+	at fr.inria.atlanmod.emfviews.editor.editors.ViewtypeEditor.createPages(ViewtypeEditor.java:445)
+#+END_EXAMPLE
+
+The ER2015 video shows that you can also open the viewtype as an ECore model.
+Doing that also throws an exception:
+
+#+BEGIN_EXAMPLE
+java.lang.NullPointerException
+	at org.eclipse.emf.ecore.resource.impl.ResourceImpl$4.getChildren(ResourceImpl.java:522)
+	at org.eclipse.emf.common.util.AbstractTreeIterator.hasAnyChildren(AbstractTreeIterator.java:97)
+	at org.eclipse.emf.common.util.AbstractTreeIterator.hasNext(AbstractTreeIterator.java:85)
+	at org.eclipse.emf.ecore.presentation.EcoreEditor.createModel(EcoreEditor.java:1278)
+	at org.eclipse.emf.ecore.presentation.EcoreEditor.createPages(EcoreEditor.java:1339)
+	at org.eclipse.ui.part.MultiPageEditorPart.createPartControl(MultiPageEditorPart.java:363)
+#+END_EXAMPLE
+
+This one is more concerning, since it's not tied directly to any code in our
+plugins.  Might be that we implement some interface incorrectly.
+
+** Trying to open an eviewtype with the editor                     :emfviews:
+So the first NPE was due to missing plugins.  This line in Viewtype:
+
+: EPackage contributingEcoreModelPackage = EPackage.Registry.INSTANCE.getEPackage(modelURI);
+
+was returning null.  The modelURI came from the eviewtype file:
+
+#+BEGIN_EXAMPLE
+contributingMetamodels=smartEAintegration/metamodels/contentfwk.ecore,http://www.omg.org/spec/BPMN/20100524/MODEL-XMI,http://www.omg.org/spec/ReqIF/20110401/reqif.xsd
+#+END_EXAMPLE
+
+In Viewtype.loadContributingMetamodels, we split on this property value, and for
+each model, we make a copy of it and in the copy remove attributes and
+classifiers.
+
+But this was null, since the plugins were not in the registry.  This should be a
+better error.
+
+Anyway, I could have added the model plugins in the dropins folder of my
+Eclipse, but I wanted them to run only on the target configuration.  Going into
+run configurations, you cannot add arbitrary plugins that are not already loaded
+in the current Eclipse: the plugins can only be a subset of the workspace +
+target platform.  But you can change the target platform.  And there, you can
+add arbitrary plugins.
+
+Adding the model plugins and their requirements did the trick.
+
+Now, another NPE:
+
+#+BEGIN_EXAMPLE
+java.lang.NullPointerException
+	at fr.inria.atlanmod.emfviews.editor.editors.ViewtypeEditor.createViewtypeTreeEditorPage(ViewtypeEditor.java:143)
+	at fr.inria.atlanmod.emfviews.editor.editors.ViewtypeEditor.createPages(ViewtypeEditor.java:445)
+#+END_EXAMPLE
+
+This is because of that line:
+
+: treeViewer
+          .setInput(((Viewtype) viewtypeResource).getResourceSet().getPackageRegistry().values());
+
+Namely, viewtypeResource.getResourceSet is null.  [[*What if I provide filtersMetamodel myself?][Wait a minute]].  I got to the
+same conclusion two weeks ago.  But then, I have no idea why the resourceSet is
+null.
+
+All I know is Viewtype extends ResourceImpl, but does not override that method,
+so ResourceImpl returns its resourceSet.  Which, from what I see in the code, is
+only ever set by basicSetResourceSet.  Which is never called anywhere.
+
+However, we do have a virtualResourceSet in Viewtype.  Could that be it?
+
+Oh wow, adding:
+
+#+BEGIN_SRC java
+  @Override
+  public ResourceSet getResourceSet() {
+    return virtualResourceSet;
+  }
+#+END_SRC
+
+does seem to work.  I do have a property editor, a tree viewer, and the text
+source view.
+
+I wonder how this ever worked... other than changes in the API.
+
+Anyway, success!
