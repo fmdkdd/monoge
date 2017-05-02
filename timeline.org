@@ -1207,3 +1207,380 @@ source view.
 I wonder how this ever worked... other than changes in the API.
 
 Anyway, success!
+
+* [2017-05-02 mar.]
+** Eclipse non-determinism                                 :emfviews:eclipse:
+Launching Eclipse, trying to open an eviewtype file with the editor that I've
+fixed Friday... only the source tab works.  The other two are blank.  Friday
+this was working...
+
+What changed?
+
+After opening other files... the tabs have mysteriously appeared.  Okay, what's
+going on here?  Some lazy loading of plugins?  Then our views are silently
+failing if we fail to create them?
+
+Okay so starting Eclipse again... Opening up
+~EAview_Test/1_viewtype/myEAviewpoint.eviewtype~ haha!  Blank tabs.  At least
+it's consistent this time.
+
+(Note: for some reason, when switching tabs, the eviewtype file is marked as
+dirty even though we didn't change its contents)
+
+After I open the XMI file in the same folder, the tabs appear.  When opening the
+XMI file I noticed a pause, so it most probably did load something.
+
+** Fixing Eclipse tooltip background                                :eclipse:
+The background for Javadoc tooltips is black, with white text, and crucially,
+dark blue links.  That's a hard contrast, but crucially, the links are difficult
+to read.
+
+It seems Eclipse inherits the value from GTK.  It's true that the tooltips in
+Firefox are also white on black.
+
+So what do I have to change?
+
+Adding a ~/.config/gtk-3.0/gtk.css file with:
+
+#+BEGIN_SRC css
+.tooltip .info {
+  background-color: #f5f5bf;
+  color: #000;
+}
+#+END_SRC
+
+This changes the tooltip color in Firefox, and in Eclipse when I hover buttons
+in the toolbar, but /not/ the Javadoc tooltips.
+
+[[https://bugs.eclipse.org/bugs/show_bug.cgi?id=501742][This bug]] seems relevant; the issue has been fixed in the Oxygen pre-release.
+But what if I don't want to switch?
+
+There's a Javadoc background color preference in Eclipse->Appearance.  It's for
+the Javadoc view, not the Javadoc tooltip.  Curiously, there's no setting for
+the foreground, which is white by default, with dark blue links again making
+selecting a good background color difficult.
+
+Using ~SWT_GTK3=0~ does have an effect: Eclipse seems to switch to the awful
+GTK3 theme, where every widget is large.  The Javadoc tooltips are readable then
+(black on light grey), but the links are missing since the SWT browser fails to
+instantiate.  That's not a solution.
+
+Changing gtk2 preferences has no effect.
+
+I see that the commit fixing the bug just changes one line in the JDT UI
+plugin.xml:
+
+#+BEGIN_SRC diff
+       <colorDefinition
+             label="%JavadocBackgroundColor.label"
+             categoryId="org.eclipse.jdt.ui.presentation"
+-            value="COLOR_INFO_BACKGROUND"
++            defaultsTo="org.eclipse.ui.workbench.HOVER_BACKGROUND"
+             id="org.eclipse.jdt.ui.Javadoc.backgroundColor">
+#+END_SRC
+
+My understanding is that ~COLOR_INFO_BACKGROUND~ is picked up from GTK3, but
+that's clearly not the case here as the setting is ignored.  Would have to dig
+into the source.
+
+: git clone https://git.eclipse.org/r/jdt/eclipse.jdt.ui
+: rg --hidden COLOR_INFO_BACKGROUND
+
+Oh hey:
+
+#+BEGIN_SRC java
+eclipse.jdt.ui/org.eclipse.ltk.ui.refactoring/src/org/eclipse/ltk/internal/ui/refactoring/RefactoringStatusDialog.java
+87:			Color foreground= parent.getDisplay().getSystemColor(SWT.COLOR_INFO_FOREGROUND);
+88:			Color background= parent.getDisplay().getSystemColor(SWT.COLOR_INFO_BACKGROUND);
+
+eclipse.jdt.ui/org.eclipse.jdt.ui/ui/org/eclipse/jdt/internal/ui/infoviews/AbstractInfoView.java
+390:			fgColor = display.getSystemColor(SWT.COLOR_INFO_FOREGROUND);
+401:			bgColor= display.getSystemColor(SWT.COLOR_INFO_BACKGROUND);
+#+END_SRC
+
+getSystemColor then.  Trying to get the values returned for that by Eclipse, I
+do get black for background, and white for foreground, even with the gtk.css
+file.
+
+In the Display class, there are two functions that set ~INFO_BACKGROUND~ from
+GTK: ~gtk_css_default_theme_values~ and ~initializeSystemColors~.
+
+The first looks like it's reading the CSS file for the current theme:
+
+#+BEGIN_SRC java
+case SWT.COLOR_INFO_FOREGROUND:
+if (OS.GTK_VERSION >= OS.VERSION(3, 20, 0)) {
+  tSelected = cssOutput.indexOf ("tooltip * {");
+} else {
+  tSelected = cssOutput.indexOf (".tooltip {");
+}
+selected = cssOutput.indexOf ("@define-color tooltip_fg_color");
+if (tSelected != -1) {
+  if (OS.GTK_VERSION >= OS.VERSION(3, 20, 0)) {
+    COLOR_INFO_FOREGROUND = gtk_css_parse_foreground(themeProvider, "tooltip * {");
+  } else {
+    COLOR_INFO_FOREGROUND = gtk_css_parse_foreground(themeProvider, ".tooltip {");
+  }
+  return "parsed";
+} else if (selected != -1) {
+  color = simple_color_parser(cssOutput, "@define-color tooltip_fg_color", selected);
+  if (!color.isEmpty()) {
+    break;
+  }
+}
+#+END_SRC
+
+Looks like it's not really parsing the whole CSS, just looking for specific
+strings and getting the colors.
+
+The search for the background color is slightly different:
+
+#+BEGIN_SRC java
+case SWT.COLOR_INFO_BACKGROUND:
+			tSelected = cssOutput.indexOf ("tooltip.background {");
+			selected = cssOutput.indexOf ("@define-color tooltip_bg_color");
+			if (tSelected != -1) {
+				COLOR_INFO_BACKGROUND = gtk_css_parse_background(themeProvider, "tooltip.background {");
+				return "parsed";
+			} else if (selected != -1) {
+				color = simple_color_parser(cssOutput, "@define-color tooltip_bg_color", selected);
+				if (!color.isEmpty()) {
+					break;
+				}
+			}
+			break;
+#+END_SRC
+
+It's not picking up the background-color property.  initializeSystemColors is
+the one who calls the code above, with the logic:
+
+#+BEGIN_SRC java
+if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+			String colorInfoForeground = gtk_css_default_theme_values(SWT.COLOR_INFO_FOREGROUND);
+			if (!colorInfoForeground.isEmpty()) {
+				if (colorInfoForeground != "parsed") {
+					rgba = gtk_css_property_to_rgba (colorInfoForeground);
+					COLOR_INFO_FOREGROUND = toGdkColor (rgba);
+				}
+			} else {
+				styleContextGetColor (context, OS.GTK_STATE_FLAG_NORMAL, rgba);
+				COLOR_INFO_FOREGROUND = toGdkColor (rgba);
+			}
+		} else {
+			styleContextGetColor (context, OS.GTK_STATE_FLAG_NORMAL, rgba);
+			COLOR_INFO_FOREGROUND = toGdkColor (rgba);
+		}
+#+END_SRC
+
+I don't know how what CSS Eclipse gets back from GTK, but the ones I have in the
+theme are separated into multiple files, with a main.css that includes other
+files with @import directives.  Since the code above is grepping for
+@define-color, I'm guessing it's looking at the raw CSS files sitting on my
+drive.  In that case, it will only match the @define-color line, which goes
+through ~simple_color-parser~.
+
+#+BEGIN_SRC java
+String simple_color_parser (String output, String value, int index) {
+	/*
+	 * This method takes a color value (rgb(...), #rgb, an X11 color, etc.)
+	 * and makes sure it's input we can handle. We can handle rgb/rgba values,
+	 * X11 colors, or colors in the format #rgb or #rrggbb.
+	 *
+	 * We cannot handle shade/gradient functions or references to other colors.
+	 * Because of this we strip out values that start with "@" and check
+	 * non rgb values against X11 named colors.
+	 *
+	 * The following would be invalid input:
+	 *
+	 * shade(@bg_color, 0,7)
+	 * or
+	 * define-color error_bg_color @bg_color
+	 */
+	if (output != null && value != null) {
+		int position;
+		String color;
+		position = index + value.length() + 1;
+		color = output.substring(position);
+		// Check for rgb color case
+		if (color.startsWith("#") || color.startsWith("rgb")) {
+			return color;
+		} else if (!color.startsWith("@")) {
+			// Check for an X11 color
+			String [] cut = color.split(";");
+			if (colorList.contains(cut[0])) {
+				return color;
+			}
+		}
+	}
+	return "";
+}
+#+END_SRC
+
+This function, again, seems rather brittle; it will break if there is more than
+one space before the actual color value given to a @define-color prop.  Since
+this is clearly a flavor of CSS used by GTK, maybe they have a stricter syntax
+than CSS.  Or maybe all CSS files on the web are actually non-compliant, but web
+browsers are lax in parsing?
+
+Anyway, my ~tooltip_bg_color~ has a hexadecimal value, so it should return it.
+And then... since we are not returning "parsed", the color is converted to RGBA,
+which calls delegates to native code.
+
+#+BEGIN_SRC java
+GdkRGBA gtk_css_property_to_rgba(String property) {
+	/* Here we convert rgb(...) or rgba(...) properties
+	 * into GdkRGBA objects using gdk_rgba_parse(). Note
+	 * that we still need to remove the ";" character from the
+	 * input string.
+	 */
+	GdkRGBA rgba = new GdkRGBA ();
+	String [] propertyParsed = new String [1];
+	propertyParsed = property.split (";");
+	OS.gdk_rgba_parse (rgba, Converter.wcsToMbcs (null, propertyParsed[0], true));
+	return rgba;
+}
+#+END_SRC
+
+The comment suggests that this method only works on rgb and rgba color values,
+not hexadecimal.  Changing the values in the gtk-main.css to rgb color values
+has no effect.
+
+(I wish I could add a breakpoint into the code I'm seeing Eclipse).
+
+Maybe it's using default colors somehow?  These are the calls to get the default
+foreground and background colors:
+
+: styleContextGetColor (context, OS.GTK_STATE_FLAG_NORMAL, rgba);
+: getBackgroundColor (context, OS.GTK_STATE_FLAG_NORMAL, rgba);
+
+The first one calls into native code.  The second draws a surface and look at
+the color in it.
+
+Oh wait: I /can/ put breakpoints into the code.  That's going to be much
+simpler.
+
+Okay so the CSS Eclipse is looking at to determine the colors is... not the one
+I was modifying.  It's much larger, and has rule declarations instead of only
+@define-color calls and @import statements.
+
+Unfortunately, the debugger is unable to give me the full value.  In the part
+I've managed to extract, I don't see any comments.  That might indicate the file
+was generated.
+
+So this file apparently contains a ~.tooltip~ declaration, since that's a hit
+for the code in Display.  When it gets to it, here is what it finds:
+
+#+BEGIN_SRC css
+.tooltip {
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+  box-shadow: none;
+  color: rgb(255,255,255);
+  padding-bottom: 4px;
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-top: 4px;
+  text-shadow: 0 1px rgb(0,0,0);
+}
+#+END_SRC
+
+That's coherent with the white foreground.  For background:
+
+#+BEGIN_SRC css
+tooltip.background {
+  background-clip: padding-box;
+  background-color: rgba(0,0,0,0.8);
+  border-bottom-color: rgba(255,255,255,0.1);
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-image-repeat: initial;
+  border-image-slice: initial;
+  border-image-source: initial;
+  border-image-width: initial;
+  border-left-color: rgba(255,255,255,0.1);
+  border-left-style: solid;
+  border-left-width: 1px;
+  border-right-color: rgba(255,255,255,0.1);
+  border-right-style: solid;
+  border-right-width: 1px;
+  border-top-color: rgba(255,255,255,0.1);
+  border-top-style: solid;
+  border-top-width: 1px;
+}
+#+END_SRC
+
+So the question now is: where is this CSS coming from?  It's not from the theme
+I've specified, and not from the user CSS file.  Maybe it's a file used by
+Eclipse?
+
+It is requesting the "Adwaita" theme by name.
+
+Okay so I've dumped the CSS that Eclipse gets from GTK to disk.  I still have no
+clue how it's constructed, and how it sets the color values for tooltips.
+
+Looking at the GTK documentation:
+
+#+BEGIN_EXAMPLE
+In addition, certain files will be read when GTK+ is initialized. First, the
+file $XDG_CONFIG_HOME/gtk-3.0/gtk.css is loaded if it exists. Then, GTK+ loads the
+first existing file among XDG_DATA_HOME/themes/theme-name/gtk-VERSION/gtk.css,
+$HOME/.themes/theme-name/gtk-VERSION/gtk.css,
+$XDG_DATA_DIRS/themes/theme-name/gtk-VERSION/gtk.css and
+DATADIR/share/themes/THEME/gtk-VERSION/gtk.css, where THEME is the name of the
+current theme (see the “gtk-theme-name” setting), DATADIR is the prefix
+configured when GTK+ was compiled (unless overridden by the GTK_DATA_PREFIX
+environment variable), and VERSION is the GTK+ version number. If no file is
+found for the current version, GTK+ tries older versions all the way back to
+3.0.
+
+In the same way, GTK+ tries to load a gtk-keys.css file for the current key theme, as defined by “gtk-key-theme-name”.
+#+END_EXAMPLE
+
+If we actually look in these folders, the gtk.css for Adwaita is empty, since
+it's the default theme.  Presumably, all is implemented in the code.
+
+I don't have ~XDG_CONFIG_HOME~ set, but I suspect the user file is still getting
+read, since it's modifying the tooltip colors for other parts of Eclipse.
+
+Okay, what about pointing to a custom theme?  Will it follow the CSS then?
+
+Creating a Foo theme and setting as default, with this gtk.css:
+
+#+BEGIN_SRC css
+.tooltip {
+  color: rgb(91, 91, 91);
+}
+
+.tooltip.background {
+  background-color: rgb(230, 230, 230);
+}
+#+END_SRC
+
+In Eclipse, the CSS dump for Foo is as huge as Adwaita's.  Tooltip values are
+the same as well:
+
+#+BEGIN_SRC css
+.tooltip {
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+  box-shadow: none;
+  color: rgb(255,255,255);
+  padding-bottom: 4px;
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-top: 4px;
+  text-shadow: 0 1px rgb(0,0,0);
+}
+#+END_SRC
+
+Something is fishy with this GTK function, and I can't find a way to influence
+the values.
+
+Looks like I have to switch to Oxygen.  Oh well.
+
+Oxygen fixed it... but not the colors in the Content Assist.  I understand
+that's a fresh commit that should go in the release.
