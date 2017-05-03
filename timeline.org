@@ -1584,3 +1584,43 @@ Looks like I have to switch to Oxygen.  Oh well.
 
 Oxygen fixed it... but not the colors in the Content Assist.  I understand
 that's a fresh commit that should go in the release.
+
+* [2017-05-03 mer.]
+** Fixing the empty tabs in the EMF Views editor                   :emfviews:
+So: loading an eviewtype, I get a MultiPageEditor with 3 pages.  Page 2 and 3
+are blank.  After I load the XMI file in the same folder, the two pages have
+content.
+
+Trying to add a very simple page to the MultiPageEditor with a single button:
+switching to this page, the button exists.
+
+Trying to add a more involved page with a ScrolledForm and a TreeViewer:
+switching to this page, it is blank.
+
+However, using setActivePage to point to this new page, the page is indeed
+constructed and visible, and all the other pages are blank, except the first
+one.
+
+Using setActivePage to point to the properties page: it is visible on launching
+Eclipse and after switching to and back from other pages.  First page is
+visible, other two pages are not.
+
+The common factor in the invisible pages seem to be that they use a
+ScrolledForm.
+
+I just need a Control to put into a page.  A ScrolledForm is a Control, but a
+Composite is a Control as well.
+
+Trying to put a button and a TreeViewer in a Composite: grey page.
+
+If I add a layout to the composite:
+
+: comp.setLayout(new GridLayout());
+
+Now it's displayed.  Same thing with a ScolledForm actually: adding the
+setLayout to its Composite returned by getBody will make the widgets visible
+when switching to the page.
+
+But creating the ScrolledForm through the FormToolkit, that doesn't work.
+
+Need to look into forms and editors.
