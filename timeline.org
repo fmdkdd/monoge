@@ -1624,3 +1624,34 @@ when switching to the page.
 But creating the ScrolledForm through the FormToolkit, that doesn't work.
 
 Need to look into forms and editors.
+
+* [2017-05-05 ven.]
+** Eclipse forms and editor bug                            :eclipse:emfviews:
+Reading: https://www.eclipse.org/articles/Article-Forms/article.html
+
+This is a good (albeit dated) resource on what Eclipse Forms are useful for.  It
+seems PDE uses them extensively for editing the plugin.xml file for instance.
+So now I understand what the EViewType editor tries to emulate.
+
+Since we are trying to build a multi-page form, it seems the preferred way is to
+extend FormEditor rather than MultiPageEditor.
+
+Found [[http://git.eclipse.org/c/platform/eclipse.platform.ui.git/plain/examples/org.eclipse.ui.forms.examples/src/org/eclipse/ui/forms/examples/internal/rcp/FreeFormPage.java][an example]] of using FormEditor and multiple FormPage.
+
+Doing that seems to fix the blank page bug.  I just converted the code that
+created the forms to FormPage inner classes.  It's not as clean as I'd like,
+since there seem to be weird explicit dependencies between models and views.
+Considering that all three pages must stay in sync, it would seem that changing
+the model and listening to changes would be cleaner.
+
+But, I also don't know if we want to keep the editor in this current form.  So
+that fix should do it for now.
+
+** More dead code                                                  :emfviews:
+Looking around, I see there are two classes that are not used: FormComposite, a
+small utility class to adapt a composite with a toolkit, and Overview, which
+seem to be the properties view as it existed before.
+
+Of importance, the Overview class takes care of using text strings pooled from a
+text file for the UI, so they can be translated.  But I can't seem to succeed in
+including the page in the editor, so...  Dead code.
