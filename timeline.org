@@ -1655,3 +1655,125 @@ seem to be the properties view as it existed before.
 Of importance, the Overview class takes care of using text strings pooled from a
 text file for the UI, so they can be translated.  But I can't seem to succeed in
 including the page in the editor, so...  Dead code.
+
+* [2017-05-09 mar.]
+** Fixing the TreeViewer in the Viewtype editor                    :emfviews:
+So, first of all, there was the issue of dirtying the state of the editor when
+switching to the TreeViewer.
+
+While trying to understand what the page is for, it hit me that a few things are
+not working properly: some boxes should be ticked, and selected elements should
+be expanded as well.
+
+In addition, I see that basically all objects can be expanded in the TreeViewer,
+even when they don't have any children.
+
+Luckily, I've already done the TreeViewer tutorial from the book.
+
+So, we are reusing the ContentProvider from our Viewtype creation wizard.
+Basically, we delegate to the EMFContentProvider to display models, except we
+add another layer of EPackage.
+
+Rewriting the ContentProvider getChildren and hasChildren to be in sync fixes
+the issue with empty children showing a twistie.
+
+But we expand/tick/reveal calls still have no effect.
+
+Debugging a reveal call indicates that it returns null internally.
+
+So I can get the treeViewer to reveal/tick/expand elements when I build the
+elements array myself.  I guess what we get from viewtype.getHiddenAttributes
+are not elements related to the input of the tree.
+
+Wait a minute.  The tree is not complete in the view... Looks like the models we
+display are the one from the virtual resource set of the viewtype... so the
+items are already filtered out.  The code is trying to tick the exact same
+items, so of course that shouldn't work.
+
+Not removing the items in the resource set... well, that still doesn't tick
+them.  But I think that's because the virtual resource set contains clones of
+the models, and the hidden attributes are objects of the base resource set, so
+maybe they cannot be equal to one another.
+
+Ah!  Yes, that's it.  After putting the originals in the virtual resource set
+and not the copies, the ticks appear.  But the containing classes are not
+expanded.
+
+Which is weird, because we construct the array of containing class based on the
+hidden attributes.  So if the hidden attributes are ticked because the tree
+contains the same objects, it should also contain the right classes.
+
+Hmm maybe we are changing the expanded elements at another point.  We do, in
+pageChange.
+
+But commenting that does not help.
+
+Wait, after adding breakpoints to step through the code that sets the expanded
+state internally in AbstractTreeViewer, it does work!  Shenanigans.  I guess the
+hot code replace can get confused by my changes, without warning me.  This is
+unfortunate.
+
+Also, the code was trying to set the expanded state on a tree item below the top
+level.  According to the documentation, this should work: expanded states are
+saved even if you close the parent, so when you reopen the parent, the expanded
+children should still be open.
+
+However, if I manually do it in the tree, that's not the behavior I observe.
+Expanding a child, and toggling its parent: the child is closed.  Looks like
+closing an item closes its children recursively.  What works is to reveal the
+elements.
+
+Okay so now, I still haven't solved the mysterious dirtying of the editor when
+opening the Contents page.
+
+There's an editorDirtyStateChanged which I can override.  But it doesn't get
+called.
+
+Okay, found it.  The AttributeSelectionAdapter is changing the model every time
+we select something.  That's overkill, and wrong.  We should only update the
+model when there are actual changes in the tree: that is, when we check/uncheck
+elements.
+
+But I'm not fixing it right now.  Better focus on cleaning up the core of
+EMFViews: the virtual model.  I'm leaving notes to know that these parts of the
+code are busted.
+
+** Notes on EMFViews core                                          :emfviews:
+What is referred to as the Weaving model in the paper is our VirtualLinks
+package.  It's a collection of links between models and metamodels.  For the
+moment, we have two kind of links: associations and filters.
+
+Associations are virtual references.
+
+Filters hide attributes from models.
+
+We don't have virtual attributes or virtual classes, but that might be something
+to improve upon (the Extension paper was a step in that direction).
+
+The virtual models are realized by the emfviews.core package.  There we have
+Viewtype (a viewpoint in the paper), View and EView.
+
+We have two levels: the viewtype describes the links between contributing
+metamodels, and the view describes how to construct a virtual model from
+contributing models (which are instances of the contributing metamodels of the
+viewtypes).
+
+Practically speaking, when opening an EView file with an ECore editor, EMF will
+display the virtual model.  This is achieved by registering EMFViewsFactory as
+the parser class in an extension point.
+
+This class then creates an EView and Viewtype, depending on the file extension.
+These two files extend ResourceImpl, so they can be transparently used as
+resources by EMF.
+
+How being a resource helps in displaying a model, I still have to find out.
+
+H pointed out some redundancies in the EView file: we specify the ECL file, but
+we don't need it.  It's already in the EViewtype, which is also specified, and
+in any case we only need the XMI describing the weaving model.  The ECL file is
+used to generate the weaving model, but once we have one, we don't need the ECL
+anymore.  And in any case, we can also provide the weaving model XMI manually.
+
+Same thing in the EViewtype: the examples have an ECore file that contains the
+hidden attributes.  These should be part of the XMI, which already register the
+association virtual links.
