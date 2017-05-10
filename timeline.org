@@ -1821,6 +1821,57 @@ vanilla references you are dealing with multiple files.
 So, for simplicity, and simplified management of serialized resources,
 we should prefer containment references.
 
+** Trying to use the MoDisCo model browser                         :emfviews:
+Because the model browser provided by ECore is very basic, and does not follow
+references.  The MoDisCo browser does.
+
+However, trying to open the examples XMI with it, I am greeted with familiar
+errors concerning unknown features from the TOGAF metamodel:
+
+: !MESSAGE org.eclipse.emf.ecore.xmi.FeatureNotFoundException: Feature 'belongsTo' not found. (platform:/resource/1_EAdata/models/1_travelAgencyEA.xmi, 26, 270)
+
+I slayed this dragon previously, and I kept my custom TOGAF plugin.  Re-using
+it...
+
+Okay, it works.  I can follow recursive links in the model.  It's... not very
+impressive, or convincing, but it works.  The Modisco browser is dog slow
+however.
+
+** Following the code                                              :emfviews:
+After the EmfViewsFactory delegates to either the EView or Viewtype constructor,
+what happens?
+
+Well, nothing at that point: the constructor returns a resource.  That resource
+is only loaded when its doLoad method is called.  That's where the magic
+happens.
+
+In Viewtype.doLoad, we parse the eviewtype file, load the models, and create the
+virtual resource set.
+
+The correspondenceModelBase seem unused at this point.  The Viewtype only uses
+it in serialize()... except this function is never used.  The actual
+serialization happens in the doSave method of the resource.
+
+First we load the filter metamodel: the ECore file that should not be here.
+
+Then we load the contributing metamodels.  We get the corresponding package, and
+each package is cloned and kept in contributingEPackages.
+
+Then, we first filter out any attributes as specified by the filter metamodel.
+If the package matches one in the filters, we remove every structure from common
+classifiers.
+
+There are two issues currently: we loop through all filtered packages, for
+each contributing package.  That's unnecessarily quadratic.
+
+Second issue: we only seem to care about EClass classifiers with an unchecked
+downcast.  So I'm pretty sure that's an exception if the filter metamodels
+contains an Enum or Datatype.
+
+Hmm, it crashes, but not where I expected.  Actually, I see other downcasts in
+the same method, and they seem unsafe, but no warnings.  Need to check that as
+well.
+
 *** TODO Check copyright/contributions
 Copyright is attributed to Inria in some places, Atlanmod in others (or should
 it be AtlanMod?).
@@ -1837,3 +1888,6 @@ AtlanMod should be the provider of all packages.
 Some EMF plugins depends on other EMF plugins, some depend on EMF packages
 directly.  The book I read on Eclipse plugin development recommended to depend
 on packages.
+
+*** TODO Change the logo background to be transparent
+This is unnerving.
