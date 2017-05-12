@@ -1991,3 +1991,11 @@ I'm assuming this is done because getContents requires an EList.  But, then, why
 not flatten the lists once and for all?  The VirtualContents list seem to be
 read-only, since the set method is implemented by a call to super
 which... throws UnsupportedOperation.
+
+** Open questions                                                  :emfviews:
+- Is Viewtype creating a truly virtual metamodel?  It doesn't seem to do any
+  demand-loading, but maybe that's behind the scenes.  Should compare with what
+  View/EView does for models, or what VirtualModel did in the first prototype.
+
+- There are still a bunch of files in the core, are they used by View/EView or
+  not?  MergeRule, TranslationRule, etc.
