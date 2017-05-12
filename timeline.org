@@ -1891,3 +1891,103 @@ on packages.
 
 *** TODO Change the logo background to be transparent
 This is unnerving.
+
+* [2017-05-12 ven.]
+** Downcasts in Java are "safe"                                        :java:
+Because there will be runtime checks...  I was under the impression the compiler
+would complain, but it's just in case of unchecked cast with generics.  Because
+of type erasure, the compiler cannot insert a runtime check (a List is still a
+List), so the warning is to make sure you know what you are doing.
+
+Otherwise, Java assumes you do know what you are doing with straight downcasts
+from A to B, even though the compiler only knows that this downcast /could/
+work (if B :< A).
+
+That's disappointing.
+
+Is there a linter out there that could at least pick up downcasts so I could
+review them?  FindBugs [[http://findbugs.sourceforge.net/bugDescriptions.html#BC_UNCONFIRMED_CAST][appears to]].
+
+The Eclipse plugin is a bit rough, but it does report the stupid downcast from
+my test code.  However, it does not report the troubling downcasts in EMFViews.
+So, more trouble than it's worth.
+
+** Mysterious crash when loading funky ECore file                  :emfviews:
+So adding other classifiers (EEnum, EDataType) to the Ecore file containing our
+filters and opening the Eviewtype with the ECore editor results in 3 thrown NPE.
+
+The puzzling part is that, in all of the stack traces, our code is not on the
+stack.  Maybe we implement something wrongly.
+
+Adding a breakpoint shows Viewtype.getContents is called and returns the null in
+question.  But since the null value is used by ResourceImpl, that's where the
+NPE is thrown.
+
+Anyway, we only set virtualContents after doLoad() has completed.
+
+Hmm, I see!  Stepping through again, and in fact ResourceImpl.load wraps our
+doLoad with a try/finally, but no catch.  So we do throw a cast exception due to
+the presence of other classifiers!  But that was masked by ResourceImpl.
+Sneaky.
+
+** EMFViews archeology                                             :emfviews:
+So, H found the original demo paper along with the initial prototype
+implementation of EMFViews (then called VirtualEMF).  The novel idea at the time
+was to have a /virtual/ model, that composed multiple contributing models.  The
+virtual model is lazy: attributes are proxies to the concrete models, and the
+virtual attributes are synthesized on-demand.
+
+In the code, you can find a VirtualModel class that's absent from the current
+version.  That's because at the time, only models were virtualized, not
+metamodels.  But, the same virtualization approach can be applied to metamodels,
+since they can be viewed as models as well; hence EMFViews.  In EMFViews, we
+have Viewtype which should be the equivalent of VirtualModel for metamodels, and
+View, which would be closer to the original VirtualModel.
+
+Looking at the rest of the code, everything in emfviews.elements seem very
+similar to the first version.
+
+In emfviews.rules, the MergeRule was severely cut.
+
+In emfviews.core, the MetaModelManager was mostly changed.  The
+VirtualLinkManager was slightly changed, and that's it (other than added/removed
+files).
+
+** Further code investigation                                      :emfviews:
+Now I'm in Viewtype.loadCorrespondenceModel.  The correspondenceModel is the XMI
+file that describe the VirtualLinks: it gives us the info we need to compose the
+contributing models (and in this case, metamodels).
+
+There are two kinds of links actually: Filter and Association.  But filter links
+are not currently used in this path of code; the filters are specified in a
+separate ECore file which is used in the loadFilterMetamodel phase.
+
+So the code is concerned only with Association links.  For each Association, we
+synthesize an EReference with the Association attributes (source, target,
+lower and upper bounds) and add it to the EClass in which it resides (in the
+virtual packages we created earlier).
+
+Ultimately, in Viewtype.setVirtualContents, we turn the EPackage from our
+virtual resource set into a VirtualContents object (which is just an EList).  I
+had looked at VirtualContents before: it's a curious implementation of an EList
+from a list of lists, which only purpose seem to be to simulate a flat list:
+
+#+BEGIN_SRC java
+public E get(int index) {
+    if (index >= 0) {
+      for (List<E> l : subLists) {
+        if (index < l.size()) {
+          return l.get(index);
+        } else {
+          index -= l.size();
+        }
+      }
+    }
+    throw new IndexOutOfBoundsException();
+  }
+#+END_SRC
+
+I'm assuming this is done because getContents requires an EList.  But, then, why
+not flatten the lists once and for all?  The VirtualContents list seem to be
+read-only, since the set method is implemented by a call to super
+which... throws UnsupportedOperation.
