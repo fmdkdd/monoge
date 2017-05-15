@@ -1999,3 +1999,251 @@ which... throws UnsupportedOperation.
 
 - There are still a bunch of files in the core, are they used by View/EView or
   not?  MergeRule, TranslationRule, etc.
+
+* [2017-05-15 lun.]
+** Is Viewtype proxying metamodels?                                :emfviews:
+To me it seems that no, it just plain clones them into the virtual resource
+set.  This is done in loadContributingMetamodels:
+
+#+BEGIN_SRC java
+EPackage contributingEcoreModelPackage = EPackage.Registry.INSTANCE.getEPackage(modelURI);
+
+Copier copier = new Copier();
+EObject copy = copier.copy(contributingEcoreModelPackage);
+copier.copyReferences();
+EPackage copiedPackage = (EPackage) copy;
+EcoreUtil.remove(copiedPackage);
+contributingEpackages.add(contributingEcoreModelPackage);
+#+END_SRC
+
+Regardless of whether there are filters, we clone the packages.  Then, if there
+are filters, we remove the attributes from these copies.
+
+: eClassWithItemsToHide.getEStructuralFeatures().remove(theAtt);
+
+Then, if there are associations, we add EReferences to these copies:
+
+#+BEGIN_SRC java
+EReference theR = EcoreFactory.eINSTANCE.createEReference();
+theR.setName(association.getName());
+theR.setLowerBound(association.getLowerBound());
+theR.setUpperBound(association.getUpperBound());
+theR.setEType(theTargetEClass);
+...
+theSourceEClass.getEStructuralFeatures().add(theR);
+#+END_SRC
+
+So, is this different from how View/EView work?
+
+** Investigating View/Eview                                        :emfviews:
+Stepping through the code.  When we load an eview file, we trigger EView.doload.
+
+First thing is to read the file, and create a Viewtype resource from the
+compositionMetamodel line.  We are creating a whole new Viewtype (and copying
+packages), just for the EView.  If a Viewtype is a virtual metamodel, we should
+be able to locate it from the registry, and create it only if it does not exist.
+
+I'm wondering if the EView/View split is the half-finished result of trying to
+abstract the common parts of EView and Viewtype into a common abstract class.
+But at the moment, EView is the sole subtype of View.
+
+In EView, we then load the View.contributingMetamodels.  This merely register
+the metamodels in the virtualResourceSet of View.  But this virtual resource set
+is different from the one held by Viewtype.  At this point, the metamodels are
+not modified.
+
+Then we create a MetamodelManager.  This one populates a bunch of Maps.  A map
+of composition classes keyed by their names; these are taken from the contents
+of the constructed Viewtype.  Then a map of all the EClass of the contributing
+metamodels, again keyed by their names; these are taken straight from the
+classifiers of the contributing metamodels.
+
+Then a map of concrete to virtual classes.  That's interesting:
+
+#+BEGIN_SRC java
+for (List<EClass> lcec : contributingClassesByName.values()) {
+  for (EClass cec : lcec) {
+    List<EClass> lvec = compositionClassesByName.get(cec.getName());
+    for (EClass vec : lvec) {
+      if (vec.getEPackage().getNsURI().equals(cec.getEPackage().getNsURI())) {
+        this.concreteToVirtualClass.put(cec, vec);
+        mapFeatures(cec, vec);
+      }}}}
+#+END_SRC
+
+The "virtual EClasses" (vec) that are put into the map are pulled from
+coompositionClassesByName, and used as values keyed by the corresponding class
+in contributingClasses.
+
+mapFeatures does the same mapping, but for structural features, recursively:
+
+#+BEGIN_SRC java
+private void mapFeatures(EClass concEC, EClass virtuEC) {
+  for (EStructuralFeature feature : concEC.getEStructuralFeatures()) {
+    EStructuralFeature vf = virtuEC.getEStructuralFeature(feature.getName());
+    if (vf != null) {
+      this.virtualToConcreteFeature.put(vf, feature);
+      this.concreteToVirtualFeature.put(feature, vf);
+    }}}
+#+END_SRC
+
+Now we have a bidirectional map.
+
+Lastly, there may be additional features in the virtual classes (created by the
+associations), so we also record them in a map of virtualAssociations, but only
+if they were not present in virtualToConcreteFeatures:
+
+#+BEGIN_SRC java
+for (List<EClass> lec : compositionClassesByName.values()) {
+  for (EClass ec : lec) {
+    for (EStructuralFeature sf : ec.getEStructuralFeatures()) {
+      if (virtualToConcreteFeature.get(sf) == null)
+        if (virtualAssociations.get(sf.getName()) == null) {
+          List<EStructuralFeature> sfs = new ArrayList<>();
+          sfs.add(sf);
+          virtualAssociations.put(sf.getName(), sfs);
+        } else {
+          virtualAssociations.get(sf.getName()).add(sf);
+        }}}}
+#+END_SRC
+
+After that we are back in EView, and that's it for the metamodels.  Now we
+loadContributingModels:
+
+#+BEGIN_SRC java
+protected void loadContributingModels(List<String> contributingModelsPaths) {
+
+  for (String modelURI : contributingModelsPaths) {
+    virtualResourceSet.getResource(URI.createPlatformResourceURI(modelURI, true), true);
+  }
+
+}
+#+END_SRC
+
+Which just seems to force the loading of each model, without doing anything with
+the returned resource (why?).
+
+If there is a correspondenceModelBase we... don't do anything with it (yet)?  We
+get the correspondence XMI, create a VirtualLinksDelegator for the
+correspondenceModelBase, and let the delegate create the links:
+
+#+BEGIN_SRC java
+if (properties.getProperty("correspondenceModelBase") != null) {
+  IWorkspace workspace = ResourcesPlugin.getWorkspace();
+  java.net.URI linksModelURI = workspace.getRoot()
+      .findMember("/" + properties.getProperty("correspondenceModel")).getLocationURI();
+  try {
+    VirtualLinksDelegator vld =
+        new VirtualLinksDelegator(properties.getProperty("correspondenceModelBase"));
+
+    vld.createVirtualModelLinks(org.eclipse.emf.common.util.URI
+        .createURI(linksModelURI.toString()), getContributingModels());
+#+END_SRC
+
+In this case, it creates an EclDelegate.  In
+EclDelegate.createVirtualModelLinks, we open the ECL file and first parse the
+aliases in the header.
+
+Here is a sample ECL file from the examples:
+
+#+BEGIN_EXAMPLE
+//alias_ea=http://www.obeonetwork.org/dsl/togaf/contentfwk/9.0.0
+//alias_bpmn=http://www.omg.org/spec/BPMN/20100524/MODEL-XMI
+//alias_reqif=http://www.omg.org/spec/ReqIF/20110401/reqif.xsd
+
+rule detailedProcess
+match s : ea!Process
+with  t : bpmn!Process
+...
+#+END_EXAMPLE
+
+I think the intent here is pretty clear: to define ~ea~, ~bpmn~ and ~reqif~ as
+aliases for the metamodels in the header.  Still, it would be better to have ECL
+support these kinds of declarations rather than hack a parser with indexOf
+calls.
+
+[H: usually you'll run ECL with a launch configuration file, specifying the
+aliases.  Here it's inlined.  Maybe there is away to provide a launch
+configuration at runtime, but it's not really important.]
+
+In any case, we populate two maps keyed by the aliases: one to the resource of
+the metamodel, and one to the package URI.  No provisions are made if we don't
+find a corresponding resource.
+
+After that, we close the ECL file because we let ECL parse the rest.  Then we
+add instances of EmfModel to the model repository of the Ecl module.
+
+Then, we executet the ECL module, and iterate on the resulting MatchTrace in
+order to create virtual links for each matching trace:
+
+#+BEGIN_SRC java
+for (Match match : matches) {
+  if (match.isMatching()) {
+    EObject left = (EObject) match.getLeft();
+    EObject right = (EObject) match.getRight();
+
+    Association vAsso = vLinksFactory.createAssociation();
+    vAsso.setName(match.getRule().getName());
+    vAsso.setAssociationTypeName(match.getRule().getName());
+    vAsso.setLowerBound(0);
+    vAsso.setUpperBound(1);
+
+    LinkedElement lSource = vLinksFactory.createLinkedElement();
+    lSource.setModelRef(left.eClass().getEPackage().getNsURI());
+
+    lSource.setElementRef(left.eResource().getURIFragment(left));
+    vAsso.setSourceElement(lSource);
+
+    LinkedElement lTarget = vLinksFactory.createLinkedElement();
+    lTarget.setModelRef(right.eClass().getEPackage().getNsURI());
+    lTarget.setElementRef(right.eResource().getURIFragment(right));
+    vAsso.getTargetElements().add(lTarget);
+
+    virtualLinks.getVirtualLinks().add(vAsso);
+    virtualLinks.getLinkedElements().add(lSource);
+    virtualLinks.getLinkedElements().add(lTarget);
+  }
+}
+#+END_SRC
+
+After that, we save the populated virtualLinks to the XMI file.
+
+So, it seems we always recreate the XMI file from the ECL.
+
+[H: that may not be ideal, but models can be updated, so you usually want your
+view to synchronize with these changes by default.  Here we run the ECL query
+again.]
+
+Back in EView, we now create a VirtualLinkManager, given the correspondence
+model URI (the XMI).  The manager merely holds a reference to both the EView and
+the VirtualLinks instance from the XMI.
+
+Then the VirtualLinkManager is initialized, which creates a LinksProjector.
+There, for each Assocation in the XMI, we get a virtual element from the
+VirtualLinkManager corresponding to the source element of the association, and
+we link the target elements to it:
+
+: vElement.setVirtualAssociation(virtualFeature, EStore.NO_INDEX, targetElements);
+
+After that, we set the virtual contents of our EView resource, by translating
+each package of the contributing models to virtual elements.  Creating virtual
+element happens in VirtualLinkManager.getVirtualElement:
+
+#+BEGIN_SRC java
+public EObject getVirtualElement(EObject e) {
+  VirtualElement vElem = virtualLinks.get(e);
+  if (vElem == null) {
+    vElem = new ReproduceElementImpl(virtualModel, e);
+    virtualLinks.put(e, vElem);
+  }
+  return vElem;
+}
+#+END_SRC
+
+and ReproduceElement uses a ReproduceRule, which implements an EStore... and
+that's probably where the secret virtualization sauce lies.  But it already
+looks like there is much more happening in EView/View concerning virtualization,
+and I didn't see any copying taking place.
+
+So my premature answer is: the Viewtype is not virtualized as the Views are.
+Which was kind of the point of EMFViews.  That should be fixed in priority.
