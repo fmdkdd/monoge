@@ -2247,3 +2247,29 @@ and I didn't see any copying taking place.
 
 So my premature answer is: the Viewtype is not virtualized as the Views are.
 Which was kind of the point of EMFViews.  That should be fixed in priority.
+
+* [2017-05-16 mar.]
+** Reading the EMF bible                                                :emf:
+To get a clearer picture of the concepts at hand.
+
+Questions still open after reading the relevant chapters:
+
+- Can we read a UML model and access it using the
+  EPackage/EClass/EAttribute/... interfaces?
+
+- Is demand-loading and demand-creating for resources lazy, eager, or something
+  else?  Specifically, the createResource and getResource methods accept a
+  boolean argument: does it forces resolution or rather delays it?
+
+- It seems, at least for references, that EMF already does some
+  auto-proxification.  What is the mechanism we use in EMFViews
+  (ReproduceRule?), and how does it compare?
+
+  If we use "Dynamic EMF" as it's called in the book to create our view
+  packages, would we not benefit from proxification?
+
+And an observation:
+
+EMFViews add copies of contributing model packages to a registry local to the
+virtual resource set of a Viewtype.  But then, the EView does not tap into this
+virtual resource set, so there's duplication here.
