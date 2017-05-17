@@ -2273,3 +2273,125 @@ And an observation:
 EMFViews add copies of contributing model packages to a registry local to the
 virtual resource set of a Viewtype.  But then, the EView does not tap into this
 virtual resource set, so there's duplication here.
+
+* [2017-05-17 mer.]
+** EMFViews uses an EStore                                         :emfviews:
+A VirtualElement inherits from an EStoreEObjectImpl, which is an EObject
+implementation backed by an EStore.  Then, our translation rules are all
+different EStore implementation.
+
+From what I gather, this is where the actual magic for models happen (and this
+was part of the initial implementation back in 2011).
+
+When we load a model, the very last step of EView.doLoad is to set the virtual
+contents:
+
+#+BEGIN_SRC java
+for (Resource r : contributingModels) {
+  ArrayList<EObject> oneOftheSublists = new ArrayList<>();
+  oneOftheSublists.add(translateToVirtualElement(r.getContents().get(0)));
+  sublists.add(oneOftheSublists);
+}
+
+this.virtualContents = new VirtualContents<>(this, sublists);
+#+END_SRC
+
+This populates lists with virtual elements, which are obtained from the virtual
+link manager:
+
+#+BEGIN_SRC java
+public EObject getVirtualElement(EObject e) {
+  VirtualElement vElem = virtualLinks.get(e);
+  if (vElem == null) {
+    vElem = new ReproduceElementImpl(virtualModel, e);
+    virtualLinks.put(e, vElem);
+  }
+  return vElem;
+}
+#+END_SRC
+
+That's where reproduce elements are instantiated.  (And, interestingly, only
+reproduce elements; MergeElement and FilterElement do not seem to be created
+anywhere)
+
+A reproduce element is a virtual element, so an EStoreEObjectImpl, and holds a
+concrete EObject called the concrete element.  The idea is to pass through
+access to the concrete element using the EStore interface.
+
+At the end of creating a reproduce element, this is what happens in init:
+
+#+BEGIN_SRC java
+this.eProperties().setEResource(vModel);
+this.concreteElement = concreteElement;
+this.eSetClass(eClass);
+this.eClass();
+setTranslationRule(ReproduceRule.INSTANCE);
+eSetStore(this.getTranslationRule());
+#+END_SRC
+
+We create a reproduce rule, which implements EStore, and will capture get/set
+calls on this virtual object.  That's why, in ReproduceRule.get:
+
+#+BEGIN_SRC java
+public Object get(InternalEObject object, EStructuralFeature feature, int index) {
+  ReproduceElementImpl vElement = (ReproduceElementImpl) object;
+
+  View vModel = (View) vElement.eResource();
+  if (vModel.getMetamodelManager().isVirtualAssociation(feature)) {
+    return vElement.getVirtualAssociation(feature, index);
+  }
+  EStructuralFeature cFeature = vElement.getConcreteFeature(feature);
+  Object value = vElement.getConcreteElement().eGet(cFeature);
+  ...
+  return value;
+#+END_SRC
+
+We ultimately return the concrete value.  But not in every case:
+
+#+BEGIN_SRC java
+if (feature instanceof EReference) {
+  if (feature.isMany()) {
+    value = new VirtualModelList<>(object, feature, Arrays.asList((List<EObject>) value));
+    if (index != NO_INDEX) {
+      value = ((VirtualModelList<EObject>) value).get(index);
+    }
+  } else {
+    value = vModel.translateToVirtualElement((EObject) value);
+    if (value instanceof FilterElement) {
+      value = null;
+    }
+  }
+}
+#+END_SRC
+
+If the requested structural feature is an ERef, and it's many, we return a
+virtual list.  Ultimately, inside this virtual list, we will call
+getVirtualElement.  If the ref has a single multiplicity, then we can directly
+return the virtualElement.
+
+In essence, we perpetuate the virtualization recursively.
+
+It seems to be this part of the code is mixing concerns.  There is a test for
+FilterElement here, to mask the value if it should be filtered.  But then we
+also have the same test in the VirtualModelList.  Why does the virtual list
+repeats this instead of delegating to single virtual elements?
+
+Besides, it seems to me we should have a clear mapping from the Ecore model to
+the virtual model, defined for all classifiers and features.
+
+** Using a code coverage tool to find hot/cold code        :emfviews:eclipse:
+Following T's recommendation, I used the EclEmma plugin, which is based on
+JaCoCo.
+
+Installation was painless.  The plugin supports coverage for running client
+Eclipse application, which is my use case.
+
+So now I can answer with certainty that, opening EView and EViewtype files with
+a model browser and the viewtype editor, the following classes are never used:
+
+- MergeRule, MergeElementImpl
+- FilterElement
+
+In other classes, besides what I already identified as unused, it seems we have
+no examples using the sourceAttribute and targetAttribute of a Association.
+Maybe there are superseded by sourceElement/targetElements.
