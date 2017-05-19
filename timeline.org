@@ -2395,3 +2395,21 @@ a model browser and the viewtype editor, the following classes are never used:
 In other classes, besides what I already identified as unused, it seems we have
 no examples using the sourceAttribute and targetAttribute of a Association.
 Maybe there are superseded by sourceElement/targetElements.
+
+* [2017-05-19 ven.]
+** How are virtual model attributes filtered out?                  :emfviews:
+H raised an interesting question: if an attribute is filtered out in the virtual
+metamodel, it is also filtered out in the virtual model.  But how does that
+happen?
+
+Does EMF just disregard attributes that are not in the metamodel?  Do we also
+need to filter the attributes from the model?
+
+I'm guessing it's the former.  If I comment out the filtering attributes part in
+the metamodel, they should appear on the model.
+
+Yes, they do.
+
+Hmm, when the attributes are present in the metamodel, we add them to the maps
+of virtual to concrete features in MetamodelManager.  When the attributes are
+absent, they are absent from the maps as well.  That's a hint.
