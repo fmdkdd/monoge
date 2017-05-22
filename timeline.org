@@ -2413,3 +2413,121 @@ Yes, they do.
 Hmm, when the attributes are present in the metamodel, we add them to the maps
 of virtual to concrete features in MetamodelManager.  When the attributes are
 absent, they are absent from the maps as well.  That's a hint.
+
+* [2017-05-22 lun.]
+** Writing tests for EMFViews before refactoring                   :emfviews:
+I've got a couple of easy refactorings ahead, related to the EView and EViewtype
+files.  But, before that, I want to write some tests to ensure I don't break any
+functionality doing so (at least, any functionality we care about).
+
+One problem with writing tests is the way Viewtype and View are written as
+resources, you have to provide files through URI, otherwise you cannot construct
+them properly.
+
+We could refactor Viewtype and View so that the resource-specific code is
+extracted, and calls into a model-specific part that does not have to deal with
+files.  But that would be refactoring in order to write the tests for the
+/other/ refactoring...
+
+I'll try to write the tests passing files as URI first.
+
+Okay, hit a snag: I'm using URI.createPlatformResourceURI to pass a
+workspace-relative filename to the EViewtype file, and it doesn't work.
+Presumably, because when I run the code there is no workspace!
+
+So rather I should just use relative paths.  This works:
+
+: URI.createURI("models/foo.eviewtype")
+
+and this will look up the "models" directory in the current project, so it's
+relative.  Hopefully that slash is portable as well.
+
+Grmbl, now Viewtype tries to load the filters metamodel.  But it also uses
+URI.createPlatformResourceURI, which in turn will use the resource factory
+registry to find out how to create an Ecore.  But running in the tests, this
+factory is empty:
+
+: System.out.println(Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().isEmpty());
+: true
+
+I guess I can populate it myself in the tests.
+
+: Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap()
+:     .put("ecore", new EcoreResourceFactoryImpl());
+
+Now I have to find the correct path to set in the Eviewtype file so that it
+loads my Ecore model from the right directory.
+
+At the moment, it fails to find it.  I'm in
+PlatformResourceURIHandlerImpl.createInputStream.
+
+Amusingly, after prefixing my URI with 'platform:/resource', this method removes
+the prefix
+
+: String platformResourcePath = uri.toPlatformString(true);
+
+Ultimately, it calls EcorePlugin.resolvePlatformResourcePath on this suffix,
+which merely looks into its getPlatformResourceMap for the root project in order
+to produce a platform-specific file URI...
+
+Let's do this:
+
+: EcorePlugin.getPlatformResourceMap().put("foo", URI
+: .createURI("file:///home/fmdkdd/proj/emfviews/tests/fr.inria.atlanmod.emfviews.test/models"));
+
+Yeah, it works!  Is there a way to make it relative at least?
+
+In the end, the file URI calls new File(), passing everything to the right of
+':'.  Ah, but that's only the URI for the base folder, and EMF uses it to
+resolve the resource path below, and this cannot be relative:
+
+#+BEGIN_SRC java
+ public URI resolve(URI base, boolean preserveRootParents)
+    {
+      if (!base.isBase())
+      {
+        throw new IllegalArgumentException("resolve against non-hierarchical or relative base");
+#+END_SRC
+
+Hardcoded it is then.
+
+Then:
+
+: IllegalStateException: Workspace is closed.
+
+Raaaah, we have code in Viewtype.loadCorrespondenceModel which queries the
+workspace.  To construct absolute file URIs, again.  This time, to load the XMI
+file of the correspondence model.
+
+At this point, I have three options:
+
+1. Fuck it, and not write tests before doing the changes.  That's not totally
+   satisfactory; and I will need to write tests anyway for other changes down the
+   line.
+2. Make the slightest modifications to Viewtype so that it let us provide the
+   proper URI
+3. Run the tests as a plugin, so that a workspace is loaded
+
+
+Now that I think of it, 3 would solve the previous problem as well.
+
+Okay, that's better.  Now I can run the JUnit test using a headless Eclipse, but
+still loading a workspace.  In fact, I did have to configure a "test" workspace
+where I added the ECL, XMI and Ecore files needed by the viewtype to load.
+
+I'd rather have the tests add these files to the test workspace... or even have the
+Viewtype code to load them from anywhere.  But anyhow.
+
+Managed to test the presence of features and absence of filtered features.  Now
+to be a bit more thorough.
+
+Hmm, hit a snag when trying to check the models.  All I get are
+ReproduceElementImpl instances, so I can't cast them to EClass/EPackage to get
+their contents or names.
+
+I could cast to ReproduceElementImpl... but then I wouldn't be testing the
+virtual access.
+
+So maybe I'm missing something, and we should access these objects through the
+EStore interface.  At least, EMF is able to construct a tree viewer from these
+contents, so I should be able to inspect these as well.
