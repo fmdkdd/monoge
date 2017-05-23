@@ -2631,3 +2631,72 @@ the others are empty references.
 Interestingly, even though it's a reference, we don't get an empty list when
 there are no elements, or a list when there is only one element.  We get a list
 only for two or more elements.
+
+** Removing the correspondenceModelBase in the EView file          :emfviews:
+This should be the simplest task on the list.
+
+With the test written and the coverage tool, I can see that: 1) we never
+actually do anything with the correspondenceModelBase in Viewtype (the code is
+commented out), and 2) removing the correspondenceModelBase in Eview does not
+fail the test.
+
+That's because, if we don't specify a model base, we'll just use the existing
+correspondence model.
+
+On the other hand, if we do specify the model base, we rewrite the
+correspondence model every time.  Except, when the file does not exist (?!).
+Putting an empty file there works, which is a bit... meh.  The limitation is due
+to getting the URI from finding the file first, rather than just constructing
+the URI without looking if there's a file there.
+
+Using createPatlformResourceURI fixes it.
+
+** Getting filters from the virtual links XMI instead of the Ecore :emfviews:
+This is slightly more involved.  At the moment, we filter the elements at the
+metamodel level, getting the filters from an Ecore file.
+
+For each contributing metamodel, we:
+
+- copy it to our virtual resource set
+- remove any feature matching a filter
+- load the correspondence model and add associations
+
+What we should do instead is to get the filters from the virtual links model,
+and use them to remove features from the metamodels.
+
+So, for each contributing metamodel, we should:
+
+- copy it to our virtual resource set
+- load the correspondence model
+- remove any feature matching a filter
+- add associations
+
+Although, since we specify the elements to be filtered in a different format, we
+must change the matching accordingly.  In the Ecore, we did the matching
+structurally.  But in the virtual links metamodel, we have only 3 pieces of data
+to match the filter element reference:
+
+: <linkedElements elementRef="//Process" modelRef="http://www.obeonetwork.org/dsl/togaf/contentfwk/9.0.0" name="Process"/>
+
+Clearly, we are losing the hierarchical component here.  Though, maybe
+"elementRef" is actually intended to be XPath?  If so, I think it means
+"any node named Process", which is not more information than "name", but at
+least if it's used as XPath you could be more precise than that I guess.
+
+It seems the element ref is used by the links projector in getReferencedObject:
+
+: r.getEObject(elementRef);
+
+So, no XPath then.  Well, regardless, I think I'll go with a pretty basic scheme
+to begin with:
+
+: <linkedElements elementRef="contentfwk.BusinessArchitecture.drivers"
+:                 modelRef="http://www.obeonetwork.org/dsl/togaf/contentfwk/9.0.0"
+:                 name="drivers"/>
+
+This should give enough information to filter the correct element without ambiguity.
+
+Writing the search was a bit more tricky than expected, due to it being a tree.
+Using a queue did it.  Not the most readable code, but it works.
+
+Test pass, elements are filtered on the metamodel and the model.
