@@ -2531,3 +2531,103 @@ virtual access.
 So maybe I'm missing something, and we should access these objects through the
 EStore interface.  At least, EMF is able to construct a tree viewer from these
 contents, so I should be able to inspect these as well.
+
+*** TODO Fix the URI scheme in Eview/Eviewtype
+We mix platform URLs with http for finding packages of metamodels.  This is
+confusing and complicates the code (there are couple instances of duplication
+based solely on different URI schemes).
+
+* [2017-05-23 mar.]
+** How does the basic Ecore editor goes through our ReproduceElementImpl? :emfviews:
+Because that's how I probably need to iterate on them as well.
+
+In EcoreEditor.createModel, our reproduce rule is called by an iterator
+resource.getAllContents(), which goes through all the properties.
+
+The actual text is provided by label providers that are given by adapter
+factories... EcoreItemProviderAdapterFactory is where the mapping is done from
+Ecore objects (ERef, EClass, etc.) to the actual classes that do the work.
+
+For EObjects, it uses the ReflectiveItemProvider.  Setting a breakpoint at
+getText there and opening items in the tree confirms that this is the place.
+
+#+BEGIN_SRC java
+public String getText(Object object) {
+  EObject eObject = (EObject)object;
+  EClass eClass = eObject.eClass();
+  String label = format(capName(eClass.getName()), ' ');
+
+  EStructuralFeature feature = getLabelFeature(eClass);
+  if (feature != null)
+  {
+    Object value = eObject.eGet(feature);
+    if (value != null)
+    {
+      return label + " " + value.toString();
+    }
+  }
+  return label;
+}
+#+END_SRC
+
+It's just using eClass().getName().  Okay, let's try that.
+
+It works!  I managed to test the presence of reproduced elements and virtual
+associations, and the absence of filtered elements.  But somehow, I've gotten
+some values from eClass.getName(), and some others from casting to an EReference
+and using getName():
+
+: assertEquals("ReqIF", l.get(1).eClass().getName());
+: assertEquals(e.eClass().getName(), "Process");
+: if (c instanceof EReference && ((EReference) c).getName().equals("detailedProcess"))
+
+and I don't understand quite why I need to go to the eClass for some, but not
+for others.  For the EReferences, eClass() returns EReference... which I guess
+is expected.
+
+In the model, I iterate over the /contents/ of the the BusinessArchitecture
+object (presumably, a list of structural features).  For each, I can test:
+
+: assertEquals(e.eClass().getName(), "Process");
+
+This is what the Ecore reflective editor gives me: the name of the Eclass.  But
+a "Process" in the model also has a name.  The editor gets it from
+getLabelFeature and eGet above.
+
+getLabelFeature search for a plausible feature to use as a label: if it's a
+"name" attribute or if it's a String.
+
+So I can do:
+
+: e.eGet(e.eClass().getEStructuralFeature("name"))
+
+to get the name of each Process instance.  Similarly, to get the detailedProcess
+ref:
+
+: e.eGet(e.eClass().getEStructuralFeature("detailedProcess"))
+
+At first I was surprised with the results:
+
+#+BEGIN_EXAMPLE
+fr.inria.atlanmod.emfviews.elements.ReproduceElementImpl@72b10258 (eClass: org.eclipse.emf.ecore.impl.EClassImpl@6113a26f (name: Process) (instanceClassName: null) (abstract: false, interface: false))
+null
+null
+null
+null
+null
+null
+null
+null
+null
+null
+#+END_EXAMPLE
+
+Only one reference went somewhere, the others null?
+
+But then I opened the model in Modisco, and it turns out that, yes, only the
+first process "Booking a trip" has a detailedProcess that leads somewhere.  All
+the others are empty references.
+
+Interestingly, even though it's a reference, we don't get an empty list when
+there are no elements, or a list when there is only one element.  We get a list
+only for two or more elements.
