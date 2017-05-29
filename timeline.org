@@ -2700,3 +2700,45 @@ Writing the search was a bit more tricky than expected, due to it being a tree.
 Using a queue did it.  Not the most readable code, but it works.
 
 Test pass, elements are filtered on the metamodel and the model.
+
+* [2017-05-29 lun.]
+** Small morning refactorings                                      :emfviews:
+Removing the unnecessary HashMap as arguments to load and save for a resource.
+EMF handles null arguments just fine.
+
+On a side note, there are multiple cases of calling load with an explicit input
+stream, but the suggested way to load a resource is to first give it an URI,
+then call load(null).
+
+In fact, sometimes we call load with an explicit input stream, /and then/ set
+the URI.
+
+Now to rename a few things for better coherence with the paper:
+
+- Viewtype to Viewpoint.  That was a pain, as we had also many example files
+  with the eviewtype extension, and files that referred to them...  These
+  examples might not be even working anymore for all I know, but hey, coherence.
+
+- "Correspondence model base" to "Matching model".  I guess "correspondence" was
+  alright, although different than the paper, but "matching" is shorter.  And we
+  had many thing beginning with 'c' already, it was getting Confusing.
+
+At this point I discover projectile-replace: much faster!  Though it doesn't
+seem to save files automatically, there is projectile-save-project-buffers;
+launching magit-status also prompts to save them individually.  Still leaving
+the Java refactorings to Eclipse, since I have more faith in its correctness.
+
+- "Correspondence model" to "Weaving model".  The correspondence model is
+  actually just an instance of the virtual links metamodel.  But I suppose
+  there's no reason to couple the two, so "weaving" will do (besides, it's
+  shorter).
+
+- "Composition metamodel" to "viewpoint", since that's what it is.
+
+- "Contributing (meta)models" to "contributing".  Hmm, this one will wait for
+  the unification of EView and Viewpoint, where we will have a single
+  "contributingModel" line.  For coherence with the other properties in an
+  EView/EViewpoint file, the suffix should stay, at least for the time being.
+
+
+These morning refactorings went well in the afternoon I guess.
