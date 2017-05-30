@@ -2742,3 +2742,105 @@ the Java refactorings to Eclipse, since I have more faith in its correctness.
 
 
 These morning refactorings went well in the afternoon I guess.
+
+* [2017-05-30 mar.]
+** Making Viewpoint a virtual metamodel                            :emfviews:
+At the moment, to construct the Viewpoint, we merely clone the contributing
+packages into a virtual resource set, then remove filtered attributes and add
+references corresponding to virtual associations.
+
+The idea is to use what we have in View already to construct a Viewpoint, by
+feeding it Ecore as a metamodel.  First difficulty is that EView refers to a
+Viewpoint.  If we use EView to represent a Viewpoint at the metamodel level,
+then it would still need a Viewpoint.
+
+What is the Viewpoint used for anyway?
+
+In EView.doLoad, we load a full Viewpoint from the "viewpoint" property.  We
+then use this viewpoint to get a reference to the matching model and the list of
+contributing metamodels.
+
+This list of contributing metamodels is used by View to populate the virtual
+resource set of the View/EView (the attribute is declared by View, instantiated
+by EView, and populated by View.loadContributingMetamodels).
+
+It seems similar to what Viewpoint is doing, except we are /not/ copying the
+packages we put in the virtual resource set of View.
+
+So at this point, we have a virtual resource set with the original packages,
+/and/ a Viewpoint with its own virtual resource set containing clones of the
+exact same packages, albeit modified by virtual links.
+
+How are both used?  First, the content of the virtual resource set of View is
+only used by View.getContributingModels, that is: to produce a list of the
+resources contained by the resource set (but we filter out Ecore resources for
+some reason).
+
+This list is used by other getters of View, and also in doSave.  Most
+interestingly, its contents are passed unfiltered to the constructor of a
+MetamodelManager in EView.doLoad, along with the viewpoint.  Another point of
+use of interest is View.setVirtualContents: the (filtered) list is used to
+populate the virtual contents with translated virtual elements.
+
+The viewpoint of EView is /only/ used to pass to the MetamodelManager.  So it
+seems this is where the link between concrete metamodels, virtual metamodels,
+models and virtual models happen.
+
+In fact, the third argument to the constructor of MetamodelManager takes a
+reference to the EView instance that created it... the EView holds a reference
+to the MetamodelManager, and that's the only class where the manager is
+instantiated.  Seems to me they are rather coupled.
+
+MetamodelManager holds maps of concrete to virtual features as I have [[*Investigating View/Eview][previously
+covered]].
+
+It uses the EView reference in only one place, this test:
+
+#+BEGIN_SRC java
+ if (virtualModel != null && virtualModel.getResourceSet() != null
+        && virtualModel.getResourceSet().getPackageRegistry() != null
+        && virtualModel.getResourceSet().getPackageRegistry().values() != null
+        && virtualModel.getResourceSet().getPackageRegistry().values().size() > 0) {
+      Collection<Object> listOfVirtualMMPackages =
+          virtualModel.getResourceSet().getPackageRegistry().values();
+#+END_SRC
+
+Written in a rather defensive style, this list of virtual metamodel packages is
+the same thing that we pass in the first argument to the constructor... which
+the constructor collects into a list of EPackage: contributingMetamodels.
+
+Now, coverage for the test I've written tells me that the test returns false
+anyway, because getResourceSet() returns null.  So at the moment, we don't do
+anything at all with the EView reference.
+
+We do use the other two arguments: the list of (unaltered) contributing
+metamodel packages is put into contributingMetamodels, and the viewpoint is used
+to populate the compositionClassesByName, where we put the altered metamodel
+classes.
+
+Then, in buildMaps, we iterate over each EClass from the contributing
+metamodels, and if we find an EClass of the same name, belonging to the same
+package, in the map of composition classes (from the Viewpoint), then we add
+them to the concreteToVirtualClass map, and iterate on their features.
+
+It's the same thing for mapFeatures: for each concrete feature in the
+contributing EClass, if it also exists (by name) in the virtual EClass (the
+EClass from the viewpoint), then we add the feature to two maps:
+virtualToConcreteFeature and concreteToVirtualFeature.
+
+I'm puzzled by two things: why we use names for comparisons, and why we don't
+just iterate on the virtual metamodel.
+
+Using names is brittle, and leads to the redundant checks for classes that
+belong to the same package.  Also, is there any guarantee of name uniqueness in
+EMF?  It looks like there is: adding a feature or class with the name of an
+existing one will fail the validation.  So that's a safe assumption.  We can use
+names, but it might be best to have them qualified.
+
+Iterating on the virtual metamodel: since we will only add classes and features
+present in the virtual metamodel, and we will add all of them (save for
+associations), it might make more sense to iterate on them to start with, and
+just get the corresponding class/feature from the qualified name in the
+contributing metamodels.
+
+Or, do a parallel descent in the trees.
