@@ -2649,7 +2649,7 @@ Putting an empty file there works, which is a bit... meh.  The limitation is due
 to getting the URI from finding the file first, rather than just constructing
 the URI without looking if there's a file there.
 
-Using createPatlformResourceURI fixes it.
+Using createPlatformResourceURI fixes it.
 
 ** Getting filters from the virtual links XMI instead of the Ecore :emfviews:
 This is slightly more involved.  At the moment, we filter the elements at the
@@ -2844,3 +2844,37 @@ just get the corresponding class/feature from the qualified name in the
 contributing metamodels.
 
 Or, do a parallel descent in the trees.
+
+* [2017-05-31 mer.]
+** Re: How are virtual model attributes filtered out?              :emfviews:
+Coming back to [[*How are virtual model attributes filtered out?][How are virtual model attributes filtered out?]].  I've established
+that when attributes are absent in the viewpoint, they will be filtered in the
+models.  But where is the connection taking place?
+
+Stepping into an eGet call to find out where it plugs into our code.
+
+Interesting: an eGet(EStructuralFeature) call is delegated to another eGet,
+which looks up the feature ID and delegate to an eGet(int).  But in that one,
+the feature ID is turned into ... an EStructuralFeature!  This the exact same
+object given to the first eGet call in my debug trace.
+
+After a while, we end up in ReproduceRule.get, and since I'm testing a virtual
+association feature, in ReproduceElementImpl.getVirtualAssociation.  In this
+case, it's a single reference, so this just virtualizes the target element.
+
+Note: we cache virtualized elements in a map, but EStore also has his own cache
+(see isCaching).
+
+In eGet, if the feature is absent from the metamodel (filtered out), then EMF
+raises an exception.
+
+When we iterate on the contents of BusinessArchitecture using eContents, we
+iterate on the structural features of the eClass.  So this just looks up in the
+Viewpoint.
+
+Since EMF uses the structure of the metamodel to iterate on the actual values of
+the model, when they are filtered at the metamodel level, they do not appear in
+the virtual model.
+
+However, does this mean that there is a way to access these values in the model
+if you know the feature name?
