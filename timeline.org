@@ -2878,3 +2878,136 @@ the virtual model.
 
 However, does this mean that there is a way to access these values in the model
 if you know the feature name?
+
+* [2017-06-02 ven.]
+** Writing a test for modifying models                             :emfviews:
+Since we have a virtual model, it should reflect changes in the models, right?
+I'm not sure we support that yet, but I figure that there's nothing in the code
+that should prevent it.  Caching, maybe.
+
+I've written a small test, and it looks like changing the model does /not/
+propagate the changes to the virtual model.
+
+What blocks it?
+
+: vea_labels.get(0).eGet(label_name)
+
+I would expect the first ~get~ to return a proxy to the concrete object, and the
+eGet would be delegated to the concrete object.
+
+What's happening: we end up in ReproduceRule.get, where we get the concrete
+feature, and the concrete element:
+
+#+BEGIN_SRC java
+EStructuralFeature cFeature = vElement.getConcreteFeature(feature);
+Object value = vElement.getConcreteElement().eGet(cFeature);
+if (feature instanceof EReference) {
+  if (feature.isMany()) {
+    value = new VirtualModelList<>(object, feature, Arrays.asList((List<EObject>) value));
+    if (index != NO_INDEX) {
+      value = ((VirtualModelList<EObject>) value).get(index);
+#+END_SRC
+
+Since the concrete element is a reference with >1 multiplicity, we create a
+virtual list.  Hmm, that means we create a /new/ virtual list every time the a
+reference is requested.  Maybe that's how EMF does it as well, providing an
+immutable list.  But that does not seem necessary, since it's just a proxy in
+this case, we could instantiate it once and save it for further calls, since it
+will only delegate to a concrete EList.  Anyway.
+
+We create the virtual list, and if the index is ~> -1~, we return the correct
+value, otherwise we return the whole list.
+
+Inside the virtual list, we walk the sublists to get the concrete element:
+
+#+BEGIN_SRC java
+EObject concreteEO = (EObject) l.get(k);
+EObject virtualEO = virtualModel.getVirtualLinkManager().getVirtualElement(concreteEO);
+#+END_SRC
+
+Here, my concrete element is the Label EClass, and the virtual element is a
+ReproduceElement containing the concrete element.
+
+Finally, we translate it (again?) to a virtual element before returning
+it... hmm.
+
+#+BEGIN_SRC java
+return (E) virtualModel.translateToVirtualElement((EObject) l.get(index));
+#+END_SRC
+
+Oh, I see.  The first part of the code only wants to find out the true index of
+the concrete element, since we can have filter element that should be hidden.
+Then, once we have the index, we translate the concrete element to a virtual one
+and return it.
+
+So: the ~get(0)~ call returns the Label EClass wrapped in a ReproduceElement.
+So far so good.  Except, the concrete element is not the same Label instance as
+the one in the concrete model.
+
+Which kind of make sense: to construct the virtual model, we loaded the
+resource.  To construct the model, we also loaded the resource from XMI, a
+second time.  There's no reason for the instances to be the same.
+
+So what's happening is we are modifying a label instance in memory, but it's
+completely disconnected from the instance kept in the virtual model.
+
+The virtual model makes no guarantee to hook into every instance of the model to
+watch for changes.  I guess we could use the notifying architecture of EMF..
+
+Our view would be updated if we saved the changes to the model, and recreated
+the view... but that's not really an update anymore.
+
+But let's follow the ~eGet~ call.  We end up in EStoreEObjectImpl.dynamicGet,
+where:
+
+#+BEGIN_SRC java
+Object result = eSettings[dynamicFeatureID];
+if (result == null) {
+  // actually get the result and cache it
+}
+return result;
+#+END_SRC
+
+Oh oh.  So it /is/ caching values for us.  Here it finds the "Software kind" in
+its cache and returns it.  If we remove the cached value, it goes to
+ReproduceRule.get, where... the concrete value is "Software Kind".
+
+So, yeah.  The above.  We are dealing with separate instances: the virtual model
+is completely disconnected from the model, since they are loaded as separate
+resources.
+
+I'm not even sure that the virtual model /should/ reflect changes in this way.
+At the very least, I would expect that changes to the underlying concrete models
+held by the virtual model are reflected in the virtual model.
+
+But we need to access the contributing models.  Let's do that.
+
+: java.lang.ClassCastException: org.eclipse.emf.ecore.impl.DynamicEObjectImpl cannot be cast to contentfwk.EnterpriseArchitecture
+
+Hmm that's interesting, I could cast to concrete instances when loading the
+model myself, but when they are loaded by EView, they are dynamic objects...
+
+Okay, okay, let's make it all dynamic access.
+
+: org.junit.ComparisonFailure: expected:<[foo]> but was:<[Software Kind]>
+
+Of course.  I'm guessing the EStore caching is the culprit here.  If I bypass
+it...  Yep!  The test passes.  The change is reflected to the virtual model.
+
+And adding:
+
+#+BEGIN_SRC java
+protected boolean eIsCaching() {
+  return false;
+}
+#+END_SRC
+
+to our ReproduceElementImpl is sufficient to turn caching off definitely.
+
+But I'm not sure in what scenario one would peek at the contributing models this
+way, rather than taking them straight from the resource.
+
+The notifying approach is more promising, /if/ you can subscribe to changes from
+/every instances/ of the same model, which I don't think you easily can.
+
+Maybe hooking into the resource factory or something.  But that's out of scope.
