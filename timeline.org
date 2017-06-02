@@ -3011,3 +3011,20 @@ The notifying approach is more promising, /if/ you can subscribe to changes from
 /every instances/ of the same model, which I don't think you easily can.
 
 Maybe hooking into the resource factory or something.  But that's out of scope.
+
+** Accessing a filtered feature in the models                      :emfviews:
+Filtered features are removed from the metamodel, but they don't seem to affect
+the models in any way.  There /is/ code for skipping instances of FilterElement
+in the virtual model list, but we don't construct any instances of these at the
+model level.
+
+So, in theory, we should be able to access the content of a filtered feature.
+But maybe EMF does not have any mechanism to let us do so.
+
+Wrote a test.  If you give eGet a feature object, it will convert it to a
+feature ID using the eAllStructuralFeatures array.  That array is built from the
+metamodel, so again, it will fail to find the feature.
+
+I'm not sure there's a way around it.  But I'm unclear on where the eClass for a
+model is coming from.  When you load a model, how do we instruct EMF to use the
+filtered metamodels?  More questions...
