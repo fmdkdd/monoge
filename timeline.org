@@ -3028,3 +3028,153 @@ metamodel, so again, it will fail to find the feature.
 I'm not sure there's a way around it.  But I'm unclear on where the eClass for a
 model is coming from.  When you load a model, how do we instruct EMF to use the
 filtered metamodels?  More questions...
+
+* [2017-06-06 mar.]
+** Following the trail while it's hot                              :emfviews:
+Picking up where I left things last time.
+
+The eClass for our view is inside the eProperties of the ReproduceElementImpl.
+That field comes from EStoreEObjectImpl, and the class is set in
+ReproduceElementImpl.init:
+
+:    this.eSetClass(eClass);
+
+The init method is called by the two constructors, but one constructor is
+seemingly unused.  So we are left with:
+
+#+BEGIN_SRC java
+public ReproduceElementImpl(View vModel, EObject concreteElement) {
+  super();
+  EClass tempEClass =
+      vModel.getMetamodelManager().translateToVirtualEClass(concreteElement.eClass());
+  this.init(vModel, concreteElement, tempEClass);
+}
+#+END_SRC
+
+The eClass used by the reproduce element is looked up in the maps built by the
+metamodel manager.  That's where we assign the virtual metamodel with the
+filtered features to the virtual model.
+
+Trying to add the feature to the eClass using:
+
+: vba.eClass().getEStructuralFeatures().add(f);
+
+I get a nice array index out of bounds exception, since the eSettings array used
+to lookup the feature is not extended when we add the feature as above.
+
+I'm not sure it's something you'd want to do anyway.  But it doesn't work.
+
+So I'll assume that we cannot access features filtered by the virtual
+metamodel.  Good thing.
+
+On the other hand, following the code I was reminded of something interesting:
+when we filter a reference, what happens to its opposite (it if exists?).  I'm
+guessing: nothing, so EMF will probably complain if we try to reach the
+opposite.
+
+Let's try it.
+
+Hmm, inconveniently, none of the features we already filter have opposites.
+Let's make a new, minimal, test.
+
+Created a minimal ECore metamodel.  Now I need a model.  Here is the code to
+generate it:
+
+#+BEGIN_SRC java
+String mmURI = "/viewpoint-test/metamodels/minimalref.ecore";
+EPackage p = (EPackage) (new ResourceSetImpl()
+    .getResource(URI.createPlatformResourceURI(mmURI, true), true).getContents().get(0));
+
+EFactory f = p.getEFactoryInstance();
+EObject a = f.create((EClass) p.eContents().get(0));
+EClass bClass = (EClass) p.eContents().get(1);
+EObject b1 = f.create(bClass);
+b1.eSet((EStructuralFeature) bClass.eContents().get(0), a);
+EObject b2 = f.create(bClass);
+b2.eSet((EStructuralFeature) bClass.eContents().get(0), a);
+
+Resource r = (new ResourceSetImpl()).createResource(URI
+    .createPlatformResourceURI("/viewpoint-test/models/minimal.xmi", true));
+r.getContents().add(a);
+r.getContents().add(b1);
+r.getContents().add(b2);
+r.save(null);
+#+END_SRC
+
+Now the eviewpoint and eview files.  Do I need multiple metamodels in the
+eviewpoint?  I think I will trigger the extension part of the code in Viewpoint
+if I don't.  But it doesn't matter for filters, since these are applied
+regardless.
+
+Ugghh, spent 10 minutes debugging a typo in the modelRef of a linkedElement from
+the weaving XMI...  Some validation of these files could be helpful.
+
+Now I need an ECL file.. even though I'm only using filters, so technically I
+don't need it.  Wait.  I don't need the ECL file for the view... if it doesn't
+exist we'll just skip it.  But I do need an XMI for the view as well... an empty
+one will do.
+
+Okay, I can load the view without errors.  Now, I just need to check that the
+reference is filtered, that it's opposite is not, and then get the opposite of
+the opposite to see what happens.
+
+Oh, interesting.  If I filter out a containment reference: A contains a number
+of B, then the view will only contain A.  Since there is no way to access the B
+anymore, I cannot access the opposite ref.
+
+Let's try a non-containment then.
+
+Strangely, ~view.getContents()~ returns a list with only one reproduce element,
+for the A class from the metamodel.  Even though I haven't filtered anything
+yet!
+
+Okay, in View.setVirtualContents, we do:
+
+: oneOftheSublists.add(translateToVirtualElement(r.getContents().get(0)));
+
+Except, with the files I have created for this example, r.getContents() returns
+the list [A, B, B], and get(0) returns just the A instance.  So that's why only
+A appears in the virtual model contents.
+
+Now, in the working example, getContents returns [EnterpriseArchiteture].  This
+is coherent with the model XMI, where everything is wrapped in an
+EntrepriseArchitecture tag.  Same for the other ReqIf and BPMN model: they are
+wrapped in ReqIf and BPMN tags.
+
+Hmm.  Actually, they are wrapped because that's how the model are made: they
+each contain a class with containment references where everything should go.
+
+But that means the View code will only work with such models.  Why not take
+everything contained by the resource rather than just the first object?
+
+Seeing as we already have a VirtualContents class that takes sublists...
+
+Okay, made the change.  It shouldn't affect the existing examples since the
+behavior is the same for resources containing only one element.  Now we just
+don't ignore the other ones.
+
+Wrote a test.  The filtered reference is not available on the metamodel.  Its
+opposite is still present.  I think that's acceptable, if we say that views are
+"lightweight", that they do not enforce EMF invariants.
+
+However, we can get a hold of the filtered reference by the getEOpposite method
+on its opposite.  That's weird.  I would expect it to return null, given that
+it's filtered at the metamodel level.  Where is this getEOpposite call looking
+for it?  Maybe it's cached?
+
+But more worrying, I would expect to be able to follow the opposite reference.
+That currently does an NPE in EStructuralFeatureImpl.getSettingsDelegate.
+
+#+BEGIN_SRC java
+EReference eOpposite = getEOpposite();
+if (eOpposite != null)
+{
+  eOpposite.getEContainingClass().getFeatureCount();
+}
+#+END_SRC
+
+First of all, why is this code even there?  It accesses the feature count... and
+does nothing with it.
+
+Regardless, getEContainingClass... but that's not even a containing reference.
+Weird.
