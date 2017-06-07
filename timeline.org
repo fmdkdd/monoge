@@ -2532,7 +2532,8 @@ So maybe I'm missing something, and we should access these objects through the
 EStore interface.  At least, EMF is able to construct a tree viewer from these
 contents, so I should be able to inspect these as well.
 
-*** TODO Fix the URI scheme in Eview/Eviewtype
+*** DONE Fix the URI scheme in Eview/Eviewtype
+CLOSED: [2017-06-07 mer. 17:26]
 We mix platform URLs with http for finding packages of metamodels.  This is
 confusing and complicates the code (there are couple instances of duplication
 based solely on different URI schemes).
@@ -3229,3 +3230,27 @@ Before that, I get the initial git commit from 2004 when the repo was created by
 splitting from a previous CVS probably (there are .cvsignore files lying
 around).  From what I can find, the CVS repository is now unavailable, so I
 won't get any history beyond that.
+
+** Cleaning up URI loading                                         :emfviews:
+This was getting annoying to deal with a dummy workspace just to have the test
+resources.
+
+Asked G about it, he suggested I use createURI instead of
+createPlatformResourceURI, to avoid being tied to the workspace.  We tried it
+together, and using relative paths with createURI will load the files from the
+current plugin.
+
+Had to make changes in multiple places where we previously used platform URI, or
+worse, findMember on the workspace.  Now it's more homogeneous.
+
+He also suggested we pass URI to the EMFViews core instead of strings, so that
+we leave the problem of creating and resolving them to the client.  I agree, and
+would even go as far as passing resources directly.
+
+*** TODO Investigate duplication of model loading from XMI
+Since in Viewpoint we pass around URI strings when we really want to deal with
+EPackages, there may be some duplication where we load a package from the XMI
+instead of getting an EPackage directly, or getting it from a registry.
+
+That seems like unnecessary work, and a potential source of bugs (since we have
+clones of models lying around, so strict equality wouldn't work).
