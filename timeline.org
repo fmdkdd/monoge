@@ -3176,5 +3176,56 @@ if (eOpposite != null)
 First of all, why is this code even there?  It accesses the feature count... and
 does nothing with it.
 
-Regardless, getEContainingClass... but that's not even a containing reference.
-Weird.
+Regardless, getEContainingClass returns null... but that's not even a containing
+reference.  Weird.
+
+* [2017-06-07 mer.]
+** EOpposite is set when the model is loaded                   :emfviews:emf:
+That's the first answer.  When loading the XMI, bidirectional references set
+their opposites to each other.
+
+So when we filter out one part of the reference, the other still has its
+eOpposite field set.
+
+Second problem was the null EContainingClass.  It should return the class
+containing the feature.  But since the feature is filtered out, it has no
+containing class anymore.
+
+Actually, bypassing the code:
+
+#+BEGIN_SRC java
+if (eOpposite != null)
+{
+  eOpposite.getEContainingClass().getFeatureCount();
+}
+#+END_SRC
+
+we do get access to the feature value, and the test succeeds.  So this bit is
+problematic.
+
+I really don't know why it's there.  I understand that this getter is memoized,
+so calling it is a way to force the computation of whatever underlying data it
+returns.  But if you need to force the computation, it's because you are peeking
+under the sheets of the interface; ergo, doing something you shouldn't.  Or, you
+don't really need to force the computation, and this code is useless.
+
+Doing a bit of git spellhunking...
+
+: http://git.eclipse.org/c/emf/org.eclipse.emf.git/
+: git://git.eclipse.org/gitroot/emf/org.eclipse.emf.git
+
+Found [[orgit-rev:~/proj/org.eclipse.emf/::22137e7][one commit]] from 2005 (!) where the code was updated, but the strange ~if~
+was already there:
+
+#+BEGIN_SRC diff
+       if (eOpposite != null)
+       {
+-        eOpposite.getEContainingClass().getEAllStructuralFeatures();
++        eOpposite.getEContainingClass().getFeatureCount();
+       }
+#+END_SRC
+
+Before that, I get the initial git commit from 2004 when the repo was created by
+splitting from a previous CVS probably (there are .cvsignore files lying
+around).  From what I can find, the CVS repository is now unavailable, so I
+won't get any history beyond that.
