@@ -2821,8 +2821,8 @@ classes.
 
 Then, in buildMaps, we iterate over each EClass from the contributing
 metamodels, and if we find an EClass of the same name, belonging to the same
-package, in the map of composition classes (from the Viewpoint), then we add
-them to the concreteToVirtualClass map, and iterate on their features.
+package, in the map of composition classes (from the Viewpoint), then we add it
+to the concreteToVirtualClass map, and iterate on their features.
 
 It's the same thing for mapFeatures: for each concrete feature in the
 contributing EClass, if it also exists (by name) in the virtual EClass (the
@@ -3278,3 +3278,10 @@ completion items.
 I think the way windows are created and (not) disposed for each function is more
 annoying than helpful.  I'll keep my current setup.
 
+** Using Eview for metamodels                                      :emfviews:
+To use EView for the metamodel level, we would need to provide a viewpoint.  The
+viewpoint is used to populate the maps in the metamodel manager; essentially,
+its role is to assert what features are present on the viewpoint.
+
+If the Eview is used for the metamodel, its viewpoint should be the Ecore
+metamodel itself.  Maybe I can try building a test around that.
