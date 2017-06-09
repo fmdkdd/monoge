@@ -3254,3 +3254,27 @@ instead of getting an EPackage directly, or getting it from a registry.
 
 That seems like unnecessary work, and a potential source of bugs (since we have
 clones of models lying around, so strict equality wouldn't work).
+
+* [2017-06-09 ven.]
+** Trying out Eclim for controlling Eclipse from Emacs        :emacs:eclipse:
+Out of the box I set the bar a little too high for Eclim, since I'm running
+Eclipse 4.7 M6, and only 4.6 is supported at the moment.
+
+There is a development branch for 4.7 on the Git.  I try it out, follow the
+build from source guide.  But it fails to build on my Eclipse config, since I
+have a separate configuration folder and platform folder.
+
+Ok ok.  Maybe I should try a plain Eclipse to see if it's even worth the
+trouble.  I'm afraid it doesn't have useful stuff like Javadoc on hover (maybe
+using Eldoc?).  Let's see.
+
+It installs with 4.6.  Now I run the eclimd daemon from inside Eclipse
+(View->Eclimd).
+
+Not that slow.  You can get Javadoc for a type, not on hover, but with a
+binding.  Auto-completion seems to work, although you don't have the Javadoc for
+completion items.
+
+I think the way windows are created and (not) disposed for each function is more
+annoying than helpful.  I'll keep my current setup.
+
