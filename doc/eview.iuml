@@ -1,0 +1,138 @@
+@startuml
+
+title emfviews.core
+
+package EMF #DDDDDD {
+
+interface Resource {
+  +load()
+  +save()
+  +getContents()
+  +getResourceSet()
+}
+
+class ResourceImpl {
+  #doLoad()
+  #doSave()
+  +getContents()
+  +getResourceSet()
+}
+
+}
+
+package emfviews.virtuallinks {
+
+class VirtualLinks {
+  +getVirtualLinks()
+}
+
+}
+
+
+abstract class View {
+  #virtualResourceSet: ResourceSet
+  #contributingModelsURIs: String
+  #contributingMetamodelsURIs: String
+  #doSave()
+  +getContents()
+  #setVirtualContents()
+  +translateToVirtualElement(EObject): EObject
+}
+
+class Viewpoint {
+  -virtualResourceSet: ResourceSet
+  -contributingEPackages: List<EPackage>
+  #doLoad()
+  #doSave()
+  +getContents()
+  +getResourceSet()
+}
+
+class EView {
+  #doLoad()
+}
+
+class VirtualLinkManager {
+  +initialize()
+  +getVirtualElement(EObject): EObject
+}
+
+class MetamodelManager {
+  -buildMaps()
+  +getVirtualAssociation(EObject, String name): EStructuralFeature
+  +translateToVirtualFeature(EObject, EStructuralFeature): EStructuralFeature
+  +translateFromVirtualFeature(EObject, EStructuralFeature): EStructuralFeature
+}
+
+class LinksProjector {
+  +load(VirtualLinks)
+}
+
+note left
+  Created by VirtualLinkManager and
+  discarded after it has created
+  ReproduceElement for each Association
+end note
+
+class VirtualContents<E> {
+  +get(int): E
+  +set(int, E)
+  +size(): int
+}
+
+
+Resource <|.. ResourceImpl
+ResourceImpl <|-- View
+
+View <|-- EView
+View "1" -left "1" VirtualLinkManager
+View "1" -right "1" MetamodelManager
+
+View "1" -- "1" VirtualContents
+
+EView -[hidden]right- VirtualContents
+
+ResourceImpl <|-- Viewpoint
+MetamodelManager --> Viewpoint
+
+EView -> Viewpoint
+
+VirtualContents "1" -- "1" Viewpoint
+
+Viewpoint ..> VirtualLinks
+
+LinksProjector --> "virtualModel" View
+LinksProjector <.. VirtualLinkManager
+LinksProjector ..> VirtualLinkManager
+LinksProjector ..> MetamodelManager
+VirtualLinks <.. LinksProjector
+
+@enduml
+
+@startuml
+
+title LinksProjector.loadAssociations
+
+LinksProjector -> VirtualLinkManager : getVirtualElement
+activate VirtualLinkManager
+
+create ReproduceElementImpl
+VirtualLinkManager -> ReproduceElementImpl : new
+VirtualLinkManager -> LinksProjector
+deactivate VirtualLinkManager
+
+LinksProjector -> MetamodelManager : getVirtualAssociation
+activate MetamodelManager
+MetamodelManager -> MetamodelManager : virtualAssociations
+MetamodelManager -> LinksProjector
+deactivate MetamodelManager
+
+LinksProjector -> ReproduceElementImpl : setVirtualAssociation
+activate ReproduceElementImpl
+
+create VirtualAssociation
+ReproduceElementImpl -> VirtualAssociation : new
+ReproduceElementImpl -> ReproduceElementImpl : virtualAssociations
+deactivate ReproduceElementImpl
+
+@enduml
