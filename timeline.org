@@ -3285,3 +3285,14 @@ its role is to assert what features are present on the viewpoint.
 
 If the Eview is used for the metamodel, its viewpoint should be the Ecore
 metamodel itself.  Maybe I can try building a test around that.
+
+* [2017-06-12 lun.]
+** Made a class diagram of emfviews.core                          :emfviews:
+A bit hairy.  PlantUML uses GraphViz behind the scenes, so the layout engine
+quickly shows its limits when you get a dozen of boxes.
+
+Regardless, it helps to see the whole picture.
+
+I think I want a sequence diagram of Viewpoint.doLoad, and most importantly,
+EView.doLoad.  Probably an object diagram of everything created by
+EView/Viewpoint for the minimal example.

@@ -18,7 +18,18 @@ class ResourceImpl {
   +getResourceSet()
 }
 
+class EStoreEObjectImpl {
+
 }
+
+interface EStore {
+  +get(EObject, EStructuralFeature, int): Object
+  +set(EObject, EStructuralFeature, int, Object): Object
+}
+
+}
+
+EStoreEObjectImpl ..> EStore
 
 package emfviews.virtuallinks {
 
@@ -80,6 +91,27 @@ class VirtualContents<E> {
   +size(): int
 }
 
+class ReproduceElementImpl {
+  -concreteElement: EObject
+}
+
+class VirtualAssociation {
+  -referencedElements: List<EObject>
+  -virtualFeature: EStructuralFeature
+  +get(int): Object
+  +set(EObject, int): Object
+}
+
+abstract class VirtualElement {
+}
+
+abstract class TranslationRule {
+}
+
+class ReproduceRule {
+  +get(EObject, ...)
+  +set(EObject, ...)
+}
 
 Resource <|.. ResourceImpl
 ResourceImpl <|-- View
@@ -106,6 +138,19 @@ LinksProjector <.. VirtualLinkManager
 LinksProjector ..> VirtualLinkManager
 LinksProjector ..> MetamodelManager
 VirtualLinks <.. LinksProjector
+LinksProjector .> ReproduceElementImpl
+
+VirtualElement <|-- ReproduceElementImpl
+
+VirtualElement -left|> EStoreEObjectImpl
+
+VirtualElement *-- TranslationRule
+
+EStore <|. TranslationRule
+TranslationRule <|-- ReproduceRule
+
+ReproduceElementImpl *..> "0..*" VirtualAssociation
+ReproduceElementImpl ..> ReproduceRule
 
 @enduml
 
