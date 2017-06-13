@@ -29,8 +29,23 @@ package EMF #DDDDDD {
     +set(EObject, EStructuralFeature, int, Object): Object
   }
 
+  interface EObject {
+  }
+
+  interface EStructuralFeature {
+  }
+
+  interface ResourceSet {
+  }
+
 }
 
+hide EObject members
+hide EStructuralFeature members
+hide EStoreEObjectImpl members
+hide ResourceSet members
+
+Resource <|.. ResourceImpl
 EStoreEObjectImpl ..> EStore
 
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -38,17 +53,106 @@ EStoreEObjectImpl ..> EStore
 
 package emfviews.virtuallinks {
 
-  class VirtualLinks {
-    +getVirtualLinks()
+  interface VirtualLinks {
+  }
+
+  interface VirtualLink {
+    +getName(): String
+  }
+
+  interface Filter {
+  }
+
+  interface Association {
+  }
+
+  interface LinkedElement {
+    +getElementRef(): String
+    +getModelRef(): String
   }
 
 }
 
+hide VirtualLinks members
+hide Filter members
+hide Association members
+
+VirtualLinks "1" *-- "0..*" VirtualLink   /': virtualLinks '/
+VirtualLinks "1" *-- "0..*" LinkedElement /': linkedElements '/
+
+VirtualLink <|.. Association
+VirtualLink <|.. Filter
+
+Association --> "1" LinkedElement    /' : sourceElement '/
+Association --> "0..*" LinkedElement /' : targetElements '/
+
+Filter --> "1" LinkedElement    /' : filteredElement '/
+
+/' hide VirtualLinks   '/
+
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-' EMFViews package
+' EMFViews.elements/rules
+
+abstract class VirtualElement {
+}
+
+class ReproduceElementImpl {
+}
+
+class VirtualAssociation {
+  +get(int): Object
+  +set(EObject, int): Object
+}
+
+abstract class TranslationRule {
+}
+
+class ReproduceRule <<Singleton>> {
+  +get(EObject, ...)
+  +set(EObject, ...)
+}
+
+class VirtualModelList<E> {
+  +get(int): E
+  +size(): int
+}
+
+
+hide VirtualElement members
+hide ReproduceElementImpl members
+hide TranslationRule members
+
+EStoreEObjectImpl <|-- VirtualElement
+VirtualElement <|-- ReproduceElementImpl
+VirtualElement "1" o-- "1" TranslationRule /' : translationRule '/
+
+ReproduceElementImpl o-- "1" EObject               /' : concreteElement '/
+ReproduceElementImpl o-- "0..*" VirtualAssociation /' : virtualAssociations '/
+ReproduceElementImpl o-- "1" ReproduceRule         /' : translationRule '/
+ReproduceElementImpl ..> View
+ReproduceElementImpl ..> MetamodelManager
+/' ReproduceElementImpl ..> EStructuralFeature '/
+
+VirtualAssociation --> "1" EObject            /' : container '/
+VirtualAssociation --> "0..*" EObject         /' : referencedElements '/
+VirtualAssociation --> "1" EStructuralFeature /' : virtualFeature '/
+VirtualAssociation ..> View
+
+EStore <|.. TranslationRule
+TranslationRule <|-- ReproduceRule
+
+ReproduceRule ..> View
+ReproduceRule ..> MetamodelManager
+ReproduceRule ..> VirtualModelList
+ReproduceRule ..> VirtualAssociation
+
+VirtualModelList --> "1" View   /' : virtualModel '/
+VirtualModelList ..> VirtualLinkManager
+
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+' EMFViews.core
 
 abstract class View {
-  #virtualResourceSet: ResourceSet
   #contributingModelsURIs: String
   #contributingMetamodelsURIs: String
   #doSave()
@@ -58,7 +162,6 @@ abstract class View {
 }
 
 class Viewpoint {
-  -virtualResourceSet: ResourceSet
   -contributingEPackages: List<EPackage>
   #doLoad()
   #doSave()
@@ -76,6 +179,7 @@ class VirtualLinkManager {
 }
 
 class MetamodelManager {
+  -contributingMetamodels: List<EPackage>
   -buildMaps()
   +getVirtualAssociation(EObject, String name): EStructuralFeature
   +translateToVirtualFeature(EObject, EStructuralFeature): EStructuralFeature
@@ -86,11 +190,25 @@ class LinksProjector {
   +load(VirtualLinks)
 }
 
-note left
-  Created by VirtualLinkManager and
-  discarded after it has created
-  ReproduceElement for each Association
-end note
+class VirtualLinksDelegator {
+  +createVirtualModelLinks(URI, List<Resource>)
+}
+
+interface IVirtualLinksDelegate {
+  +createVirtualModelLinks(String, URI, List<Resource>)
+}
+
+class EclDelegate {
+  +createVirtualModelLinks(String, URI, List<Resource>)
+}
+
+/'
+ ' note left
+ '   Created by VirtualLinkManager and
+ '   discarded after it has created
+ '   ReproduceElement for each Association
+ ' end note
+ '/
 
 class VirtualContents<E> {
   +get(int): E
@@ -98,70 +216,52 @@ class VirtualContents<E> {
   +size(): int
 }
 
-class ReproduceElementImpl {
-  -concreteElement: EObject
-}
-
-class VirtualAssociation {
-  -referencedElements: List<EObject>
-  -virtualFeature: EStructuralFeature
-  +get(int): Object
-  +set(EObject, int): Object
-}
-
-abstract class VirtualElement {
-}
-
-abstract class TranslationRule {
-}
-
-class ReproduceRule {
-  +get(EObject, ...)
-  +set(EObject, ...)
-
-}
-
-'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ' Relationships
 
-Resource <|.. ResourceImpl
 ResourceImpl <|-- View
-
-View <|-- EView
 View "1" -left "1" VirtualLinkManager
 View "1" -right "1" MetamodelManager
-
 View "1" -- "1" VirtualContents
+View o-- "1" ResourceSet
 
-EView -[hidden]right- VirtualContents
+View <|-- EView
+EView --> "1" Viewpoint              /' : viewpoint '/
+EView ..> VirtualLinkManager
+EView ..> MetamodelManager
+EView ..> VirtualLinksDelegator
+
+VirtualLinksDelegator *-- "1" IVirtualLinksDelegate
+
+IVirtualLinksDelegate <|.. EclDelegate
+
+EclDelegate ..> VirtualLinks
+EclDelegate ..> Association
+EclDelegate ..> LinkedElement
 
 ResourceImpl <|-- Viewpoint
-MetamodelManager --> Viewpoint
-
-EView -> Viewpoint
-
-VirtualContents "1" -- "1" Viewpoint
-
+Viewpoint o-- "1" ResourceSet   /' : virtualResourceSet '/
+Viewpoint "1" -- "1" VirtualContents
 Viewpoint ..> VirtualLinks
+Viewpoint ..> Association
+Viewpoint ..> LinkedElement
+Viewpoint ..> Filter
 
-LinksProjector --> "virtualModel" View
-LinksProjector <.. VirtualLinkManager
+MetamodelManager --> "1" Viewpoint /' viewpoint '/
+MetamodelManager --> "1" View /' virtualModel '/
+MetamodelManager ..> ReproduceElementImpl
+
+VirtualLinkManager --> "1" VirtualLinks /' weavingModel '/
+VirtualLinkManager ..> ReproduceElementImpl
+VirtualLinkManager ..> LinksProjector
+
+LinksProjector --> "1" View     /'virtualModel '/
 LinksProjector ..> VirtualLinkManager
 LinksProjector ..> MetamodelManager
-VirtualLinks <.. LinksProjector
-LinksProjector .> ReproduceElementImpl
-
-VirtualElement <|-- ReproduceElementImpl
-
-VirtualElement -left|> EStoreEObjectImpl
-
-VirtualElement o-- TranslationRule
-
-EStore <|. TranslationRule
-TranslationRule <|-- ReproduceRule
-
-ReproduceElementImpl o..> "0..*" VirtualAssociation
-ReproduceElementImpl ..> ReproduceRule
+LinksProjector ..> VirtualLinks
+LinksProjector ..> Association
+LinksProjector ..> LinkedElement
+LinksProjector ..> ReproduceElementImpl
 
 @enduml
 
