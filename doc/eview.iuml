@@ -2,43 +2,50 @@
 
 title emfviews.core
 
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+' EMF Package
+
 package EMF #DDDDDD {
 
-interface Resource {
-  +load()
-  +save()
-  +getContents()
-  +getResourceSet()
-}
+  interface Resource {
+    +load()
+    +save()
+    +getContents()
+    +getResourceSet()
+  }
 
-class ResourceImpl {
-  #doLoad()
-  #doSave()
-  +getContents()
-  +getResourceSet()
-}
+  class ResourceImpl {
+    #doLoad()
+    #doSave()
+    +getContents()
+    +getResourceSet()
+  }
 
-class EStoreEObjectImpl {
+  class EStoreEObjectImpl {
+  }
 
-}
-
-interface EStore {
-  +get(EObject, EStructuralFeature, int): Object
-  +set(EObject, EStructuralFeature, int, Object): Object
-}
+  interface EStore {
+    +get(EObject, EStructuralFeature, int): Object
+    +set(EObject, EStructuralFeature, int, Object): Object
+  }
 
 }
 
 EStoreEObjectImpl ..> EStore
 
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+' VirtualLinks package
+
 package emfviews.virtuallinks {
 
-class VirtualLinks {
-  +getVirtualLinks()
-}
+  class VirtualLinks {
+    +getVirtualLinks()
+  }
 
 }
 
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+' EMFViews package
 
 abstract class View {
   #virtualResourceSet: ResourceSet
@@ -111,7 +118,11 @@ abstract class TranslationRule {
 class ReproduceRule {
   +get(EObject, ...)
   +set(EObject, ...)
+
 }
+
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+' Relationships
 
 Resource <|.. ResourceImpl
 ResourceImpl <|-- View
@@ -144,15 +155,19 @@ VirtualElement <|-- ReproduceElementImpl
 
 VirtualElement -left|> EStoreEObjectImpl
 
-VirtualElement *-- TranslationRule
+VirtualElement o-- TranslationRule
 
 EStore <|. TranslationRule
 TranslationRule <|-- ReproduceRule
 
-ReproduceElementImpl *..> "0..*" VirtualAssociation
+ReproduceElementImpl o..> "0..*" VirtualAssociation
 ReproduceElementImpl ..> ReproduceRule
 
 @enduml
+
+
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+' Sequence diagram for LinksProjector
 
 @startuml
 
