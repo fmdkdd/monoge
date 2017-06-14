@@ -9,9 +9,15 @@ javascript:(function(){
 
  If you edit this file, make sure it can work without any newlines.  Avoid
  inline (//) comments, and do not forget your semicolons.
+
+ Interactive features:
+ - Highlight the outgoing edges of a class on mouse click
 */
 
-  var highlightColor = '#f0f';
+  var highlightColors = ['#FFC107', '#2196F3', '#E91E63', '#8BC34A', '#9C27B0',
+                         '#00BCD4', '#3F51B5', '#FF5722', '#009688'];
+  var defaultColor = '#CDDC39';
+  var classToColor = {};
   var highlightStrokeWidth = 1.5;
 
   var svg = document.getElementsByTagName('svg')[0];
@@ -27,6 +33,14 @@ javascript:(function(){
         toggleHighlight(l);
         findArrowHeadsFor(l).forEach(toggleHighlight);
       });
+
+      /* If we just highlighted this class, mark its color as used */
+      if (isHighlighted(rect)) {
+        classToColor[rect.id] = highlightColors.shift();
+      } else {
+        /* Restore the color it held */
+        highlightColors.unshift(classToColor[rect.id]);
+      }
     }
 
     ev.preventDefault();
@@ -48,15 +62,20 @@ javascript:(function(){
 
   /* Highlight element and save the previous stroke color as an attribute */
   function toggleHighlight(elem) {
-    if (elem.classList.contains('highlighted')) {
+    if (isHighlighted(elem)) {
       elem.classList.remove('highlighted');
       unsetStyle(elem, elem.style.fill ? 'fill' : 'stroke');
       unsetStyle(elem, 'strokeWidth');
     } else {
       elem.classList.add('highlighted');
-      setStyle(elem, elem.style.fill ? 'fill' : 'stroke', highlightColor);
+      var color = highlightColors[0] || defaultColor;
+      setStyle(elem, elem.style.fill ? 'fill' : 'stroke', color);
       setStyle(elem, 'strokeWidth', highlightStrokeWidth);
     }
+  }
+
+  function isHighlighted(elem) {
+    return elem.classList.contains('highlighted');
   }
 
   function setStyle(elem, style, value) {
