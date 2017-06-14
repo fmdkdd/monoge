@@ -11,7 +11,8 @@ javascript:(function(){
  inline (//) comments, and do not forget your semicolons.
 
  Interactive features:
- - Highlight the outgoing edges of a class on mouse click
+ - Highlight a class and its outgoing edges on mouse over
+ - Click to retain the highlighting on the current class, click again to dismiss
 */
 
   var highlightColors = ['#FFC107', '#2196F3', '#E91E63', '#8BC34A', '#9C27B0',
@@ -22,28 +23,52 @@ javascript:(function(){
 
   var svg = document.getElementsByTagName('svg')[0];
   svg.addEventListener('click', onClick);
+  svg.addEventListener('mouseover', onOver);
+  svg.addEventListener('mouseout', onOut);
 
   /* If we are inside a rect (class), highlight it and all its outgoing links */
   function onClick(ev) {
     var rect = pickRect(ev.target);
-    if (rect != null) {
-      toggleHighlight(rect);
-      var links = findOutgoingLinksFor(rect.id);
-      links.forEach(function(l) {
-        toggleHighlight(l);
-        findArrowHeadsFor(l).forEach(toggleHighlight);
-      });
-
-      /* If we just highlighted this class, mark its color as used */
-      if (isHighlighted(rect)) {
+    if (rect != null && isHighlighted(rect)) {
+      if (!isSticky(rect)) {
+        /* Stick the highlighting */
         classToColor[rect.id] = highlightColors.shift();
+        rect.classList.add('sticky');
       } else {
-        /* Restore the color it held */
+        /* Unstick and restore the color it held */
+        rect.classList.remove('sticky');
         highlightColors.unshift(classToColor[rect.id]);
       }
     }
 
     ev.preventDefault();
+  }
+
+  /* If we are inside a rect (class), highlight it and all its outgoing links */
+  function onOver(ev) {
+    var rect = pickRect(ev.target);
+    if (rect != null && !isHighlighted(rect)) {
+      toggleHighlightClassAndOutgoingEdges(rect);
+    }
+
+    ev.preventDefault();
+  }
+
+  /* Unhighlight when leaving, unless it's sticky */
+  function onOut(ev) {
+    var rect = pickRect(ev.target);
+    if (rect != null && isHighlighted(rect) && !isSticky(rect)) {
+      toggleHighlightClassAndOutgoingEdges(rect);
+    }
+  }
+
+  function toggleHighlightClassAndOutgoingEdges(rect) {
+    toggleHighlight(rect);
+    var links = findOutgoingLinksFor(rect.id);
+    links.forEach(function(l) {
+      toggleHighlight(l);
+      findArrowHeadsFor(l).forEach(toggleHighlight);
+    });
   }
 
   /* Unfortunately, PlantUML does not use groups for SVG elements that belong to
@@ -76,6 +101,10 @@ javascript:(function(){
 
   function isHighlighted(elem) {
     return elem.classList.contains('highlighted');
+  }
+
+  function isSticky(elem) {
+    return elem.classList.contains('sticky');
   }
 
   function setStyle(elem, style, value) {
