@@ -1,5 +1,17 @@
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ' (Partial) class diagram for EMFViews.core
+'
+' Arrow semantics:
+' A <|-- B := B inherits from A
+' A <|.. B := B implements A
+' A *--  B := A contains B (for the VirtualLinks Ecore metamodel only)
+' A o--  B := A has an attribute of type B
+' A o--o B := A has an attribute of type B, and B has an attribute of type A
+' A -->  B := A uses a constructor of type B (but has no attribute of type B)
+' A ..>  B := A uses class B (e.g.: foo.getB().doSomething(), casts to B, etc.)
+'
+' Multiplicity is used on "has a" relations (o-- and --), 1 is assumed when
+' no multiplicity is present.
 
 @startuml
 
@@ -105,16 +117,16 @@ hide VirtualLinks members
 hide Filter members
 hide Association members
 
-VirtualLinks "1" *-- "0..*" VirtualLink   /': virtualLinks '/
-VirtualLinks "1" *-- "0..*" LinkedElement /': linkedElements '/
+VirtualLinks *-- "0..*" VirtualLink   /': virtualLinks '/
+VirtualLinks *-- "0..*" LinkedElement /': linkedElements '/
 
 VirtualLink <|.. Association
 VirtualLink <|.. Filter
 
-Association --> "1" LinkedElement    /' : sourceElement '/
-Association --> "0..*" LinkedElement /' : targetElements '/
+Association o-[norank]- LinkedElement        /' : sourceElement '/
+Association o-[norank]- "0..*" LinkedElement /' : targetElements '/
 
-Filter --> "1" LinkedElement    /' : filteredElement '/
+Filter o-- LinkedElement    /' : filteredElement '/
 
 /' hide VirtualLinks   '/
 
@@ -152,19 +164,20 @@ hide TranslationRule members
 
 EStoreEObjectImpl <|-- VirtualElement
 VirtualElement <|-- ReproduceElementImpl
-VirtualElement "1" o-left "1" TranslationRule /' : translationRule '/
+VirtualElement o-left TranslationRule /' : translationRule '/
 
-ReproduceElementImpl o-- "1" EObject               /' : concreteElement '/
 ReproduceElementImpl o-- "0..*" VirtualAssociation /' : virtualAssociations '/
-ReproduceElementImpl o-- "1" ReproduceRule         /' : translationRule '/
+ReproduceElementImpl o-- EObject                   /' : concreteElement '/
+ReproduceElementImpl o-left ReproduceRule          /' : translationRule '/
 ReproduceElementImpl .[norank,#ccc].> View
 ReproduceElementImpl .[norank,#ccc].> MetamodelManager
 /' ReproduceElementImpl .[norank,#ccc].> EStructuralFeature '/
 
-VirtualAssociation --> "1" EObject            /' : container '/
-VirtualAssociation --> "0..*" EObject         /' : referencedElements '/
-VirtualAssociation --> "1" EStructuralFeature /' : virtualFeature '/
+VirtualAssociation o-left EObject         /' : container '/
+VirtualAssociation o-left "1..*" EObject     /' : referencedElements '/
+VirtualAssociation o-- EStructuralFeature /' : virtualFeature '/
 VirtualAssociation .[norank,#ccc].> View
+VirtualAssociation -[norank]-> VirtualModelList
 
 EStore <|.. TranslationRule
 TranslationRule <|-- ReproduceRule
@@ -174,8 +187,10 @@ ReproduceRule .[norank,#ccc].> MetamodelManager
 ReproduceRule .[norank,#ccc].> VirtualModelList
 ReproduceRule .[norank,#ccc].> VirtualAssociation
 
-VirtualModelList --> "1" View   /' : virtualModel '/
-VirtualModelList .[norank,#ccc].> VirtualLinkManager
+VirtualModelList o-- View   /' : virtualModel '/
+VirtualModelList .[#ccc].> VirtualLinkManager
+
+EStoreEObjectImpl -[hidden]- VirtualModelList
 
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ' EMFViews.core
@@ -248,18 +263,18 @@ class VirtualContents<E> {
 ' Relationships
 
 ResourceImpl <|-- View
-View "1" -left "1" VirtualLinkManager
-View "1" -right "1" MetamodelManager
-View "1" -- "1" VirtualContents
-View o-- "1" ResourceSet
+VirtualLinkManager o-o View
+View o-o MetamodelManager
+View o-- VirtualContents
+View o-- ResourceSet
 
 View <|-- EView
-EView --> "1" Viewpoint              /' : viewpoint '/
-EView .[norank,#ccc].> VirtualLinkManager
-EView .[norank,#ccc].> MetamodelManager
-EView ..> VirtualLinksDelegator
+EView o-- Viewpoint              /' : viewpoint '/
+EView -[norank]-> VirtualLinkManager
+EView -[norank]-> MetamodelManager
+EView --> VirtualLinksDelegator
 
-VirtualLinksDelegator o-- "1" IVirtualLinksDelegate
+VirtualLinksDelegator o-- IVirtualLinksDelegate
 
 IVirtualLinksDelegate <|.. EclDelegate
 
@@ -268,22 +283,24 @@ EclDelegate .[norank,#ccc].> Association
 EclDelegate .[norank,#ccc].> LinkedElement
 
 ResourceImpl <|-- Viewpoint
-Viewpoint o-[norank]- "1" ResourceSet   /' : virtualResourceSet '/
-Viewpoint "1" -[norank]- "1" VirtualContents
+Viewpoint o-[norank]- ResourceSet   /' : virtualResourceSet '/
+Viewpoint o-[norank]- VirtualContents
 Viewpoint .[norank,#ccc].> VirtualLinks
 Viewpoint .[norank,#ccc].> Association
 Viewpoint .[norank,#ccc].> LinkedElement
 Viewpoint .[norank,#ccc].> Filter
 
-MetamodelManager --> "1" Viewpoint /' viewpoint '/
-MetamodelManager --> "1" View /' virtualModel '/
+MetamodelManager o-- Viewpoint /' viewpoint '/
 MetamodelManager .[norank,#ccc].> ReproduceElementImpl
 
-VirtualLinkManager --> "1" VirtualLinks /' weavingModel '/
-VirtualLinkManager .[norank,#ccc].> ReproduceElementImpl
-VirtualLinkManager .[norank,#ccc]. LinksProjector
+VirtualLinkManager o-- VirtualLinks /' weavingModel '/
+VirtualLinkManager -[norank]-> ReproduceElementImpl
+VirtualLinkManager -[norank]-> LinksProjector
+VirtualLinkManager .[norank,#ccc]> VirtualElement
 
-LinksProjector --> "1" View     /'virtualModel '/
+/' hide VirtualModelList '/
+
+LinksProjector o-- View     /'virtualModel '/
 LinksProjector .[norank,#ccc].> MetamodelManager
 LinksProjector .[norank,#ccc].> VirtualLinks
 LinksProjector .[norank,#ccc].> Association
