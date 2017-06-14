@@ -1,8 +1,8 @@
 .PHONY: all
-all: emfviews-plugin-dependencies.svg eview.png
+all: emfviews-plugin-dependencies.svg emfviews-class-diagram.svg
 
-emfviews-plugin-dependencies.svg: emfviews-plugin-dependencies.dot
+%.svg: %.dot
 	dot -Tsvg $< > $@
 
-eview.png: eview.iuml
-	java -jar ~/tools/plantuml.jar $<
+%.svg: %.iuml
+	java -jar ~/tools/plantuml.jar -tsvg $<

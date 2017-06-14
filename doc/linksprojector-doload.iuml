@@ -1,0 +1,30 @@
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+' Sequence diagram for LinksProjector
+
+@startuml
+
+title LinksProjector.loadAssociations
+
+LinksProjector -> VirtualLinkManager : getVirtualElement
+activate VirtualLinkManager
+
+create ReproduceElementImpl
+VirtualLinkManager -> ReproduceElementImpl : new
+VirtualLinkManager -> LinksProjector
+deactivate VirtualLinkManager
+
+LinksProjector -> MetamodelManager : getVirtualAssociation
+activate MetamodelManager
+MetamodelManager -> MetamodelManager : virtualAssociations
+MetamodelManager -> LinksProjector
+deactivate MetamodelManager
+
+LinksProjector -> ReproduceElementImpl : setVirtualAssociation
+activate ReproduceElementImpl
+
+create VirtualAssociation
+ReproduceElementImpl -> VirtualAssociation : new
+ReproduceElementImpl -> ReproduceElementImpl : virtualAssociations
+deactivate ReproduceElementImpl
+
+@enduml

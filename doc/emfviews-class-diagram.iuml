@@ -1,43 +1,71 @@
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+' (Partial) class diagram for EMFViews.core
+
 @startuml
 
+/' Theming '/
+
 title emfviews.core
+
+set namespaceseparator none
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+skinparam class {
+  BackgroundColor<<EMF>> #f0f0f0
+  BorderColor<<EMF>> #cdcdcd
+  BackgroundColor #fff
+  BorderColor #aaa
+}
+
+skinparam packageBorderColor #888
+
+skinparam stereotype {
+  CBackgroundColor #fff
+  ABackgroundColor #fff
+  IBackgroundColor #fff
+}
+
+skinparam arrow {
+  Color #333
+  FontColor #aaa
+}
 
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ' EMF Package
 
-package EMF #DDDDDD {
+' not actually inside a package{} block because it over-constrains the
+' contained classes
 
-  interface Resource {
-    +load()
-    +save()
-    +getContents()
-    +getResourceSet()
-  }
+interface Resource <<EMF>> {
+  +load()
+  +save()
+  +getContents()
+  +getResourceSet()
+}
 
-  class ResourceImpl {
-    #doLoad()
-    #doSave()
-    +getContents()
-    +getResourceSet()
-  }
+class ResourceImpl <<EMF>> {
+  #doLoad()
+  #doSave()
+  +getContents()
+  +getResourceSet()
+}
 
-  class EStoreEObjectImpl {
-  }
+class EStoreEObjectImpl <<EMF>> {
+}
 
-  interface EStore {
-    +get(EObject, EStructuralFeature, int): Object
-    +set(EObject, EStructuralFeature, int, Object): Object
-  }
+interface EStore <<EMF>> {
+  +get(EObject, EStructuralFeature, int): Object
+  +set(EObject, EStructuralFeature, int, Object): Object
+}
 
-  interface EObject {
-  }
+interface EObject <<EMF>> {
+}
 
-  interface EStructuralFeature {
-  }
+interface EStructuralFeature <<EMF>> {
+}
 
-  interface ResourceSet {
-  }
-
+interface ResourceSet <<EMF>> {
 }
 
 hide EObject members
@@ -46,7 +74,7 @@ hide EStoreEObjectImpl members
 hide ResourceSet members
 
 Resource <|.. ResourceImpl
-EStoreEObjectImpl ..> EStore
+EStoreEObjectImpl .left> EStore
 
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ' VirtualLinks package
@@ -124,30 +152,30 @@ hide TranslationRule members
 
 EStoreEObjectImpl <|-- VirtualElement
 VirtualElement <|-- ReproduceElementImpl
-VirtualElement "1" o-- "1" TranslationRule /' : translationRule '/
+VirtualElement "1" o-left "1" TranslationRule /' : translationRule '/
 
 ReproduceElementImpl o-- "1" EObject               /' : concreteElement '/
 ReproduceElementImpl o-- "0..*" VirtualAssociation /' : virtualAssociations '/
 ReproduceElementImpl o-- "1" ReproduceRule         /' : translationRule '/
-ReproduceElementImpl ..> View
-ReproduceElementImpl ..> MetamodelManager
-/' ReproduceElementImpl ..> EStructuralFeature '/
+ReproduceElementImpl .[norank,#ccc].> View
+ReproduceElementImpl .[norank,#ccc].> MetamodelManager
+/' ReproduceElementImpl .[norank,#ccc].> EStructuralFeature '/
 
 VirtualAssociation --> "1" EObject            /' : container '/
 VirtualAssociation --> "0..*" EObject         /' : referencedElements '/
 VirtualAssociation --> "1" EStructuralFeature /' : virtualFeature '/
-VirtualAssociation ..> View
+VirtualAssociation .[norank,#ccc].> View
 
 EStore <|.. TranslationRule
 TranslationRule <|-- ReproduceRule
 
-ReproduceRule ..> View
-ReproduceRule ..> MetamodelManager
-ReproduceRule ..> VirtualModelList
-ReproduceRule ..> VirtualAssociation
+ReproduceRule .[norank,#ccc].> View
+ReproduceRule .[norank,#ccc].> MetamodelManager
+ReproduceRule .[norank,#ccc].> VirtualModelList
+ReproduceRule .[norank,#ccc].> VirtualAssociation
 
 VirtualModelList --> "1" View   /' : virtualModel '/
-VirtualModelList ..> VirtualLinkManager
+VirtualModelList .[norank,#ccc].> VirtualLinkManager
 
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ' EMFViews.core
@@ -227,72 +255,42 @@ View o-- "1" ResourceSet
 
 View <|-- EView
 EView --> "1" Viewpoint              /' : viewpoint '/
-EView ..> VirtualLinkManager
-EView ..> MetamodelManager
+EView .[norank,#ccc].> VirtualLinkManager
+EView .[norank,#ccc].> MetamodelManager
 EView ..> VirtualLinksDelegator
 
-VirtualLinksDelegator *-- "1" IVirtualLinksDelegate
+VirtualLinksDelegator o-- "1" IVirtualLinksDelegate
 
 IVirtualLinksDelegate <|.. EclDelegate
 
-EclDelegate ..> VirtualLinks
-EclDelegate ..> Association
-EclDelegate ..> LinkedElement
+EclDelegate .[norank,#ccc].> VirtualLinks
+EclDelegate .[norank,#ccc].> Association
+EclDelegate .[norank,#ccc].> LinkedElement
 
 ResourceImpl <|-- Viewpoint
-Viewpoint o-- "1" ResourceSet   /' : virtualResourceSet '/
-Viewpoint "1" -- "1" VirtualContents
-Viewpoint ..> VirtualLinks
-Viewpoint ..> Association
-Viewpoint ..> LinkedElement
-Viewpoint ..> Filter
+Viewpoint o-[norank]- "1" ResourceSet   /' : virtualResourceSet '/
+Viewpoint "1" -[norank]- "1" VirtualContents
+Viewpoint .[norank,#ccc].> VirtualLinks
+Viewpoint .[norank,#ccc].> Association
+Viewpoint .[norank,#ccc].> LinkedElement
+Viewpoint .[norank,#ccc].> Filter
 
 MetamodelManager --> "1" Viewpoint /' viewpoint '/
 MetamodelManager --> "1" View /' virtualModel '/
-MetamodelManager ..> ReproduceElementImpl
+MetamodelManager .[norank,#ccc].> ReproduceElementImpl
 
 VirtualLinkManager --> "1" VirtualLinks /' weavingModel '/
-VirtualLinkManager ..> ReproduceElementImpl
-VirtualLinkManager ..> LinksProjector
+VirtualLinkManager .[norank,#ccc].> ReproduceElementImpl
+VirtualLinkManager .[norank,#ccc]. LinksProjector
 
 LinksProjector --> "1" View     /'virtualModel '/
-LinksProjector ..> VirtualLinkManager
-LinksProjector ..> MetamodelManager
-LinksProjector ..> VirtualLinks
-LinksProjector ..> Association
-LinksProjector ..> LinkedElement
-LinksProjector ..> ReproduceElementImpl
+LinksProjector .[norank,#ccc].> MetamodelManager
+LinksProjector .[norank,#ccc].> VirtualLinks
+LinksProjector .[norank,#ccc].> Association
+LinksProjector .[norank,#ccc].> LinkedElement
+LinksProjector .[norank,#ccc].> ReproduceElementImpl
 
-@enduml
-
-
-'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-' Sequence diagram for LinksProjector
-
-@startuml
-
-title LinksProjector.loadAssociations
-
-LinksProjector -> VirtualLinkManager : getVirtualElement
-activate VirtualLinkManager
-
-create ReproduceElementImpl
-VirtualLinkManager -> ReproduceElementImpl : new
-VirtualLinkManager -> LinksProjector
-deactivate VirtualLinkManager
-
-LinksProjector -> MetamodelManager : getVirtualAssociation
-activate MetamodelManager
-MetamodelManager -> MetamodelManager : virtualAssociations
-MetamodelManager -> LinksProjector
-deactivate MetamodelManager
-
-LinksProjector -> ReproduceElementImpl : setVirtualAssociation
-activate ReproduceElementImpl
-
-create VirtualAssociation
-ReproduceElementImpl -> VirtualAssociation : new
-ReproduceElementImpl -> ReproduceElementImpl : virtualAssociations
-deactivate ReproduceElementImpl
+EView -[hidden]> VirtualContents
+VirtualContents -[hidden]> ResourceSet
 
 @enduml
