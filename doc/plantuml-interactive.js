@@ -94,7 +94,7 @@ javascript:(function(){
       unsetStyle(elem, 'stroke');
       unsetStyle(elem, 'strokeWidth');
       /* Reset (some) arrow heads fill */
-      if (elem.tagName.toLowerCase() == 'polygon' && elem.getAttribute('fill') == '#333333') {
+      if (isArrowHeadToFill(elem)) {
         unsetStyle(elem, 'fill');
       }
     } else {
@@ -102,12 +102,8 @@ javascript:(function(){
       var color = highlightColors[0] || defaultColor;
       setStyle(elem, 'stroke', color);
       setStyle(elem, 'strokeWidth', highlightStrokeWidth);
-      /* We want to fill arrow heads, but skip those that are hollow.  The
-       * stroke color should match the fill color, but one is in rgb() format
-       * and the other is in #rrggbb, so cannot easily compare.  Hence, the
-       * color is hardcoded.
-       */
-      if (elem.tagName.toLowerCase() == 'polygon' && elem.getAttribute('fill') == '#333333') {
+      /* We want to fill arrow heads, but skip those that are hollow */
+      if (isArrowHeadToFill(elem)) {
         setStyle(elem, 'fill', color);
       }
     }
@@ -150,6 +146,15 @@ javascript:(function(){
       link = link.nextSibling;
     }
     return heads;
+  }
+
+  /* The stroke color should match the fill color, but one is in rgb() format
+   * and the other is in #rrggbb, so cannot easily compare.  Hence, the color is
+   * hardcoded. */
+  function isArrowHeadToFill(elem) {
+    var fill = elem.getAttribute('fill');
+    return elem.tagName.toLowerCase() == 'polygon'
+      && (fill == '#333333' || fill == '#CCCCCC');
   }
 
 }());
