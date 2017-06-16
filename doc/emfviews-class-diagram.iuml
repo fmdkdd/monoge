@@ -69,6 +69,8 @@ class EStoreEObjectImpl <<EMF>> {
 interface EStore <<EMF>> {
   +get(EObject, EStructuralFeature, int): Object
   +set(EObject, EStructuralFeature, int, Object): Object
+  +isSet(EObject, EStructuralFeature): boolean
+  +size(EObject, EStructuralFeature): int
 }
 
 interface EObject <<EMF>> {
@@ -91,7 +93,7 @@ EStoreEObjectImpl .left> EStore
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ' VirtualLinks package
 
-package emfviews.virtuallinks {
+package virtuallinks {
 
   interface VirtualLinks {
   }
@@ -141,15 +143,16 @@ class ReproduceElementImpl {
 
 class VirtualAssociation {
   +get(int): Object
-  +set(EObject, int): Object
+  /' +set(EObject, int): Object '/
 }
 
 abstract class TranslationRule {
+  +size(EObject, ...): int
 }
 
 class ReproduceRule <<Singleton>> {
   +get(EObject, ...)
-  +set(EObject, ...)
+  +isSet(EObject, ...)
 }
 
 class VirtualModelList<E> {
@@ -160,7 +163,6 @@ class VirtualModelList<E> {
 
 hide VirtualElement members
 hide ReproduceElementImpl members
-hide TranslationRule members
 
 EStoreEObjectImpl <|-- VirtualElement
 VirtualElement <|-- ReproduceElementImpl
@@ -168,7 +170,7 @@ VirtualElement o-left TranslationRule /' : translationRule '/
 
 ReproduceElementImpl o-- "0..*" VirtualAssociation /' : virtualAssociations '/
 ReproduceElementImpl o-- EObject                   /' : concreteElement '/
-ReproduceElementImpl o-left ReproduceRule          /' : translationRule '/
+ReproduceElementImpl -left-> ReproduceRule         /' : translationRule '/
 ReproduceElementImpl .[norank,#ccc].> View
 ReproduceElementImpl .[norank,#ccc].> MetamodelManager
 /' ReproduceElementImpl .[norank,#ccc].> EStructuralFeature '/
@@ -177,15 +179,16 @@ VirtualAssociation o-left EObject         /' : container '/
 VirtualAssociation o-left "1..*" EObject     /' : referencedElements '/
 VirtualAssociation o-- EStructuralFeature /' : virtualFeature '/
 VirtualAssociation .[norank,#ccc].> View
-VirtualAssociation -[norank]-> VirtualModelList
+/' VirtualAssociation -[norank]-> VirtualModelList '/
 
 EStore <|.. TranslationRule
 TranslationRule <|-- ReproduceRule
 
 ReproduceRule .[norank,#ccc].> View
 ReproduceRule .[norank,#ccc].> MetamodelManager
-ReproduceRule .[norank,#ccc].> VirtualModelList
-ReproduceRule .[norank,#ccc].> VirtualAssociation
+ReproduceRule -[norank]-> VirtualModelList
+ReproduceRule -[norank,hidden]-> VirtualAssociation
+ReproduceRule .[norank,#ccc].> ReproduceElementImpl
 
 VirtualModelList o-- View   /' : virtualModel '/
 VirtualModelList .[#ccc].> VirtualLinkManager
@@ -196,9 +199,9 @@ EStoreEObjectImpl -[hidden]- VirtualModelList
 ' EMFViews.core
 
 abstract class View {
-  #contributingModelsURIs: String
-  #contributingMetamodelsURIs: String
-  #doSave()
+  /' #contributingModelsURIs: String '/
+  /' #contributingMetamodelsURIs: String '/
+  /' #doSave() '/
   +getContents()
   #setVirtualContents()
   +translateToVirtualElement(EObject): EObject
@@ -225,8 +228,8 @@ class MetamodelManager {
   -contributingMetamodels: List<EPackage>
   -buildMaps()
   +getVirtualAssociation(EObject, String name): EStructuralFeature
-  +translateToVirtualFeature(EObject, EStructuralFeature): EStructuralFeature
   +translateFromVirtualFeature(EObject, EStructuralFeature): EStructuralFeature
+  +translateToVirtualEClass(EClass): EClass
 }
 
 class LinksProjector {
@@ -255,7 +258,7 @@ class EclDelegate {
 
 class VirtualContents<E> {
   +get(int): E
-  +set(int, E)
+  /' +set(int, E) '/
   +size(): int
 }
 
@@ -264,7 +267,7 @@ class VirtualContents<E> {
 
 ResourceImpl <|-- View
 VirtualLinkManager o-o View
-View o-o MetamodelManager
+View o- MetamodelManager
 View o-- VirtualContents
 View o-- ResourceSet
 
@@ -273,6 +276,7 @@ EView o-- Viewpoint              /' : viewpoint '/
 EView -[norank]-> VirtualLinkManager
 EView -[norank]-> MetamodelManager
 EView --> VirtualLinksDelegator
+EView -> ResourceSet
 
 VirtualLinksDelegator o-- IVirtualLinksDelegate
 
@@ -296,7 +300,7 @@ MetamodelManager .[norank,#ccc].> ReproduceElementImpl
 VirtualLinkManager o-- VirtualLinks /' weavingModel '/
 VirtualLinkManager -[norank]-> ReproduceElementImpl
 VirtualLinkManager -[norank]-> LinksProjector
-VirtualLinkManager .[norank,#ccc]> VirtualElement
+VirtualLinkManager o-[norank]- "0..*" VirtualElement
 
 /' hide VirtualModelList '/
 
@@ -306,8 +310,8 @@ LinksProjector .[norank,#ccc].> VirtualLinks
 LinksProjector .[norank,#ccc].> Association
 LinksProjector .[norank,#ccc].> LinkedElement
 LinksProjector .[norank,#ccc].> ReproduceElementImpl
+LinksProjector .[norank,#ccc].> VirtualLinkManager
 
-EView -[hidden]> VirtualContents
-VirtualContents -[hidden]> ResourceSet
+ResourceSet -[hidden]> VirtualContents
 
 @enduml

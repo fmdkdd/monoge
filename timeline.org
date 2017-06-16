@@ -3296,3 +3296,58 @@ Regardless, it helps to see the whole picture.
 I think I want a sequence diagram of Viewpoint.doLoad, and most importantly,
 EView.doLoad.  Probably an object diagram of everything created by
 EView/Viewpoint for the minimal example.
+
+* [2017-06-16 ven.]
+** More diagramming                                                :emfviews:
+I fleshed out the class diagram a bit, fixing the layout so it's more readable.
+Dependency arrows are in a light color so they don't drown the rest of the
+information.
+
+I wrote a small JS bookmarklet to add interactive highlighting of the outgoing
+edges from a node, so we can make sense of all the information that's in it.
+
+** Review of tools for creating UML class diagrams                      :uml:
+I tried other tools for UML diagrams; small tools like Dia or yEd give fine
+control over the layout, but you have to do everything graphically.  yEd has
+advanced layout and grouping features, with collapsing.
+
+Can't easily export PlantUML output to something these tools eat, unfortunately.
+PlantUML has XMI export, but it's only for the classes, not the arrows.
+
+Large tools like Modelio/Papyrus/UML Designer are slow and cumbersome for
+drawing just a class diagram if you don't need all their facilities for
+generating code from it.  One of them froze when I tried to zoom out on the
+nearly empty canvas.
+
+I think yEd is decent enough for quickly whipping something up, and the
+auto-layout features does a better job than GraphViz.  Too bad it's proprietary.
+Though you can export to GraphML which is an open format.
+
+Trying out the ObjectAid plugin for generating class diagrams directly from the
+code.  It does a decent job at that, it can even show dependencies between
+classes.  I think it's picking up constructor calls; but not casts.  The
+auto-layout feature avoid nodes overlapping, but seems to largely ignore edges,
+so it's overall useless.  Also, you cannot control what hide/show individual
+attributes or links.  The diagram is serialized to XML by default, so it's
+reusable, but there is no export to a common graph format, only images (and no
+SVG).
+
+** Exciting use case for EMFViews                              :emfviews:uml:
+That gets me thinking.  The output of automated tools for generating class
+diagrams will always be too rich, will contain too much information.  Usually,
+you want to filter out this information to focus on a specific functionality, to
+understand the project piece-wise.  That's why I started out by mapping the
+project manually, because I knew that I wanted to do a partial representation of
+the project, even with some simplifications.
+
+So, usually, you want /views/, not the whole picture.  Using EMFViews to create
+partial views of programs would be a terrific use case (and using it on itself
+would be nice).  We might also want to aggregate info from multiple models: like
+a model of which Java statetement was executed by some test (impact analysis),
+combined with a MoDisCo model to create a view of a class diagram where you only
+see the class/methods/attributes used by a specific test.
+
+Interestingly, MoDisCo has entries for each cast and constructor invocation in a
+project, but if you want to know that a specific type is used as argument to a
+method or indirectly through the return value of a method (i.e.,
+a.getB().foo()), it seems you have to extract it yourself.
