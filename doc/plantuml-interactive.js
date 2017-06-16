@@ -127,7 +127,9 @@ javascript:(function(){
     elem.removeAttribute('data-prev-' + style);
   }
 
-  /* PlantUML sets id="A-B" on path that represent links from A to B */
+  /* PlantUML sets id="A-B" on path that represent links from A to B.
+   * Unfortunately, it exports A -left> B as a B-A, so this will give us some
+   * incoming edges as well. */
   function findOutgoingLinksFor(id) {
     return svg.querySelectorAll('path[id^=' + id + '-]');
   }
