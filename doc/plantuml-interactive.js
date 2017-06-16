@@ -89,13 +89,25 @@ javascript:(function(){
   function toggleHighlight(elem) {
     if (isHighlighted(elem)) {
       elem.classList.remove('highlighted');
-      unsetStyle(elem, elem.style.fill ? 'fill' : 'stroke');
+      unsetStyle(elem, 'stroke');
       unsetStyle(elem, 'strokeWidth');
+      /* Reset (some) arrow heads fill */
+      if (elem.tagName.toLowerCase() == 'polygon' && elem.getAttribute('fill') == '#333333') {
+        unsetStyle(elem, 'fill');
+      }
     } else {
       elem.classList.add('highlighted');
       var color = highlightColors[0] || defaultColor;
-      setStyle(elem, elem.style.fill ? 'fill' : 'stroke', color);
+      setStyle(elem, 'stroke', color);
       setStyle(elem, 'strokeWidth', highlightStrokeWidth);
+      /* We want to fill arrow heads, but skip those that are hollow.  The
+       * stroke color should match the fill color, but one is in rgb() format
+       * and the other is in #rrggbb, so cannot easily compare.  Hence, the
+       * color is hardcoded.
+       */
+      if (elem.tagName.toLowerCase() == 'polygon' && elem.getAttribute('fill') == '#333333') {
+        setStyle(elem, 'fill', color);
+      }
     }
   }
 
@@ -114,6 +126,7 @@ javascript:(function(){
 
   function unsetStyle(elem, style) {
     elem.style[style] = elem.getAttribute('data-prev-' + style);
+    elem.removeAttribute('data-prev-' + style);
   }
 
   /* PlantUML sets id="A-B" on path that represent links from A to B */
