@@ -76,7 +76,9 @@ javascript:(function(){
    * lookup previous siblings until we find a rect with an id, and this will
    * give us the nearest class. */
   function pickRect(elem) {
-    while (elem) {
+    /* If the element doesn't have a tag name, we walked back to a comment
+     * node that separates elements in the SVG.  No need going further */
+    while (elem && elem.tagName) {
       if (elem.id && elem.tagName.toLowerCase() == 'rect') {
         return elem;
       }
