@@ -1,0 +1,207 @@
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+' (Partial) class diagram for EMFViews.core
+'
+' Arrow semantics:
+' A <|-- B := B inherits from A
+' A <|.. B := B implements A
+' A *--  B := A contains B (for the VirtualLinks Ecore metamodel only)
+' A o--  B := A has an attribute of type B
+' A o--o B := A has an attribute of type B, and B has an attribute of type A
+' A -->  B := A uses a constructor of type B (but has no attribute of type B)
+' A ..>  B := A uses class B (e.g.: foo.getB().doSomething(), casts to B, etc.)
+'
+' Multiplicity is used on "has a" relations (o-- and --), 1 is assumed when
+' no multiplicity is present.
+
+@startuml
+
+/' Theming '/
+
+title emfviews.core (Object diagram)
+
+set namespaceseparator none
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+skinparam class {
+  BackgroundColor<<EMF>> #f0f0f0
+  BorderColor<<EMF>> #cdcdcd
+  BackgroundColor<<Java>> #f0f0f0
+  BorderColor<<Java>> #cdcdcd
+  BackgroundColor #fff
+  BorderColor #aaa
+}
+
+skinparam packageBorderColor #888
+
+skinparam stereotype {
+  CBackgroundColor #fff
+  ABackgroundColor #fff
+  IBackgroundColor #fff
+}
+
+skinparam arrow {
+  Color #333
+  FontColor #333
+  FontSize 11
+}
+
+skinparam note {
+  BackgroundColor #fff
+  BorderColor #aaa
+}
+
+hide class circle
+hide class methods
+
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+' EView objects
+
+class EView {
+  uri: resources/views/minimal/view.eview
+}
+
+class Properties <<Java>> {
+  weavingModel: "resources/views/minimal/weaving.xmi"
+  contributingModels: "resources/models/minimal.xmi"
+  viewpoint: "resources/viewpoints/minimal/viewpoint.eviewpoint"
+}
+
+class ResourceSetImpl <<EMF>> {
+  resources: []
+}
+
+class Viewpoint {
+  uri: resources/viewpoints/minimal/viewpoint.eviewpoint
+  matchingModel: ""
+  contributingMetamodels: "resources/metamodels/minimalref.ecore"
+}
+
+class Properties/2 <<Java>> {
+  matchingModel: ""
+  weavingModel: "resources/viewpoints/minimal/weaving.xmi"
+  contributingMetamodels: "resources/metamodels/minimalref.ecore"
+}
+
+class ResourceSetImpl/2 <<EMF>> {
+  resources: []
+}
+
+class EPackageRegistryImpl <<EMF>> {
+  delegateRegistry: EPackage.Registry.INSTANCE
+}
+
+class EPackageImpl <<EMF>> {
+  name: "minimalref"
+  nsURI: "http://inria.fr/atlanmod/emfviews/tests/minimalref"
+}
+
+class EClassImpl <<EMF>> {
+  name: "A"
+}
+
+class EReferenceImpl <<EMF>> {
+  name: "manyB"
+  lowerBound: 0
+  upperBound: -1
+}
+
+class EClassImpl/2 <<EMF>> {
+  name: "B"
+}
+
+class EReferenceImpl/2 <<EMF>> {
+  name: "parentA"
+  lowerBound: 0
+  upperBound: 1
+}
+
+class EPackageImpl/2 <<EMF>> {
+  name: "minimalref"
+  nsURI: "http://inria.fr/atlanmod/emfviews/tests/minimalref"
+}
+
+class EClassImpl/3 <<EMF>> {
+  name: "A"
+}
+
+class EReferenceImpl/3 <<EMF>> {
+  name: "manyB"
+  lowerBound: 0
+  upperBound: -1
+}
+
+class EClassImpl/4 <<EMF>> {
+  name: "B"
+}
+
+class EReferenceImpl/4 <<EMF>> {
+  name: "parentA"
+  lowerBound: 0
+  upperBound: 1
+}
+
+class ResourceSetImpl/3 <<EMF>> {
+}
+
+class XMIResourceImpl <<EMF>> {
+  uri: "resources/viewpoints/minimal/weaving.xmi"
+}
+
+class VirtualLinksImpl {
+}
+
+class LinkedElement {
+  name: "manyB"
+  elementRef: "minimalref.A.manyB"
+  modelRef: "http://inria.fr/atlanmod/emfviews/tests/minimalref"
+}
+
+class FilterImpl {
+  name: "manyB"
+}
+
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+' EView relationships
+
+EView o-- Properties : properties
+EView o-- ResourceSetImpl : virtualResourceSet
+
+Viewpoint o-- "Properties/2" : properties
+Viewpoint o-- "ResourceSetImpl/2" : virtualResourceSet
+Viewpoint o-- EPackageImpl : contributingEPackages
+
+EPackageImpl o-- EClassImpl : eClassifiers[0]
+EPackageImpl o-- "EClassImpl/2" : eClassifiers[1]
+
+EClassImpl o-- EReferenceImpl : eStructuralFeatures[0]
+"EClassImpl/2" o-- "EReferenceImpl/2" : eStructuralFeatures[0]
+
+"ResourceSetImpl/2" o-- EPackageRegistryImpl : packageRegistry
+
+EPackageRegistryImpl o-- "EPackageImpl/2" : "http://inria.fr/emfviews/tests/minimalref"
+
+"EPackageImpl/2" o-- "EClassImpl/3" : eClassifiers[0]
+"EPackageImpl/2" o-- "EClassImpl/4" : eClassifiers[1]
+
+/' "EClassImpl/3" o-- "EReferenceImpl/3" : eStructuralFeatures[0] '/
+"EClassImpl/4" o-- "EReferenceImpl/4" : eStructuralFeatures[0]
+
+
+Viewpoint --> "ResourceSetImpl/3" : loadWeavingModel()
+"ResourceSetImpl/3" o-- XMIResourceImpl : resources[0]
+Viewpoint o-- XMIResourceImpl : weavingModelResource
+XMIResourceImpl o-- VirtualLinksImpl : contents[0]
+
+VirtualLinksImpl o-- LinkedElement : linkedElements[0]
+VirtualLinksImpl o-- FilterImpl : virtualLinks[0]
+FilterImpl o- LinkedElement : filteredElement
+
+Viewpoint o-- "EReferenceImpl/3" : hiddenAttributes[0]
+Viewpoint o-- VirtualContents : virtualContents
+
+VirtualContents o-- "EPackageImpl/2" : subLists[0][0]
+
+
+
+@enduml
