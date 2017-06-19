@@ -84,7 +84,6 @@ class Properties/2 <<Java>> {
 }
 
 class ResourceSetImpl/2 <<EMF>> {
-  resources: []
 }
 
 class EPackageRegistryImpl <<EMF>> {
@@ -93,7 +92,7 @@ class EPackageRegistryImpl <<EMF>> {
 
 class EPackageImpl <<EMF>> {
   name: "minimalref"
-  nsURI: "http://inria.fr/atlanmod/emfviews/tests/minimalref"
+  nsURI: http://inria.fr/atlanmod/emfviews/tests/minimalref
 }
 
 class EClassImpl <<EMF>> {
@@ -118,7 +117,7 @@ class EReferenceImpl/2 <<EMF>> {
 
 class EPackageImpl/2 <<EMF>> {
   name: "minimalref"
-  nsURI: "http://inria.fr/atlanmod/emfviews/tests/minimalref"
+  nsURI: http://inria.fr/atlanmod/emfviews/tests/minimalref
 }
 
 class EClassImpl/3 <<EMF>> {
@@ -145,7 +144,7 @@ class ResourceSetImpl/3 <<EMF>> {
 }
 
 class XMIResourceImpl <<EMF>> {
-  uri: "resources/viewpoints/minimal/weaving.xmi"
+  uri: resources/viewpoints/minimal/weaving.xmi
 }
 
 class VirtualLinksImpl {
@@ -161,11 +160,68 @@ class FilterImpl {
   name: "manyB"
 }
 
+class EPackageRegistryImpl/2 <<EMF>> {
+}
+
+class EPackageImpl/3 <<EMF>> {
+  name: "minimalref"
+  nsURI: http://inria.fr/atlanmod/emfviews/tests/minimalref
+}
+
+class EClassImpl/5 <<EMF>> {
+  name: "A"
+}
+
+class EReferenceImpl/5 <<EMF>> {
+  name: "manyB"
+  lowerBound: 0
+  upperBound: -1
+}
+
+class EClassImpl/6 <<EMF>> {
+  name: "B"
+}
+
+class EReferenceImpl/6 <<EMF>> {
+  name: "parentA"
+  lowerBound: 0
+  upperBound: 1
+}
+
+class HashMap <<Java>> {
+}
+
+class HashMap$Node0 <<Java>> {
+}
+
+class HashMap$Node1 <<Java>> {
+}
+
+class HashMap/2 <<Java>> {
+}
+
+class HashMap/2$Node0 <<Java>> {
+}
+
+class XMIResourceImpl/2 <<EMF>> {
+  uri: resources/models/minimal.xmi
+}
+
+class DynamicEObjectImpl <<EMF>> {
+}
+
+class DynamicEObjectImpl/2 <<EMF>> {
+}
+
+class DynamicEObjectImpl/3 <<EMF>> {
+}
+
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ' EView relationships
 
 EView o-- Properties : properties
 EView o-- ResourceSetImpl : virtualResourceSet
+EView o-- Viewpoint
 
 Viewpoint o-- "Properties/2" : properties
 Viewpoint o-- "ResourceSetImpl/2" : virtualResourceSet
@@ -177,6 +233,8 @@ EPackageImpl o-- "EClassImpl/2" : eClassifiers[1]
 EClassImpl o-- EReferenceImpl : eStructuralFeatures[0]
 "EClassImpl/2" o-- "EReferenceImpl/2" : eStructuralFeatures[0]
 
+EReferenceImpl o-o "EReferenceImpl/2" : eOpposite
+
 "ResourceSetImpl/2" o-- EPackageRegistryImpl : packageRegistry
 
 EPackageRegistryImpl o-- "EPackageImpl/2" : "http://inria.fr/emfviews/tests/minimalref"
@@ -187,6 +245,7 @@ EPackageRegistryImpl o-- "EPackageImpl/2" : "http://inria.fr/emfviews/tests/mini
 /' "EClassImpl/3" o-- "EReferenceImpl/3" : eStructuralFeatures[0] '/
 "EClassImpl/4" o-- "EReferenceImpl/4" : eStructuralFeatures[0]
 
+/' "EReferenceImpl/3" o-o "EReferenceImpl/4" : eOpposite '/
 
 Viewpoint --> "ResourceSetImpl/3" : loadWeavingModel()
 "ResourceSetImpl/3" o-- XMIResourceImpl : resources[0]
@@ -201,6 +260,49 @@ Viewpoint o-- "EReferenceImpl/3" : hiddenAttributes[0]
 Viewpoint o-- VirtualContents : virtualContents
 
 VirtualContents o-- "EPackageImpl/2" : subLists[0][0]
+
+ResourceSetImpl o-- "EPackageRegistryImpl/2" : packageRegistry
+"EPackageRegistryImpl/2" o-- "EPackageImpl/3" : "http://inria.fr/emfviews/tests/minimalref"
+
+"EPackageImpl/3" o-- "EClassImpl/5" : eClassifiers[0]
+"EPackageImpl/3" o-- "EClassImpl/6" : eClassifiers[1]
+
+"EClassImpl/5" o-- "EReferenceImpl/5" : eStructuralFeatures[0]
+"EClassImpl/6" o-- "EReferenceImpl/6" : eStructuralFeatures[0]
+
+"EReferenceImpl/5" o-o "EReferenceImpl/6" : eOpposite
+
+EView "metamodelManager" o--o "virtualModel" MetamodelManager
+MetamodelManager o-- Viewpoint : viewpoint
+MetamodelManager o-- "EPackageImpl/3" : contributingMetamodels[0]
+
+MetamodelManager o-- HashMap : concreteToVirtualClass
+HashMap o-- HashMap$Node0
+HashMap o-- HashMap$Node1
+
+HashMap$Node0 ..> "EClassImpl/5" : key
+HashMap$Node0 ..> "EClassImpl/3" : value
+
+HashMap$Node1 ..> "EClassImpl/6" : key
+HashMap$Node1 ..> "EClassImpl/4" : value
+
+MetamodelManager o-- "HashMap/2" : concreteToVirtualFeature
+/' MetamodelManager o-- HashMap : virtualToConcreteFeature '/
+
+"HashMap/2" o-- "HashMap/2$Node0"
+"HashMap/2$Node0" ..> "EReferenceImpl/6" : key
+"HashMap/2$Node0" ..> "EReferenceImpl/4" : value
+
+ResourceSetImpl o-- "XMIResourceImpl/2" : resources[0]
+
+"XMIResourceImpl/2" o-- DynamicEObjectImpl : contents[0]
+"XMIResourceImpl/2" o-- "DynamicEObjectImpl/2" : contents[0]
+"XMIResourceImpl/2" o-- "DynamicEObjectImpl/3" : contents[0]
+
+DynamicEObjectImpl --> "EClassImpl/5" : eClass
+"DynamicEObjectImpl/2" --> "EClassImpl/6" : eClass
+"DynamicEObjectImpl/3" --> "EClassImpl/6" : eClass
+
 
 
 
