@@ -217,6 +217,7 @@ class ResourceSetImpl/4 <<EMF>> {
 }
 
 class XMIResourceImpl/3 <<EMF>> {
+  uri: resources/models/weaving.xmi
 }
 
 class VirtualLinksImpl/2 {
