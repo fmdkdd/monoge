@@ -216,6 +216,17 @@ class DynamicEObjectImpl/2 <<EMF>> {
 class DynamicEObjectImpl/3 <<EMF>> {
 }
 
+class ResourceSetImpl/4 <<EMF>> {
+}
+
+class XMIResourceImpl/3 <<EMF>> {
+}
+
+class VirtualLinksImpl/2 {
+  linkedElements: null
+  virtualLinks: null
+}
+
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ' EView relationships
 
@@ -290,8 +301,8 @@ MetamodelManager o-- "HashMap/2" : concreteToVirtualFeature
 /' MetamodelManager o-- HashMap : virtualToConcreteFeature '/
 
 "HashMap/2" o-- "HashMap/2$Node0"
-"HashMap/2$Node0" ..> "EReferenceImpl/6" : key
-"HashMap/2$Node0" ..> "EReferenceImpl/4" : value
+"HashMap/2$Node0" o-- "EReferenceImpl/6" : key
+"HashMap/2$Node0" o-- "EReferenceImpl/4" : value
 
 ResourceSetImpl o-- "XMIResourceImpl/2" : resources[0]
 
@@ -299,11 +310,58 @@ ResourceSetImpl o-- "XMIResourceImpl/2" : resources[0]
 "XMIResourceImpl/2" o-- "DynamicEObjectImpl/2" : contents[0]
 "XMIResourceImpl/2" o-- "DynamicEObjectImpl/3" : contents[0]
 
-DynamicEObjectImpl --> "EClassImpl/5" : eClass
-"DynamicEObjectImpl/2" --> "EClassImpl/6" : eClass
-"DynamicEObjectImpl/3" --> "EClassImpl/6" : eClass
+DynamicEObjectImpl o-- "EClassImpl/5" : eClass
+"DynamicEObjectImpl/2" o-- "EClassImpl/6" : eClass
+"DynamicEObjectImpl/3" o-- "EClassImpl/6" : eClass
 
+EView "vLinkManager" o--o "virtualModel" VirtualLinkManager
 
+VirtualLinkManager --> "ResourceSetImpl/4"
+"ResourceSetImpl/4" o-- "XMIResourceImpl/3" : resources[0]
+"XMIResourceImpl/3" o-- "VirtualLinksImpl/2" : contents[0]
 
+VirtualLinkManager o-- "VirtualLinksImpl/2" : weavingModel
+
+VirtualLinkManager --> LinksProjector
+LinksProjector o-- EView
+
+VirtualLinkManager o-- "HashMap/3" : virtualLinks
+"HashMap/3" o-- "HashMap/3$Node0"
+"HashMap/3$Node0" ..> DynamicEObjectImpl : key
+"HashMap/3$Node0" ..> ReproduceElementImpl : value
+
+ReproduceElementImpl o-- DynamicEObjectImpl : concreteElement
+ReproduceElementImpl o-- EStoreEPropertiesHolderImpl : eProperties
+EStoreEPropertiesHolderImpl o-- "EClassImpl/3" : eClass
+EStoreEPropertiesHolderImpl o-- EView : eResource
+ReproduceElementImpl o-- ReproduceRule : translationRule
+ReproduceElementImpl o-- ReproduceRule : eStore
+
+"HashMap/3" o-- "HashMap/3$Node1"
+"HashMap/3$Node1" ..> "DynamicEObjectImpl/2" : key
+"HashMap/3$Node1" ..> "ReproduceElementImpl/2" : value
+
+"ReproduceElementImpl/2" o-- "DynamicEObjectImpl/2" : concreteElement
+"ReproduceElementImpl/2" o-- "EStoreEPropertiesHolderImpl/2" : eProperties
+"EStoreEPropertiesHolderImpl/2" o-- "EClassImpl/4" : eClass
+"EStoreEPropertiesHolderImpl/2" o-- EView : eResource
+"ReproduceElementImpl/2" o-- ReproduceRule : translationRule
+"ReproduceElementImpl/2" o-- ReproduceRule : eStore
+
+"HashMap/3" o-- "HashMap/3$Node2"
+"HashMap/3$Node2" ..> "DynamicEObjectImpl/3" : key
+"HashMap/3$Node2" ..> "ReproduceElementImpl/3" : value
+
+"ReproduceElementImpl/3" o-- "DynamicEObjectImpl/3" : concreteElement
+"ReproduceElementImpl/3" o-- "EStoreEPropertiesHolderImpl/3" : eProperties
+"EStoreEPropertiesHolderImpl/3" o-- "EClassImpl/4" : eClass
+"EStoreEPropertiesHolderImpl/3" o-- EView : eResource
+"ReproduceElementImpl/3" o-- ReproduceRule : translationRule
+"ReproduceElementImpl/3" o-- ReproduceRule : eStore
+
+EView o-- "VirtualContents/2" : virtualContents
+"VirtualContents/2" o-- ReproduceElementImpl : sublists[0][0]
+"VirtualContents/2" o-- "ReproduceElementImpl/2" : sublists[0][1]
+"VirtualContents/2" o-- "ReproduceElementImpl/3" : sublists[0][2]
 
 @enduml
