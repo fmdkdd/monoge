@@ -224,6 +224,27 @@ class VirtualLinksImpl/2 {
   virtualLinks: null
 }
 
+class EStoreEPropertiesHolderImpl <<EMF>> {
+}
+
+class EStoreEPropertiesHolderImpl/2 <<EMF>> {
+}
+
+class EStoreEPropertiesHolderImpl/3 <<EMF>> {
+}
+
+class HashMap/3 <<Java>> {
+}
+
+class HashMap/3$Node0 <<Java>> {
+}
+
+class HashMap/3$Node1 <<Java>> {
+}
+
+class HashMap/3$Node2 <<Java>> {
+}
+
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ' EView relationships
 
