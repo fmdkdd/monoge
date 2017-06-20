@@ -1,23 +1,20 @@
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-' (Partial) class diagram for EMFViews.core
+' Object diagram for EMFViews.core
+'
+' These are all the relevant objects in the heap created by EMFViews after
+' EView.load().
 '
 ' Arrow semantics:
-' A <|-- B := B inherits from A
-' A <|.. B := B implements A
-' A *--  B := A contains B (for the VirtualLinks Ecore metamodel only)
-' A o--  B := A has an attribute of type B
-' A o--o B := A has an attribute of type B, and B has an attribute of type A
-' A -->  B := A uses a constructor of type B (but has no attribute of type B)
-' A ..>  B := A uses class B (e.g.: foo.getB().doSomething(), casts to B, etc.)
-'
-' Multiplicity is used on "has a" relations (o-- and --), 1 is assumed when
-' no multiplicity is present.
+' A o--  B := A has B as attribute
+' A o--o B := A has B as attribute, and B has A as attribute
+' A -->  B := A creates B (but does not hold B as attribute)
+' A ..>  B := A holds a weak reference to B (HashMap nodes)
 
 @startuml
 
 /' Theming '/
 
-title emfviews.core (Object diagram)
+title Object diagram for EView.load()
 
 set namespaceseparator none
 skinparam shadowing false
