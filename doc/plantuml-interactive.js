@@ -131,11 +131,11 @@ javascript:(function(){
    * Unfortunately, it exports A -left> B as a B-A, so this will give us some
    * incoming edges as well. */
   function findOutgoingLinksFor(id) {
-    return svg.querySelectorAll('path[id^=' + id + '-]');
+    return svg.querySelectorAll('path[id^=' + escapeSelector(id) + '-]');
   }
 
   function findIncomingLinksFor(id) {
-    return svg.querySelectorAll('path[id$=-' + id + ']');
+    return svg.querySelectorAll('path[id$=-' + escapeSelector(id) + ']');
   }
 
   /* If we want the arrow heads, they are all the polygons following the
@@ -157,6 +157,11 @@ javascript:(function(){
     var fill = elem.getAttribute('fill');
     return elem.tagName.toLowerCase() == 'polygon'
       && (fill == '#333333' || fill == '#CCCCCC');
+  }
+
+  /* Selector cannot have '/' or '$' in them */
+  function escapeSelector(sel) {
+    return sel.replace(/[/$]/g, '\\$&');
   }
 
 }());
