@@ -13,6 +13,11 @@ javascript:(function(){
  Interactive features:
  - Highlight a class and its outgoing edges on mouse over
  - Click to retain the highlighting on the current class, click again to dismiss
+
+ Limitations:
+ - Highlighted edges may spuriously be incoming edges rather than outgoing
+ edges.  Similarly, some outgoing edges may not be highlighted.  This is because
+ PlantUML exports links defined as "A -left-> B" as a link from B to A.
 */
 
   var highlightColors = ['#FFC107', '#2196F3', '#E91E63', '#8BC34A', '#9C27B0',
@@ -68,6 +73,7 @@ javascript:(function(){
     links.forEach(function(l) {
       toggleHighlight(l);
       findArrowHeadsFor(l).forEach(toggleHighlight);
+      findLabelsFor(l).forEach(toggleLabelHighlight);
     });
   }
 
@@ -109,6 +115,21 @@ javascript:(function(){
     }
   }
 
+  function toggleLabelHighlight(label) {
+    if (isHighlighted(label)) {
+      label.classList.remove('highlighted');
+      unsetStyle(label, 'stroke');
+      unsetStyle(label, 'strokeWidth');
+      unsetStyle(label, 'fill');
+    } else {
+      label.classList.add('highlighted');
+      var color = highlightColors[0] || defaultColor;
+      setStyle(label, 'stroke', color);
+      setStyle(label, 'strokeWidth', 0.5);
+      setStyle(label, 'fill', color);
+    }
+  }
+
   function isHighlighted(elem) {
     return elem.classList.contains('highlighted');
   }
@@ -141,13 +162,25 @@ javascript:(function(){
   /* If we want the arrow heads, they are all the polygons following the
    * paths */
   function findArrowHeadsFor(link) {
-    var heads = [];
-    link = link.nextSibling;
-    while (link && link.tagName && link.tagName.toLowerCase() == 'polygon') {
-      heads.push(link);
+    return findAssociatedLinkElements(link)
+      .filter(e => e.tagName.toLowerCase() =='polygon')
+  }
+
+  /* If we want labels for a link, they are the text tags following the path */
+  function findLabelsFor(link) {
+    return findAssociatedLinkElements(link)
+      .filter(e => e.tagName.toLowerCase() =='text')
+  }
+
+  /* Return all elements associated with a link.  PlantUML draw them after the
+   * path representing the link, and up to the next comment tag. */
+  function findAssociatedLinkElements(link) {
+    var elems = [];
+    while (link && link.tagName) {
+      elems.push(link);
       link = link.nextSibling;
     }
-    return heads;
+    return elems;
   }
 
   /* The stroke color should match the fill color, but one is in rgb() format
