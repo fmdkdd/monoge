@@ -197,4 +197,46 @@ javascript:(function(){
     return sel.replace(/[/$]/g, '\\$&');
   }
 
+  /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   * Drag and zoom
+   */
+
+  const LEFT_BUTTON = 0;
+
+  var lastX = 0;
+  var lastY = 0;
+  var left = 0;
+  var top = 0;
+
+  svg.style.position = 'absolute';
+  window.addEventListener('mousedown', startDrag);
+  window.addEventListener('mouseup', stopDrag);
+
+  function startDrag(ev) {
+    if (ev.button == LEFT_BUTTON) {
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      window.addEventListener('mousemove', drag);
+
+      ev.preventDefault();
+    }
+  }
+
+  function stopDrag(ev) {
+    if (ev.button == LEFT_BUTTON) {
+      window.removeEventListener('mousemove', drag);
+    }
+  }
+
+  function drag(ev) {
+    left += ev.clientX - lastX;
+    top  += ev.clientY - lastY;
+
+    svg.style.left = left + 'px';
+    svg.style.top  = top  + 'px';
+
+    lastX = ev.clientX;
+    lastY = ev.clientY;
+  }
+
 }());
