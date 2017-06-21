@@ -20,11 +20,17 @@ javascript:(function(){
  PlantUML exports links defined as "A -left-> B" as a link from B to A.
 */
 
+  /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   * Highlighting on mouseover
+   */
+
   var highlightColors = ['#FFC107', '#2196F3', '#E91E63', '#8BC34A', '#9C27B0',
                          '#00BCD4', '#3F51B5', '#FF5722', '#009688'];
   var defaultColor = '#CDDC39';
   var classToColor = {};
   var highlightStrokeWidth = 1.5;
+  var labelHighlightStrokeWidth = 0.5; /* labels are already filled, so a light
+                                        * stroke is enough */
 
   var svg = document.getElementsByTagName('svg')[0];
   svg.addEventListener('click', onClick);
@@ -125,7 +131,7 @@ javascript:(function(){
       label.classList.add('highlighted');
       var color = highlightColors[0] || defaultColor;
       setStyle(label, 'stroke', color);
-      setStyle(label, 'strokeWidth', 0.5);
+      setStyle(label, 'strokeWidth', labelHighlightStrokeWidth);
       setStyle(label, 'fill', color);
     }
   }
