@@ -11,6 +11,8 @@ javascript:(function(){
  inline (//) comments, and do not forget your semicolons.
 
  Interactive features:
+ - Hold the mouse to drag the SVG
+ - Use the mouse wheel to zoom in/out
  - Highlight a class and its outgoing edges on mouse over
  - Click to retain the highlighting on the current class, click again to dismiss
 
@@ -204,7 +206,7 @@ javascript:(function(){
   }
 
   /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   * Drag and zoom
+   * Drag
    */
 
   const LEFT_BUTTON = 0;
@@ -243,6 +245,24 @@ javascript:(function(){
 
     lastX = ev.clientX;
     lastY = ev.clientY;
+  }
+
+  /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   * Zoom
+   */
+
+  var scale = 1;
+
+  window.addEventListener('wheel', zoom);
+
+  function zoom(ev) {
+    scale -= ev.deltaY / 20;
+    if (scale < 0.1) { scale = 0.1 }
+
+    svg.style.transform = `scale(${scale})`;
+
+    /* Prevent scrolling */
+    ev.preventDefault()
   }
 
 }());
