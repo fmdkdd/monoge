@@ -3498,3 +3498,61 @@ Not out of the box.  There is an argument ~-graphvizdot~, but passing
 the parser, but it's not connected to anything.
 
 So, the PlantUML -> GraphML route still stands.
+
+* [2017-06-22 jeu.]
+** Getting a heap dump from Eclipse                            :eclipse:java:
+If I wanted to generate an object diagram mechanically, I would first need to
+get a heap dump.
+
+Looks like there are at least [[https://stackoverflow.com/questions/25168490/java-eclipse-create-heap-dump-on-breakpoint][two ways]] to do that.  jvisualvm comes with Java,
+and you can plug into an existing process.
+
+So I put a breakpoint in Eclipse, and obtain a heap dump in the HPROF format.
+JVisualVM allows me to browse this dump more or less like the Eclipse debugger
+can (there's fewer "nice" short string format).
+
+There's also ~jhat~, a bundled command, that creates a local server to browse an
+HPROF dump.  It's not very useful for browsing through, since it doesn't show
+attribute values.
+
+Most tools dealing with heap dumps seem targeted to people who want to find
+memory leaks, understandably.  Like [[http://www.eclipse.org/mat/][MAT]].
+
+JVisualVM accepts plugins though, so we could imagine an export to DOT.
+
+Another way to obtain an HPROF dumb, without jvisualvm:
+
+: jmap -dump:format=b,file=/tmp/foo.hprof PROCESS-PID
+
+This can then be opened in MAT for browsing.  Though I'm not seeing values for
+inherited attribute in MAT... but unless JVisualVM was doing some peeking in the
+runtime process when displaying the HPROF, the info is probably there.
+
+[[https://web.archive.org/web/20121221115642/http://java.net/downloads/heap-snapshot/hprof-binary-format.html][Here's some documentation]] on the HPROF binary format.  But it might not be the
+freshest info.  Looking at the source of jmap or jvisualvm is also an option.
+
+** Some concerns about creating object diagrams mechanically       :emfviews:
+First, heap dumps are huge, and you are concerned with only a fragment of it at
+one time.  MAT reports nearly 500k objects in the heap for the small test I
+built the object diagram from.  In the object diagram I made, there are ~50
+objects.  Whitelisting interesting objects should be the default.
+
+Second, heap dumps are instantaneous and cannot give any temporal information
+individually.  That's relevant for keeping track of objects collected by the GC.
+In the object diagram I made, an instance of LinksProjector is created by
+VirtualLinkManager to setup virtual associations, but no reference to it is held
+so it is collected when the method ends.  Depending on when the heap dump is
+captured, you might or might not see this object.  Taking multiple dumps can
+help, but is not guaranteed to be correct, unless you are able to register all
+allocations.
+
+In fact, the JVM can also perform escape analysis and decide to allocate objects
+directly on the stack.  In that situation, I'm not sure the object would appear
+in a heap dump at all.  So, again, heap dumps cannot give you a full list of
+created objects.
+
+Third, you might want to enrich the visualization of some types or values.  In a
+heap dump, objects are just nodes that points to other objects.  But depending
+on the type, you might want to make them distinguishable.  Lists, arrays and
+hashmaps are easier to recognize as tables.  In the object diagram, I've made
+simplifications for URI objects to just their string value.
