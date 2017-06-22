@@ -2,7 +2,7 @@
 ' Object diagram for EMFViews.core
 '
 ' These are all the relevant objects in the heap created by EMFViews after
-' EView.load().
+' EView.load().  (Made on commit 076c71909692d4f984f7e86fd30363076bd7dfe3)
 '
 ' Arrow semantics:
 ' A o--  B := A has B as attribute
@@ -53,334 +53,338 @@ hide class methods
 
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ' EView objects
+'
+' Numbers after the class name refer to the object ID reported by the Eclipse
+' debugger for a single run.  These numbers tend to change every run, but they
+' were useful in establishing the relationships.
 
-class EView {
+class EView/83 {
   uri: resources/views/minimal/view.eview
 }
 
-class Properties <<Java>> {
+class Properties/104 <<Java>> {
   weavingModel: "resources/views/minimal/weaving.xmi"
   contributingModels: "resources/models/minimal.xmi"
   viewpoint: "resources/viewpoints/minimal/viewpoint.eviewpoint"
 }
 
-class ResourceSetImpl <<EMF>> {
+class ResourceSetImpl/122 <<EMF>> {
   resources: []
 }
 
-class Viewpoint {
+class Viewpoint/113 {
   uri: resources/viewpoints/minimal/viewpoint.eviewpoint
   matchingModel: ""
   contributingMetamodels: "resources/metamodels/minimalref.ecore"
 }
 
-class Properties/2 <<Java>> {
+class Properties/381 <<Java>> {
   matchingModel: ""
   weavingModel: "resources/viewpoints/minimal/weaving.xmi"
   contributingMetamodels: "resources/metamodels/minimalref.ecore"
 }
 
-class ResourceSetImpl/2 <<EMF>> {
+class ResourceSetImpl/448 <<EMF>> {
 }
 
-class EPackageRegistryImpl <<EMF>> {
+class EPackageRegistryImpl/471 <<EMF>> {
   delegateRegistry: EPackage.Registry.INSTANCE
 }
 
-class EPackageImpl <<EMF>> {
+class EPackageImpl/384 <<EMF>> {
   name: "minimalref"
   nsURI: http://inria.fr/atlanmod/emfviews/tests/minimalref
 }
 
-class EClassImpl <<EMF>> {
+class EClassImpl/396 <<EMF>> {
   name: "A"
 }
 
-class EReferenceImpl <<EMF>> {
+class EReferenceImpl/414 <<EMF>> {
   name: "manyB"
   lowerBound: 0
   upperBound: -1
 }
 
-class EClassImpl/2 <<EMF>> {
+class EClassImpl/397 <<EMF>> {
   name: "B"
 }
 
-class EReferenceImpl/2 <<EMF>> {
+class EReferenceImpl/417 <<EMF>> {
   name: "parentA"
   lowerBound: 0
   upperBound: 1
 }
 
-class EPackageImpl/2 <<EMF>> {
+class EPackageImpl/505 <<EMF>> {
   name: "minimalref"
   nsURI: http://inria.fr/atlanmod/emfviews/tests/minimalref
 }
 
-class EClassImpl/3 <<EMF>> {
+class EClassImpl/173 <<EMF>> {
   name: "A"
 }
 
-class EReferenceImpl/3 <<EMF>> {
+class EReferenceImpl/453 <<EMF>> {
   name: "manyB"
   lowerBound: 0
   upperBound: -1
 }
 
-class EClassImpl/4 <<EMF>> {
+class EClassImpl/189 <<EMF>> {
   name: "B"
 }
 
-class EReferenceImpl/4 <<EMF>> {
+class EReferenceImpl/259 <<EMF>> {
   name: "parentA"
   lowerBound: 0
   upperBound: 1
 }
 
-class ResourceSetImpl/3 <<EMF>> {
+class ResourceSetImpl/519 <<EMF>> {
 }
 
-class XMIResourceImpl <<EMF>> {
+class XMIResourceImpl/449 <<EMF>> {
   uri: resources/viewpoints/minimal/weaving.xmi
 }
 
-class VirtualLinksImpl {
+class VirtualLinksImpl/527 {
 }
 
-class LinkedElement {
+class LinkedElementImpl/540 {
   name: "manyB"
   elementRef: "minimalref.A.manyB"
   modelRef: "http://inria.fr/atlanmod/emfviews/tests/minimalref"
 }
 
-class FilterImpl {
+class FilterImpl/548 {
   name: "manyB"
 }
 
-class EPackageRegistryImpl/2 <<EMF>> {
+class EPackageRegistryImpl/672 <<EMF>> {
 }
 
-class EPackageImpl/3 <<EMF>> {
+class EPackageImpl/212 <<EMF>> {
   name: "minimalref"
   nsURI: http://inria.fr/atlanmod/emfviews/tests/minimalref
 }
 
-class EClassImpl/5 <<EMF>> {
+class EClassImpl/167 <<EMF>> {
   name: "A"
 }
 
-class EReferenceImpl/5 <<EMF>> {
+class EReferenceImpl/345 <<EMF>> {
   name: "manyB"
   lowerBound: 0
   upperBound: -1
 }
 
-class EClassImpl/6 <<EMF>> {
+class EClassImpl/188 <<EMF>> {
   name: "B"
 }
 
-class EReferenceImpl/6 <<EMF>> {
+class EReferenceImpl/256 <<EMF>> {
   name: "parentA"
   lowerBound: 0
   upperBound: 1
 }
 
-class HashMap <<Java>> {
+class HashMap/150 <<Java>> {
 }
 
-class HashMap$Node0 <<Java>> {
+class HashMap$Node/163 <<Java>> {
 }
 
-class HashMap$Node1 <<Java>> {
+class HashMap$Node/165 <<Java>> {
 }
 
-class HashMap/2 <<Java>> {
+class HashMap/151 <<Java>> {
 }
 
-class HashMap/2$Node0 <<Java>> {
+class HashMap$Node/254 <<Java>> {
 }
 
-class XMIResourceImpl/2 <<EMF>> {
+class XMIResourceImpl/678 <<EMF>> {
   uri: resources/models/minimal.xmi
 }
 
-class DynamicEObjectImpl <<EMF>> {
+class DynamicEObjectImpl/586 <<EMF>> {
 }
 
-class DynamicEObjectImpl/2 <<EMF>> {
+class DynamicEObjectImpl/604 <<EMF>> {
 }
 
-class DynamicEObjectImpl/3 <<EMF>> {
+class DynamicEObjectImpl/609 <<EMF>> {
 }
 
-class ResourceSetImpl/4 <<EMF>> {
+class ResourceSetImpl/663 <<EMF>> {
 }
 
-class XMIResourceImpl/3 <<EMF>> {
+class XMIResourceImpl/656 <<EMF>> {
   uri: resources/models/weaving.xmi
 }
 
-class VirtualLinksImpl/2 {
+class VirtualLinksImpl/578 {
   linkedElements: null
   virtualLinks: null
 }
 
-class EStoreEPropertiesHolderImpl <<EMF>> {
+class EStoreEPropertiesHolderImpl/621 <<EMF>> {
 }
 
-class EStoreEPropertiesHolderImpl/2 <<EMF>> {
+class EStoreEPropertiesHolderImpl/651 <<EMF>> {
 }
 
-class EStoreEPropertiesHolderImpl/3 <<EMF>> {
+class EStoreEPropertiesHolderImpl/641 <<EMF>> {
 }
 
-class HashMap/3 <<Java>> {
+class HashMap/577 <<Java>> {
 }
 
-class HashMap/3$Node0 <<Java>> {
+class HashMap$Node/582 <<Java>> {
 }
 
-class HashMap/3$Node1 <<Java>> {
+class HashMap$Node/583 <<Java>> {
 }
 
-class HashMap/3$Node2 <<Java>> {
+class HashMap$Node/584 <<Java>> {
 }
 
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ' EView relationships
 
-EView o-- Properties : properties
-EView o-- ResourceSetImpl : virtualResourceSet
-EView o-- Viewpoint
+"EView/83" o-- "Properties/104" : properties
+"EView/83" o-- "ResourceSetImpl/122" : virtualResourceSet
+"EView/83" o-- "Viewpoint/113"
 
-Viewpoint o-- "Properties/2" : properties
-Viewpoint o-- "ResourceSetImpl/2" : virtualResourceSet
-Viewpoint o-- EPackageImpl : contributingEPackages
+"Viewpoint/113" o-- "Properties/381" : properties
+"Viewpoint/113" o-- "ResourceSetImpl/448" : virtualResourceSet
+"Viewpoint/113" o-- "EPackageImpl/384" : contributingEPackages
 
-EPackageImpl o-- EClassImpl : eClassifiers[0]
-EPackageImpl o-- "EClassImpl/2" : eClassifiers[1]
+"EPackageImpl/384" o-- "EClassImpl/396" : eClassifiers[0]
+"EPackageImpl/384" o-- "EClassImpl/397" : eClassifiers[1]
 
-EClassImpl o-- EReferenceImpl : eStructuralFeatures[0]
-"EClassImpl/2" o-- "EReferenceImpl/2" : eStructuralFeatures[0]
+"EClassImpl/396" o-- "EReferenceImpl/414" : eStructuralFeatures[0]
+"EClassImpl/397" o-- "EReferenceImpl/417" : eStructuralFeatures[0]
 
-EReferenceImpl o-o "EReferenceImpl/2" : eOpposite
+"EReferenceImpl/414" o-o "EReferenceImpl/417" : eOpposite
 
-"ResourceSetImpl/2" o-- EPackageRegistryImpl : packageRegistry
+"ResourceSetImpl/448" o-- "EPackageRegistryImpl/471" : packageRegistry
 
-EPackageRegistryImpl o-- "EPackageImpl/2" : "http://inria.fr/emfviews/tests/minimalref"
+"EPackageRegistryImpl/471" o-- "EPackageImpl/505" : "http://inria.fr/emfviews/tests/minimalref"
 
-"EPackageImpl/2" o-- "EClassImpl/3" : eClassifiers[0]
-"EPackageImpl/2" o-- "EClassImpl/4" : eClassifiers[1]
+"EPackageImpl/505" o-- "EClassImpl/173" : eClassifiers[0]
+"EPackageImpl/505" o-- "EClassImpl/189" : eClassifiers[1]
 
-/' "EClassImpl/3" o-- "EReferenceImpl/3" : eStructuralFeatures[0] '/
-"EClassImpl/4" o-- "EReferenceImpl/4" : eStructuralFeatures[0]
+/' "EClassImpl/173" o-- "EReferenceImpl/453" : eStructuralFeatures[0] '/
+"EClassImpl/189" o-- "EReferenceImpl/259" : eStructuralFeatures[0]
 
-/' "EReferenceImpl/3" o-o "EReferenceImpl/4" : eOpposite '/
+/' "EReferenceImpl/453" o-o "EReferenceImpl/259" : eOpposite '/
 
-Viewpoint --> "ResourceSetImpl/3" : loadWeavingModel()
-"ResourceSetImpl/3" o-- XMIResourceImpl : resources[0]
-Viewpoint o-- XMIResourceImpl : weavingModelResource
-XMIResourceImpl o-- VirtualLinksImpl : contents[0]
+"Viewpoint/113" --> "ResourceSetImpl/519" : loadWeavingModel()
+"ResourceSetImpl/519" o-- "XMIResourceImpl/449" : resources[0]
+"Viewpoint/113" o-- "XMIResourceImpl/449" : weavingModelResource
+"XMIResourceImpl/449" o-- "VirtualLinksImpl/527" : contents[0]
 
-VirtualLinksImpl o-- LinkedElement : linkedElements[0]
-VirtualLinksImpl o-- FilterImpl : virtualLinks[0]
-FilterImpl o- LinkedElement : filteredElement
+"VirtualLinksImpl/527" o-- "LinkedElementImpl/540" : linkedElements[0]
+"VirtualLinksImpl/527" o-- "FilterImpl/548" : virtualLinks[0]
+"FilterImpl/548" o- "LinkedElementImpl/540" : filteredElement
 
-Viewpoint o-- "EReferenceImpl/3" : hiddenAttributes[0]
-Viewpoint o-- VirtualContents : virtualContents
+"Viewpoint/113" o-- "EReferenceImpl/453" : hiddenAttributes[0]
+"Viewpoint/113" o-- "VirtualContents/447" : virtualContents
 
-VirtualContents o-- "EPackageImpl/2" : subLists[0][0]
+"VirtualContents/447" o-- "EPackageImpl/505" : subLists[0][0]
 
-ResourceSetImpl o-- "EPackageRegistryImpl/2" : packageRegistry
-"EPackageRegistryImpl/2" o-- "EPackageImpl/3" : "http://inria.fr/emfviews/tests/minimalref"
+"ResourceSetImpl/122" o-- "EPackageRegistryImpl/672" : packageRegistry
+"EPackageRegistryImpl/672" o-- "EPackageImpl/212" : "http://inria.fr/emfviews/tests/minimalref"
 
-"EPackageImpl/3" o-- "EClassImpl/5" : eClassifiers[0]
-"EPackageImpl/3" o-- "EClassImpl/6" : eClassifiers[1]
+"EPackageImpl/212" o-- "EClassImpl/167" : eClassifiers[0]
+"EPackageImpl/212" o-- "EClassImpl/188" : eClassifiers[1]
 
-"EClassImpl/5" o-- "EReferenceImpl/5" : eStructuralFeatures[0]
-"EClassImpl/6" o-- "EReferenceImpl/6" : eStructuralFeatures[0]
+"EClassImpl/167" o-- "EReferenceImpl/345" : eStructuralFeatures[0]
+"EClassImpl/188" o-- "EReferenceImpl/256" : eStructuralFeatures[0]
 
-"EReferenceImpl/5" o-o "EReferenceImpl/6" : eOpposite
+"EReferenceImpl/345" o-o "EReferenceImpl/256" : eOpposite
 
-EView "metamodelManager" o--o "virtualModel" MetamodelManager
-MetamodelManager o-- Viewpoint : viewpoint
-MetamodelManager o-- "EPackageImpl/3" : contributingMetamodels[0]
+"EView/83" "metamodelManager" o--o "virtualModel" "MetamodelManager/102"
+"MetamodelManager/102" o-- "Viewpoint/113" : viewpoint
+"MetamodelManager/102" o-- "EPackageImpl/212" : contributingMetamodels[0]
 
-MetamodelManager o-- HashMap : concreteToVirtualClass
-HashMap o-- HashMap$Node0
-HashMap o-- HashMap$Node1
+"MetamodelManager/102" o-- "HashMap/150" : concreteToVirtualClass
+"HashMap/150" o-- "HashMap$Node/163"
+"HashMap/150" o-- "HashMap$Node/165"
 
-HashMap$Node0 ..> "EClassImpl/5" : key
-HashMap$Node0 ..> "EClassImpl/3" : value
+"HashMap$Node/163" ..> "EClassImpl/167" : key
+"HashMap$Node/163" ..> "EClassImpl/173" : value
 
-HashMap$Node1 ..> "EClassImpl/6" : key
-HashMap$Node1 ..> "EClassImpl/4" : value
+"HashMap$Node/165" ..> "EClassImpl/188" : key
+"HashMap$Node/165" ..> "EClassImpl/189" : value
 
-MetamodelManager o-- "HashMap/2" : concreteToVirtualFeature
-/' MetamodelManager o-- HashMap : virtualToConcreteFeature '/
+"MetamodelManager/102" o-- "HashMap/151" : concreteToVirtualFeature
+/' "MetamodelManager/102" o-- HashMap : virtualToConcreteFeature '/
 
-"HashMap/2" o-- "HashMap/2$Node0"
-"HashMap/2$Node0" o-- "EReferenceImpl/6" : key
-"HashMap/2$Node0" o-- "EReferenceImpl/4" : value
+"HashMap/151" o-- "HashMap$Node/254"
+"HashMap$Node/254" o-- "EReferenceImpl/256" : key
+"HashMap$Node/254" o-- "EReferenceImpl/259" : value
 
-ResourceSetImpl o-- "XMIResourceImpl/2" : resources[0]
+"ResourceSetImpl/122" o-- "XMIResourceImpl/678" : resources[0]
 
-"XMIResourceImpl/2" o-- DynamicEObjectImpl : contents[0]
-"XMIResourceImpl/2" o-- "DynamicEObjectImpl/2" : contents[0]
-"XMIResourceImpl/2" o-- "DynamicEObjectImpl/3" : contents[0]
+"XMIResourceImpl/678" o-- "DynamicEObjectImpl/586" : contents[0]
+"XMIResourceImpl/678" o-- "DynamicEObjectImpl/604" : contents[0]
+"XMIResourceImpl/678" o-- "DynamicEObjectImpl/609" : contents[0]
 
-DynamicEObjectImpl o-- "EClassImpl/5" : eClass
-"DynamicEObjectImpl/2" o-- "EClassImpl/6" : eClass
-"DynamicEObjectImpl/3" o-- "EClassImpl/6" : eClass
+"DynamicEObjectImpl/586" o-- "EClassImpl/167" : eClass
+"DynamicEObjectImpl/604" o-- "EClassImpl/188" : eClass
+"DynamicEObjectImpl/609" o-- "EClassImpl/188" : eClass
 
-EView "vLinkManager" o--o "virtualModel" VirtualLinkManager
+"EView/83" "vLinkManager" o--o "virtualModel" "VirtualLinkManager/125"
 
-VirtualLinkManager --> "ResourceSetImpl/4"
-"ResourceSetImpl/4" o-- "XMIResourceImpl/3" : resources[0]
-"XMIResourceImpl/3" o-- "VirtualLinksImpl/2" : contents[0]
+"VirtualLinkManager/125" --> "ResourceSetImpl/663"
+"ResourceSetImpl/663" o-- "XMIResourceImpl/656" : resources[0]
+"XMIResourceImpl/656" o-- "VirtualLinksImpl/578" : contents[0]
 
-VirtualLinkManager o-- "VirtualLinksImpl/2" : weavingModel
+"VirtualLinkManager/125" o-- "VirtualLinksImpl/578" : weavingModel
 
-VirtualLinkManager --> LinksProjector
-LinksProjector o-- EView
+"VirtualLinkManager/125" --> LinksProjector : initialize()
+LinksProjector o-- "EView/83" : virtualModel
 
-VirtualLinkManager o-- "HashMap/3" : virtualLinks
-"HashMap/3" o-- "HashMap/3$Node0"
-"HashMap/3$Node0" ..> DynamicEObjectImpl : key
-"HashMap/3$Node0" ..> ReproduceElementImpl : value
+"VirtualLinkManager/125" o-- "HashMap/577" : virtualLinks
+"HashMap/577" o-- "HashMap$Node/582"
+"HashMap$Node/582" ..> "DynamicEObjectImpl/586" : key
+"HashMap$Node/582" ..> "ReproduceElementImpl/589" : value
 
-ReproduceElementImpl o-- DynamicEObjectImpl : concreteElement
-ReproduceElementImpl o-- EStoreEPropertiesHolderImpl : eProperties
-EStoreEPropertiesHolderImpl o-- "EClassImpl/3" : eClass
-EStoreEPropertiesHolderImpl o-- EView : eResource
-ReproduceElementImpl o-- ReproduceRule : translationRule
-ReproduceElementImpl o-- ReproduceRule : eStore
+"ReproduceElementImpl/589" o-- "DynamicEObjectImpl/586" : concreteElement
+"ReproduceElementImpl/589" o-- "EStoreEPropertiesHolderImpl/621" : eProperties
+"EStoreEPropertiesHolderImpl/621" o-- "EClassImpl/173" : eClass
+"EStoreEPropertiesHolderImpl/621" o-- "EView/83" : eResource
+"ReproduceElementImpl/589" o-- "ReproduceRule/623" : translationRule
+"ReproduceElementImpl/589" o-- "ReproduceRule/623" : eStore
 
-"HashMap/3" o-- "HashMap/3$Node1"
-"HashMap/3$Node1" ..> "DynamicEObjectImpl/2" : key
-"HashMap/3$Node1" ..> "ReproduceElementImpl/2" : value
+"HashMap/577" o-- "HashMap$Node/583"
+"HashMap$Node/583" ..> "DynamicEObjectImpl/604" : key
+"HashMap$Node/583" ..> "ReproduceElementImpl/605" : value
 
-"ReproduceElementImpl/2" o-- "DynamicEObjectImpl/2" : concreteElement
-"ReproduceElementImpl/2" o-- "EStoreEPropertiesHolderImpl/2" : eProperties
-"EStoreEPropertiesHolderImpl/2" o-- "EClassImpl/4" : eClass
-"EStoreEPropertiesHolderImpl/2" o-- EView : eResource
-"ReproduceElementImpl/2" o-- ReproduceRule : translationRule
-"ReproduceElementImpl/2" o-- ReproduceRule : eStore
+"ReproduceElementImpl/605" o-- "DynamicEObjectImpl/604" : concreteElement
+"ReproduceElementImpl/605" o-- "EStoreEPropertiesHolderImpl/651" : eProperties
+"EStoreEPropertiesHolderImpl/651" o-- "EClassImpl/189" : eClass
+"EStoreEPropertiesHolderImpl/651" o-- "EView/83" : eResource
+"ReproduceElementImpl/605" o-- "ReproduceRule/623" : translationRule
+"ReproduceElementImpl/605" o-- "ReproduceRule/623" : eStore
 
-"HashMap/3" o-- "HashMap/3$Node2"
-"HashMap/3$Node2" ..> "DynamicEObjectImpl/3" : key
-"HashMap/3$Node2" ..> "ReproduceElementImpl/3" : value
+"HashMap/577" o-- "HashMap$Node/584"
+"HashMap$Node/584" ..> "DynamicEObjectImpl/609" : key
+"HashMap$Node/584" ..> "ReproduceElementImpl/610" : value
 
-"ReproduceElementImpl/3" o-- "DynamicEObjectImpl/3" : concreteElement
-"ReproduceElementImpl/3" o-- "EStoreEPropertiesHolderImpl/3" : eProperties
-"EStoreEPropertiesHolderImpl/3" o-- "EClassImpl/4" : eClass
-"EStoreEPropertiesHolderImpl/3" o-- EView : eResource
-"ReproduceElementImpl/3" o-- ReproduceRule : translationRule
-"ReproduceElementImpl/3" o-- ReproduceRule : eStore
+"ReproduceElementImpl/610" o-- "DynamicEObjectImpl/609" : concreteElement
+"ReproduceElementImpl/610" o-- "EStoreEPropertiesHolderImpl/641" : eProperties
+"EStoreEPropertiesHolderImpl/641" o-- "EClassImpl/189" : eClass
+"EStoreEPropertiesHolderImpl/641" o-- "EView/83" : eResource
+"ReproduceElementImpl/610" o-- "ReproduceRule/623" : translationRule
+"ReproduceElementImpl/610" o-- "ReproduceRule/623" : eStore
 
-EView o-- "VirtualContents/2" : virtualContents
-"VirtualContents/2" o-- ReproduceElementImpl : sublists[0][0]
-"VirtualContents/2" o-- "ReproduceElementImpl/2" : sublists[0][1]
-"VirtualContents/2" o-- "ReproduceElementImpl/3" : sublists[0][2]
+"EView/83" o-- "VirtualContents/117" : virtualContents
+"VirtualContents/117" o-- "ReproduceElementImpl/589" : sublists[0][0]
+"VirtualContents/117" o-- "ReproduceElementImpl/610" : sublists[0][1]
+"VirtualContents/117" o-- "ReproduceElementImpl/605" : sublists[0][2]
 
 @enduml
