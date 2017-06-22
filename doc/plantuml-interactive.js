@@ -126,15 +126,11 @@ javascript:(function(){
   function toggleLabelHighlight(label) {
     if (isHighlighted(label)) {
       label.classList.remove('highlighted');
-      unsetStyle(label, 'stroke');
-      unsetStyle(label, 'strokeWidth');
-      unsetStyle(label, 'fill');
+      unsetStyle(label, 'textShadow');
     } else {
       label.classList.add('highlighted');
       var color = highlightColors[0] || defaultColor;
-      setStyle(label, 'stroke', color);
-      setStyle(label, 'strokeWidth', labelHighlightStrokeWidth);
-      setStyle(label, 'fill', color);
+      setStyle(label, 'textShadow', `0 0 5px ${color}`);
     }
   }
 
