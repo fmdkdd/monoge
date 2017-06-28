@@ -3604,3 +3604,58 @@ Merks saying that it was "XPath-like", but not XPath.
 Regardless, after discussing with H., I think we are aiming towards qualified
 names for this field, as they are more readable.  Just have to check that ECL
 can generate them.
+
+* [2017-06-28 mer.]
+** Rethinking the virtual links metamodel                          :emfviews:
+We have some attributes that are never used, some attributes that are used in
+bad ways, and things we cannot express.
+
+The requirements are:
+- We can have any number of contributing models
+- We can transpose concepts and properties from contributing models in the view
+  so they appear in the view
+- We can filter concepts and properties from contributing models so they do not
+  appear in the view
+- We can create new concepts, properties and associations in the view that do
+  not exist in the contributing models
+
+Additionally, we can choose between "blacklist" and "whitelist" modes: blacklist
+mode, the default (and current behavior), is when the view contains all the
+concepts of the contributing models, and you can filter some concepts /out/
+explicitly.  In whitelist mode, no concepts are included by default, and you
+must filter them /in/ explicitly.
+
+We could also want the same feature at the concept level, to filter out/in
+properties for each concept separately.
+
+After sketching a few alternatives and iterating with H., we converged [[file:doc/virtuallinks-metamodel3.svg][on one
+design]] that ticks all the boxes, and should be a definite improvement over what
+we had so far.
+
+Some notes:
+- It supports blacklisting/whitelisting at the view level, but not for
+  individual concepts.  You don't lose expressive power, but only convenience
+  and maybe performance by having to exclude or include a bunch of properties.
+
+- The fact that synthetic elements (New*) are also instances of LinkedElement
+  (through VirtualElement) lets use them as target for other synthetic
+  elements.  So a NewProperty can be added to a NewConcept, rather than being
+  locked to concepts belonging to the contributing metamodels.
+
+  This is also means there is a risk of circular dependencies (if A and B are
+  new elements, and A refers to B and B refers to A).  This can happen for,
+  e.g., associations: Assoc A1 from A to B has opposite A2, A2 from B to A has
+  opposite A1.  Cannot set the opposite fields before the two associations are
+  created.
+
+  We'll see how best to resolve that once we get to translate the metamodel to
+  EMF code.  Using the order of elements from the resource looks like a decent
+  first approach.
+
+- The model is quite orthogonal, but lacks constraints for invalid situations.
+  For instance, NewAssociation ~opposite~ field should target either
+  NewAssociation (if VirtualElement) or have an FQN that points to an
+  EReference.
+
+  Likewise, a NewConcept can have sub- and super-concepts, but you can create
+  non-sensical hierarchies like A < B and B < A.
