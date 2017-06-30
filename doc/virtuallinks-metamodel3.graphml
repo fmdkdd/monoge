@@ -165,7 +165,6 @@ upperBound: int</y:AttributeLabel>
     </node>
     <node id="n7">
       <data key="d4"/>
-      <data key="d5"/>
       <data key="d6">
         <y:UMLNoteNode>
           <y:Geometry height="32.0" width="444.61624208375827" x="9.100079365079438" y="173.13753236479943"/>
@@ -183,7 +182,6 @@ upperBound: int</y:AttributeLabel>
     </node>
     <node id="n8">
       <data key="d4"/>
-      <data key="d5"/>
       <data key="d6">
         <y:UMLNoteNode>
           <y:Geometry height="32.0" width="175.4799999999999" x="838.8489047619048" y="152.33753236479936"/>
@@ -201,7 +199,6 @@ upperBound: int</y:AttributeLabel>
     </node>
     <node id="n9">
       <data key="d4"/>
-      <data key="d5"/>
       <data key="d6">
         <y:UMLNoteNode>
           <y:Geometry height="32.0" width="201.07999999999993" x="813.2489047619048" y="214.33753236479936"/>
@@ -245,7 +242,7 @@ upperBound: int</y:AttributeLabel>
           <y:Geometry height="27.99999999999997" width="124.91999999999996" x="221.74820040695857" y="-313.2704"/>
           <y:Fill color="#FFFFFF" transparent="false"/>
           <y:BorderStyle color="#999999" type="line" width="1.0"/>
-          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="19.1328125" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="113.611328125" x="5.6543359374999795" y="3.0">VirtualElement<y:LabelModel>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bolditalic" hasBackgroundColor="false" hasLineColor="false" height="19.1328125" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="113.611328125" x="5.6543359374999795" y="3.0">VirtualElement<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
             <y:ModelParameter>
@@ -261,7 +258,6 @@ upperBound: int</y:AttributeLabel>
     </node>
     <node id="n12">
       <data key="d4"/>
-      <data key="d5"/>
       <data key="d6">
         <y:UMLNoteNode>
           <y:Geometry height="32.0" width="315.69634920634894" x="698.6325555555558" y="271.523132364799"/>
@@ -279,13 +275,12 @@ upperBound: int</y:AttributeLabel>
     </node>
     <node id="n13">
       <data key="d4"/>
-      <data key="d5"/>
       <data key="d6">
         <y:UMLNoteNode>
           <y:Geometry height="32.0" width="183.4799999999999" x="599.7689047619049" y="214.33753236479936"/>
           <y:Fill color="#CCFFCC" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="left" autoSizePolicy="node_width" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="17.96875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="183.4799999999999" x="-1.1368683772161603E-13" y="7.015625">Supports whitelist/blacklist<y:LabelModel>
+          <y:NodeLabel alignment="left" autoSizePolicy="node_width" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="17.96875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="183.4799999999999" x="0.0" y="7.015625">Supports whitelist/blacklist<y:LabelModel>
               <y:SmartNodeLabelModel distance="4.0"/>
             </y:LabelModel>
             <y:ModelParameter>
@@ -318,7 +313,6 @@ upperBound: int</y:AttributeLabel>
     </node>
     <node id="n15">
       <data key="d4"/>
-      <data key="d5"/>
       <data key="d6">
         <y:UMLNoteNode>
           <y:Geometry height="32.0" width="511.0162420837583" x="9.100079365079438" y="235.13753236479943"/>
@@ -446,7 +440,7 @@ upperBound: int</y:AttributeLabel>
             </y:ModelParameter>
             <y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/>
           </y:EdgeLabel>
-          <y:EdgeLabel alignment="center" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="17.96875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="25.263671875" x="176.93563446555527" y="151.29811864953209">0..*<y:LabelModel>
+          <y:EdgeLabel alignment="center" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="17.96875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="11.634765625" x="190.56454071555527" y="151.29811864953209">1<y:LabelModel>
               <y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/>
             </y:LabelModel>
             <y:ModelParameter>
@@ -558,7 +552,6 @@ upperBound: int</y:AttributeLabel>
       </data>
     </edge>
     <edge id="e11" source="n10" target="n5">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="70.98664062500018" sy="0.0" tx="-70.99200000000002" ty="-0.0"/>
@@ -577,7 +570,6 @@ upperBound: int</y:AttributeLabel>
       </data>
     </edge>
     <edge id="e12" source="n2" target="n5">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="47.327999999999975" sy="23.497600000000038" tx="42.46428571428589" ty="-23.504984960000204">
@@ -607,7 +599,6 @@ upperBound: int</y:AttributeLabel>
       </data>
     </edge>
     <edge id="e13" source="n0" target="n6">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="57.73512465790458" sy="-13.990472812980721" tx="41.53395975624471" ty="31.54801259420421">
@@ -624,12 +615,19 @@ upperBound: int</y:AttributeLabel>
             </y:ModelParameter>
             <y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/>
           </y:EdgeLabel>
+          <y:EdgeLabel alignment="center" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="17.96875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="26.8984375" x="1.4423234061247285" y="-21.399587546971706">0..1<y:LabelModel>
+              <y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartEdgeLabelModelParameter angle="6.283185307179586" distance="14.891532186185202" distanceToCenter="true" position="right" ratio="-1.5495864424425423" segment="0"/>
+            </y:ModelParameter>
+            <y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/>
+          </y:EdgeLabel>
           <y:BendStyle smoothed="false"/>
         </y:PolyLineEdge>
       </data>
     </edge>
     <edge id="e14" source="n10" target="n0">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="0.0" sy="0.0" tx="22.343763561953892" ty="14.021261376003707">
@@ -642,7 +640,6 @@ upperBound: int</y:AttributeLabel>
       </data>
     </edge>
     <edge id="e15" source="n11" target="n0">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="0.0" sy="0.0" tx="-14.272027884168892" ty="13.979533241957796">
@@ -657,7 +654,6 @@ upperBound: int</y:AttributeLabel>
       </data>
     </edge>
     <edge id="e16" source="n6" target="n11">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="0.0" sy="0.0" tx="12.25696829436015" ty="13.974781721600436">
@@ -671,7 +667,6 @@ upperBound: int</y:AttributeLabel>
       </data>
     </edge>
     <edge id="e17" source="n3" target="n11">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="14.015625">
@@ -685,7 +680,6 @@ upperBound: int</y:AttributeLabel>
       </data>
     </edge>
     <edge id="e18" source="n4" target="n11">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="0.0" sy="0.0" tx="-11.779640992131988" ty="13.98879034386232">
