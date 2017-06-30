@@ -3659,3 +3659,39 @@ Some notes:
 
   Likewise, a NewConcept can have sub- and super-concepts, but you can create
   non-sensical hierarchies like A < B and B < A.
+
+* [2017-06-30 ven.]
+** Switching to the new virtual links metamodel                    :emfviews:
+Wrote the metamodel in Ecore, generated the code.  Errors everywhere.
+
+Disregarding the UI and Editor plugins for now, to focus on the core and on the
+tests.
+
+Apart from renaming things to follow the new metamodel, the code is already
+simpler in a few places, when fetching the new element from the metamodel or
+model notably.
+
+For now I'm just trying to get back the previous functionality, and disregarding
+the additional functionality like creating associations between virtual
+elements, and synthesizing new elements (for which I didn't have tests anyway).
+
+One difficulty is that we cannot use fully-qualified names to target model
+elements.  The code in EMFViewsUtil.findElement is not working for models
+because it tries to get the "name" feature on the EClass, but model objects have
+their metamodel class as EClass, and these don't necessarily have a name.  We
+/could/ write a findModelElement function that first gets the structural feature
+corresponding to the FQN, and then try to eGet this feature in the model.  That
+wouldn't be sufficient if we wanted to target EClass instead... so the approach
+has to be different.  Besides, one named feature on the metamodel may correspond
+to multiple model objects, in the case of lists.
+
+For the moment, I'm sticking to EMF URI fragments for the model level.  That's
+one discrepancy between how we use the virtual links metamodel for viewpoints
+and for views.
+
+Currently passing 2 tests out of 5... the three-model-composition is larger, so
+harder to fix.  It generates the weaving model for the view through ECL, so I
+have to fix that as well.
+
+Fixing ECL...  looks like it's still missing something.  Will investigate next
+week.
