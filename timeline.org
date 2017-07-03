@@ -3695,3 +3695,53 @@ have to fix that as well.
 
 Fixing ECL...  looks like it's still missing something.  Will investigate next
 week.
+
+* [2017-07-03 lun.]
+** Installing Eclipse Oxygen                                        :eclipse:
+Release version.  I was on milestone 6 previously.
+
+As usual, since it's easier to add plugins than to remove them from Eclipse, and
+a lower number of plugins makes for a healthier Eclipse, I went with the Oxygen
+platform download:
+
+http://download.eclipse.org/eclipse/downloads/drops4/R-4.7-201706120950/
+
+Then, I added:
+
+- JDT
+- PDE
+- EMF SDK (EMF is already included)
+
+EMFViews requires also OCL, Epsilon and Epsilon EMF integration.
+
+I used the update site for Epsilon 1.2, since migration to version 1.4 is still
+a TODO.
+
+After that, and after making sure the target platform and run configuration are
+coherent, I was able to run the tests.
+
+** Fixing tests for the new metamodel                              :emfviews:
+We actually have 4/5!  Three-model-composition runs into an NPE.  Investigating.
+
+We fail in EStructuralFeatureImpl:
+
+#+BEGIN_SRC java
+EClassifier eType = getEType();
+Class<?> instanceClass = eType.getInstanceClass();
+#+END_SRC
+
+eType is null.  Since a feature is a typed element, it /shouldn't/ be null.
+
+Found it: the setEType in Viewpoint is null... because targetElem is null.
+That's because of a wrong path in the viewpoint weaving model (BPMN instead of
+bpmn2).
+
+Will have to make sure we find the element before creating associations...
+
+Still, too bad EMF doesn't inform us that the EReference is invalid before...
+That probably stems from the fact that we create the EReference piece-wise, so
+we can violate invariants before we are done initializing it, and there's no way
+to tell EMF we are done.  The builder pattern solves this.
+
+Added some checks.  Found a bug in another concreteElement for reqif (reqif10 is
+the name of the root), which was not tested.  Early errors pay off!
