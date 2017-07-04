@@ -3745,3 +3745,28 @@ to tell EMF we are done.  The builder pattern solves this.
 
 Added some checks.  Found a bug in another concreteElement for reqif (reqif10 is
 the name of the root), which was not tested.  Early errors pay off!
+
+* [2017-07-04 mar.]
+** Writing tests for adding concepts                               :emfviews:
+Some unresolved questions.
+
+Where do new concepts go?  If they subtype an existing concept from a
+contributing package, they could go in that package.  But if they subtype none?
+Or if they subtype two concepts from separate packages?
+
+After discussing with H., we settled on putting all new concepts in a specific
+package that has the name of the viewpoint.  Now the viewpoint must have a name.
+
+In testing for this feature, there's a bit of non-determinism: the order of
+packages in the virtual contents of the viewpoint is undefined.
+
+Actually, the order stems from the order of the underlying hashtable used by the
+package registry were we put these packages.
+
+It would make sense to specify the order.  One order that seems obvious is to
+take the order of the contributing models, plus the extra virtual package after
+these.
+
+I added support for new properties as well.  We now have basic functionality as
+provided by the new metamodel.  I should go over what was possible in the
+previous version to make sure we have not lost any expressive power.
