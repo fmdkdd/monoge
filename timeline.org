@@ -3770,3 +3770,76 @@ these.
 I added support for new properties as well.  We now have basic functionality as
 provided by the new metamodel.  I should go over what was possible in the
 previous version to make sure we have not lost any expressive power.
+
+* [2017-07-05 mer.]
+** Handling errors in EMF models                                   :emfviews:
+Wrote a small test.  EMF does not seem to do any validation of metamodels
+created dynamically.  However, calling Diagnostician.INSTANCE.validate can give
+you a list of diagnostics: if two attributes are the same name, then it's not
+OK.
+
+The code that does the actual validation is in ecore.util.EcoreValidator.
+
+** Handling errors in Viewpoint                                    :emfviews:
+There are many ways in which loading a weaving model and executing it can fail:
+
+#+BEGIN_SRC java
+EObject parent = tryGetEObject(p.getParent());
+if (!(parent instanceof EClass)) throw new InvalidLinkedElementException(String
+    .format("Parent of new property '%s' should be an EClass", p.getName()));
+EClass parentClass = (EClass) parent;
+
+String n = p.getName();
+if (n == null) throw new ViewpointException("New property name is null");
+if (!n.matches("[a-zA-Z][a-zA-Z0-9]*")) throw new ViewpointException(String
+    .format("New property name '%s' should be non-empty, start with a letter, and contain only letters or digits",
+            n));
+
+for (EStructuralFeature f : parentClass.getEAllStructuralFeatures()) {
+  if (n.equalsIgnoreCase(f.getName())) throw new ViewpointException(String
+      .format("New property name '%s' is already taken in class '%s'", n,
+              parentClass.getName()));
+}
+#+END_SRC
+
+In many respect, the weaving model is a language, and Viewpoint.loadWeavingModel
+is an interpreter.  These ViewpointException are thus semantic errors, stemming
+from an invalid usage of the language.
+
+Now, the problem is that mixing exceptional code with the happy path is hard to
+read.
+
+Solutions:
+
+1. Do the validation in a separate class, before going down the happy path.
+
+   That amounts to writing an interpreter that visits the whole model,
+   simulating operations taken by the viewpoint, but not actually creating any
+   side effects, just throwing exceptions if the invariants are not obeyed.
+
+   Pros: happy path is totally separated from exceptional code.  All possible
+   errors are treated on the side.
+
+   Cons: duplication of visiting code, duplication of logic (to check if a
+   NewConcept has a unique name, you have to collect all the new concepts),
+   duplication of work (validation is interpreting once, and the happy path is
+   interpreting a second time).
+
+   Not sure if we can actually catch /all/ errors without creating the
+   side-effects on Viewpoint.  So there might still be exceptional code in the
+   happy path.
+
+2. Keep the validation in the happy path, but as one-liners.
+
+   E.g., call ~validateName()~ on the name before using it.  The code in
+   validateName takes care of all exceptional cases, and is hidden away.
+
+   Pros: exceptional code is kept to a minimum in the happy path.  No
+   duplication of visiting code/logic/work.
+
+   Cons: If we do any work optionally, then we may never raise an error for an
+   invalid usage.  That's like every dynamic programming language, where code
+   that is never executed is never checked.
+
+
+Will think more about this on the way home.

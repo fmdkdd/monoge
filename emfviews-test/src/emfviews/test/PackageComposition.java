@@ -5,15 +5,18 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
+import org.eclipse.emf.ecore.util.Diagnostician;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -135,5 +138,44 @@ public class PackageComposition {
 
     // Yes, the opposite is removed if we use EcoreUtil.delete, but not if we
     // use Ecore.remove.
+  }
+
+  @Test
+  public void testEcoreAddingDuplicateAttributes() {
+    // When we add twice the same attribute to an EClass, or another one with
+    // the same name, does Ecore react immediately or do we need to call some
+    // validation?
+
+    EClass c = EcoreFactory.eINSTANCE.createEClass();
+    c.setName("C");
+    EAttribute att1 = EcoreFactory.eINSTANCE.createEAttribute();
+    att1.setName("a");
+    att1.setEType(EcorePackage.Literals.ESTRING);
+
+    c.getEStructuralFeatures().add(att1);
+    c.getEStructuralFeatures().add(att1);
+
+    EAttribute att2 = EcoreFactory.eINSTANCE.createEAttribute();
+    att2.setName("a");
+    att2.setEType(EcorePackage.Literals.ESTRING);
+    c.getEStructuralFeatures().add(att2);
+
+    // Looks like... it doesn't say anything at this point. Might be because of
+    // the lack of builder pattern: you cannot signal to EMF when you are 'done'
+    // creating the metamodel here, so it doesn't complain prematurely.
+
+    // Calling the Diagnostician is like calling the Validation in the Ecore
+    // editor?
+    Diagnostic diag = Diagnostician.INSTANCE.validate(c);
+    System.out.printf("%d -- %s\n", diag.getSeverity(), diag.getMessage());
+    for (Diagnostic d : diag.getChildren()) {
+      System.out.println(d.getMessage());
+    }
+
+    EValidator.Registry r = EValidator.Registry.INSTANCE;
+
+    // Adding the same attribute twice has no effect: EMF silently does add the
+    // duplicate element. However, adding another attribute with a different
+    // name is caught by the diagnostician.
   }
 }
