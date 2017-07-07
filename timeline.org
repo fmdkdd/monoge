@@ -3843,3 +3843,44 @@ Solutions:
 
 
 Will think more about this on the way home.
+
+* [2017-07-07 ven.]
+** Dealing with exceptional cases in Viewpoint                     :emfviews:
+I've adopted solution 2.  It's the simplest, and with an utility function like
+this:
+
+#+BEGIN_SRC java
+  private ViewpointException EX(String msg, Object... args) {
+    return new ViewpointException(msg, args);
+  }
+#+END_SRC
+
+You can write:
+
+#+BEGIN_SRC java
+if (model == null)
+        throw EX("Model '%s' of concrete element cannot be found in package registry", modelURI);
+#+END_SRC
+
+Which is minimal noise.
+
+In concert with the Optional type, we can write this:
+
+#+BEGIN_SRC java
+EObject obj = EMFViewsUtil.findElement(model, path)
+          .orElseThrow(() -> EX("ConcreteElement '%s' cannot be found in model '%s'", path,
+                                modelURI));
+#+END_SRC
+
+I've thought about moving the different types of errors in ViewpointException,
+like so:
+
+#+BEGIN_SRC java
+static ViewpointException INVALID_NAME(String msg, Object... args) {
+  return new ViewpointException("Invalid name '%s'", String.format(msg, args));
+}
+#+END_SRC
+
+But that's creating an interface that I have no use for at the moment.  Maybe
+when I write tests for failures, that would be easier to check against an error
+type (from an enum?) than the exact string message.
