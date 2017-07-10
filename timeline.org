@@ -3884,3 +3884,79 @@ static ViewpointException INVALID_NAME(String msg, Object... args) {
 But that's creating an interface that I have no use for at the moment.  Maybe
 when I write tests for failures, that would be easier to check against an error
 type (from an enum?) than the exact string message.
+
+* [2017-07-10 lun.]
+** Reviewing features cut in the new weaving metamodel             :emfviews:
+From what the previous code did for the "Extension" case in Viewpoint.
+
+| Previous          | Now    |
+|-------------------+--------|
+| refine            | yes    |
+| generalize        | yes    |
+| add property      | yes(1) |
+| filter property   | yes(2) |
+| filter class      | yes(2) |
+| add constraint    | no     |
+| filter constraint | no     |
+| modify property   | yes(3) |
+| add reference     | yes(4) |
+| filter reference  | yes(2) |
+
+1) we don't support all primitive types yet, but that's a matter of minutes.
+2) superseded by ElementFilter
+3) indirectly through filter+add, but are they really equivalent?
+4) the previous code supported specifying containment reference
+
+So we are not missing anything major.
+
+Now, the most interesting aspect of the new weaving metamodel is the ability to
+target virtual model for properties, concepts and associations.  Let's focus on
+that.
+
+The "VirtualLink"/"VirtualElement" objects that are in the weaving model can be
+thought of as "instructions" or "construction orders": that's how they are used
+by the Viewpoint.  From a NewConcept, we will create an EClass.  The two objects
+are different, but the NewConcept stands in for the EClass, and there's a clear
+mapping from one to the other.
+
+So, we can collect the EObject created from a VirtualLink in a map, and look up
+this map whenever we want to target a VirtualElement.
+
+** Solving circularity in the new weaving metamodel                :emfviews:
+As already noted, creating a NewAssociation R1 with an opposite R2, R2 has to
+exist at the time R1 has its opposite set, otherwise it cannot work.
+
+Currently, since new associations are created in the order given by the XMI,
+this cannot work.
+
+Solutions:
+
+1. Delay setting the opposite value of new references until after all references
+   are created.
+
+   That fixes the circularity for opposites, but not for other cases.  Are there
+   other cases?  I'm not sure.
+
+2. Do two passes: one to create virtual elements and populate the mapping, and a
+   second one to set their EMF fields.
+
+   Solves all potential circular dependencies.  Also removes the order
+   constraint of the XMI elements.  Slightly more code complexity.
+
+3. A fully virtual metamodel would not have this issue, as it would be lazy
+   anyway.  The value for the opposite would be resolved only when code queries
+   it (e.g., the Diagnostician).
+
+   Might be the solution we end up adopting anyway.
+
+
+Circular references could happen for concepts if, e.g., C is new and has D as
+subconcept, and D is new.  D effectively has C has superconcept, but we don't
+need to repeat it.  If we did, then we would end up with a circular dependency.
+
+I'll go with #2, in the interest of correctness.
+
+Done.  Code complexity was not increased much.  A bit of additional implicit
+control flow dependency between methods (have to populate the synthetic element
+map first).  Might be mitigated by making the map an explicit argument of the
+build* methods.
