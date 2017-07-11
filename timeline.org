@@ -3960,3 +3960,29 @@ Done.  Code complexity was not increased much.  A bit of additional implicit
 control flow dependency between methods (have to populate the synthetic element
 map first).  Might be mitigated by making the map an explicit argument of the
 build* methods.
+
+* [2017-07-11 mar.]
+** Implementing whitelisting                                       :emfviews:
+In blacklisting, when you filter an element, you are implicitly filtering every
+element under it, since we are dealing with trees.
+
+So it makes sense that in whitelisting, when you filter an element /in/, it
+should implicitly include all the elements that are /above/ it in the tree, but
+not the elements below.  Otherwise, you cannot access the element, and you would
+have to explicitly filter /in/ everything above it.
+
+In practice, we can delete everything that is not filtered.
+
+Idea: go through all contributing packages and their contents, recursively, and
+create a list of (path, objects) tuples, where path is the qualified name to
+access the objects.  Then, remove all tuples from the list where path is a
+prefix to to an element filter.  Then, delete all objects that remain.
+
+But Java has no tuples.  Okay, I guess I can generate the list on the fly: for
+each EObject, determine its path, if it's not a prefix of any element filter,
+add the object to the list.  Delete all objects in the list.
+
+If an EObject is not a prefix of an element filter, we can add it to the
+elements to delete /and not descend to the children/.  But if it is a prefix, we
+have to descend until it's a match, and add the children to the elements to
+delete.
