@@ -3986,3 +3986,24 @@ If an EObject is not a prefix of an element filter, we can add it to the
 elements to delete /and not descend to the children/.  But if it is a prefix, we
 have to descend until it's a match, and add the children to the elements to
 delete.
+
+Well, no, actually we can't short-circuit, because one of the children may be
+explicitly whitelisted as well.  So we can delete only objects whose path is not
+a prefix of any element filter.  That simplifies the code, but increases time
+complexity.
+
+* [2017-07-12 mer.]
+** Whitelisting complexity is slightly worse than blacklisting     :emfviews:
+Whitelisting is O(len(model)*len(filters)), where len(model) is the total number
+of elements in the model graph, across all contributing packages.
+
+Blacklisting loops on the filters, but it calls findEObject, which calls
+findElement, and that is O(len(models)) as well.  So the two complexities are
+equal.
+
+Except than in practice, findElement can shortcut, while whitelisting in
+applyFilters never shortcuts.
+
+But, whitelisting works now.  The better approach would certainly be to be fully
+lazy.  Will think about that.
+
