@@ -4007,3 +4007,29 @@ applyFilters never shortcuts.
 But, whitelisting works now.  The better approach would certainly be to be fully
 lazy.  Will think about that.
 
+** Weaving metamodel variation                                     :emfviews:
+In the last meeting, it has been brought up that the new weaving metamodel was a
+bit confusing: new associations sources and targets point to linked elements,
+but these can be new association, which does not make sense.
+
+At the moment it's a runtime error, but it could be enforced by the metamodel.
+We could use OCL constraints, but just having a separate type for valid targets
+would work.
+
+However, while we could do that for virtual elements, we cannot do that for
+concrete elements, since we only have a path to link to them.
+
+Unless it's possible to link directly to the concrete elements... by loading the
+weaving model alongside the contributing models in the same resource set?
+
+Wrote a test... it's definitely possible to add EObjects directly into the
+weaving model, save and load that resource.  No need for findElement, and it
+should work with any EObject, not just named objects.
+
+Made [[file:doc/virtuallinks-metamodel6.graphml][another class diagram]].  But I'm not sure it's worth it, since it might tie
+too much to Ecore.
+
+Here is a [[file:doc/virtuallinks-metamodel7.graphml][slight variation]], where we only add "Concept" and "Association" and
+remove "VirtualElement".  That way, we are sure that synthetic elements cannot
+be bogus.  But we still have no clue for concrete elements, since we only have
+the FQN string.

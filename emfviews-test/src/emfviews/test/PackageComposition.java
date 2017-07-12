@@ -5,21 +5,30 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.Diagnostician;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.junit.Before;
 import org.junit.Test;
+
+import fr.inria.atlanmod.emfviews.virtuallinks.ConcreteElement;
+import fr.inria.atlanmod.emfviews.virtuallinks.ContributingModel;
+import fr.inria.atlanmod.emfviews.virtuallinks.VirtualLinksFactory;
+import fr.inria.atlanmod.emfviews.virtuallinks.WeavingModel;
 
 public class PackageComposition {
   EcoreFactory f = EcoreFactory.eINSTANCE;
@@ -177,5 +186,53 @@ public class PackageComposition {
     // Adding the same attribute twice has no effect: EMF silently does add the
     // duplicate element. However, adding another attribute with a different
     // name is caught by the diagnostician.
+  }
+
+  @Test
+  public void directObjectLink() throws IOException {
+    // Trying to include EObjects from an Ecore metamodel into a VirtualLinks instance
+
+    {
+      ResourceSet rs = new ResourceSetImpl();
+      Resource r = rs.getResource(URI.createURI("resources/metamodels/minimalA.ecore", true), true);
+      EPackage minA = (EPackage) r.getContents().get(0);
+      EClass A = (EClass) minA.getEClassifiers().get(0);
+
+      EPackage togaf = EPackage.Registry.INSTANCE
+          .getEPackage("http://www.obeonetwork.org/dsl/togaf/contentfwk/9.0.0");
+      EClassifier k = togaf.getEClassifiers().get(0);
+
+      VirtualLinksFactory f = VirtualLinksFactory.eINSTANCE;
+      WeavingModel wm = f.createWeavingModel();
+      ContributingModel cm = f.createContributingModel();
+      cm.setURI("foo");
+      ConcreteElement ce = f.createConcreteElement();
+      ce.setPath("foo");
+      ce.setModel(cm);
+      // ce.setObject(A);
+
+      ConcreteElement ce2 = f.createConcreteElement();
+      ce2.setPath("foo");
+      ce2.setModel(cm);
+      // ce2.setObject(k);
+
+      wm.getContributingModels().add(cm);
+
+      Resource wmr = rs.createResource(URI.createURI("resources/viewpoints/test/test.xmi"));
+      wmr.getContents().add(wm);
+      wmr.save(null);
+    }
+
+    {
+      Resource r = new ResourceSetImpl()
+          .getResource(URI.createURI("resources/viewpoints/test/test.xmi"), true);
+      WeavingModel wm = (WeavingModel) r.getContents().get(0);
+      // EObject o = wm.getContributingModels().get(0).getConcreteElements().get(0).getObject();
+      // System.out.println(o);
+
+      // EObject o2 = wm.getContributingModels().get(0).getConcreteElements().get(1).getObject();
+      // System.out.println(o2);
+    }
+
   }
 }

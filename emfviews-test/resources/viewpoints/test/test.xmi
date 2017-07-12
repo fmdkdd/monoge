@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="ASCII"?>
+<virtualLinks:WeavingModel xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:virtualLinks="http://inria.fr/virtualLinks">
+  <contributingModels URI="foo">
+    <concreteElements path="foo">
+      <object href="resources/metamodels/minimalA.ecore#//A"/>
+    </concreteElements>
+    <concreteElements path="foo">
+      <object href="http://www.obeonetwork.org/dsl/togaf/contentfwk/9.0.0#//EnterpriseArchitecture"/>
+    </concreteElements>
+  </contributingModels>
+</virtualLinks:WeavingModel>
