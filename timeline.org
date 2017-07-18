@@ -4033,3 +4033,105 @@ Here is a [[file:doc/virtuallinks-metamodel7.graphml][slight variation]], where 
 remove "VirtualElement".  That way, we are sure that synthetic elements cannot
 be bogus.  But we still have no clue for concrete elements, since we only have
 the FQN string.
+
+* [2017-07-18 mar.]
+** Virtualizing the viewpoint                                      :emfviews:
+Currently, Viewpoint is not truly virtual: we use the weaving model to build the
+viewpoint at construction time, and it can never change.
+
+The upside is that it's simple: you deal with stuff that's not changing.  And
+it's probably more efficient that way: the virtual contents are built ahead of
+time.
+
+The downsides are that, for large metamodels, it might not be that efficient to
+iterate over all of their features ahead of time, if only a few of them are ever
+used.  And we lose the ability to mutate the viewpoint when the metamodels
+change...
+
+But how often to metamodels change?  And we can even subscribe to their changes?
+
+Also, if an EAttribute changes name, or is deleted, but it was the target of a
+NewAssociation in the weaving model, now the weaving model is invalid.  Should
+the viewpoint subscribe to changes to the weaving model as well?
+
+H. reminded me that the point of EMFViews is to have a /lightweight/ solution to
+combine multiple models.  Not only to create new metamodels and models from
+existing ones—model transformation tools can do that already—but to combine
+huge models quickly.
+
+Another concrete use case that surfaced is for NeoEMF: using EMFViews to control
+the visibility of features for users with different access privileges.
+
+*** Use case 1: lightweight combination of models
+Now, for the first use case.  Let's say you have a few metamodels and want to
+create a viewpoint.  You:
+
+1. Create an .eviewpoint file
+2. Specify the weaving model
+3. Create the viewpoint
+
+Now, let's assume the viewpoint contents are built at creation, and cannot be
+updated.  That's the current state.
+
+**** Updating a metamodel
+You update the metamodels.  You remove a concept, or rename a concept.  The
+viewpoint doesn't change.  You have to recreate it.
+
+- Rebuild viewpoint
+
+This discards the viewpoint and rebuilds it, using the .eviewpoint file and
+weaving model once again.
+
+If that concept was referenced by the weaving model and you did not propagate
+the changes to the weaving model, then the viewpoint will emit an error.  Then
+you need to:
+
+- Update weaving model
+- Rebuild viewpoint
+
+Otherwise, the viewpoint will now reflect the new versions of the metamodels and
+weaving model.
+
+**** Updating the weaving model
+Now you update the weaving model, by adding another contributing model.  The
+viewpoint still does not pick up this change.  You have to:
+
+- Rebuild viewpoint
+
+Every time you change the weaving model.
+
+*** Use case 2: access control
+You define a viewpoint for access control on an existing metamodel:
+
+1. Create an .eviewpoint file
+2. Specify the weaving model (whitelist)
+3. Create the viewpoint
+
+It looks like the same thing.  Actually, in use case 1, the actions are probably
+interactive, and ultimately map to actions the core API.  In use case 2, the
+actions are probably direct calls to the API.
+
+*** When the viewpoint is virtual
+One approach is to make the viewpoint fully lazy.  Currently, the only entry
+point to a Viewpoint is the ~getContents~ method of the resource.  And
+currently, we return a virtual contents object that has been built at loading
+time.
+
+If, instead, we build the virtual contents object each time ~getContents~ is
+called, then we are guaranteed to always reflect the latest states.
+
+*** Let's focus on virtualizing the viewpoint without considering updates for now
+After debating with H., we just want to have the Viewpoint emit virtual
+elements, as is the case currently for EView.
+
+How to handle updates in the viewpoint or weaving model is then a separate
+concern that we might tackle later.
+
+** Trying to wrap the objects returned by Viewpoint                :emfviews:
+In the VirtualContents.  Questions abound.
+
+First of all, most of the tests that deal with Viewpoint should be changed to
+use the reflective EMF API.  Now, we know that we have EPackages, but we should
+have VirtualElements that may or may not be packages.
+
+But, do we need to wrap recursively the contents of EPackage?
