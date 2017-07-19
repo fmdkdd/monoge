@@ -4135,3 +4135,83 @@ use the reflective EMF API.  Now, we know that we have EPackages, but we should
 have VirtualElements that may or may not be packages.
 
 But, do we need to wrap recursively the contents of EPackage?
+
+* [2017-07-19 mer.]
+** Virtualizing viewpoint: first approach                          :emfviews:
+The point is to avoid copying the contributing models, and just proxy.
+
+For each contributing package:
+
+- create a new VirtualEPackage that delegates to the EPackage
+
+That should be transparent right?
+
+Looks like the Diagnostician is not happy, as it assumes it can convert to
+InternalEObject... but these are not.
+
+Too bad.  Let's toggle it off.
+
+All my tests pass... though they shouldn't, since here I am modifying the
+original metamodels.  But the tests never check for that.
+
+Hmm, but this approach won't work.  Or at least, it works at the metamodel
+level, but we should use the same architecture for the model level.  There, we
+will have no other choice but to be a VirtualEObject.  If VirtualEPackage is a
+subclass of VirtualEObject, then it works.
+
+One of the disavdantage of this approach is that implementing EObject/EPackage
+has a lot of methods.  To filter classifiers according to the blacklist for
+instance, there are at least two relevant methods:
+
+- getEClassifiers()
+- getEClassifier(String)
+
+But, one could also obtain the list of classifiers through the reflective API of
+eInvoke, eGet, etc.  That's a lot of holes to patch.
+
+The EStore approach has only two methods: get and set.  Easier to make sure it's
+correct.
+
+Otherwise, there's the DynamicEObject approach.
+
+** Virtualizing viewpoint: using EStore                            :emfviews:
+Running into weird exception of impossible casts from EPackageImpl$2 to
+EObject...
+
+That's an anonymous inner class to EPackageImpl, but where is it coming from?
+
+#+BEGIN_SRC java
+ public EList<EClassifier> getEClassifiers()
+  {
+    if (eClassifiers == null)
+    {
+      eClassifiers =
+        new EObjectContainmentWithInverseEList.Resolving<EClassifier>
+          (EClassifier.class, this, EcorePackage.EPACKAGE__ECLASSIFIERS, EcorePackage.ECLASSIFIER__EPACKAGE)
+        {
+          private static final long serialVersionUID = 1L;
+
+          @Override
+          protected void didChange()
+          {
+            eNameToEClassifierMap = null;
+          }
+        };
+    }
+    return eClassifiers;
+  }
+#+END_SRC
+
+It's this newEObjectContainment thingy.
+
+Oh wait, it's returning a /list/ and the EStore.get should return a lone
+element.  Yes, that works.
+
+Now I think I really need to update the tests to use the reflective API.... but
+it's really verbose.  Or there is another way: I could just write an utility
+method that would test if a Viewpoint matches an expected format.  We would just
+descend on the TreeIterator given by Viewpoint.getAllContents, without having to
+lookup features/classifiers by name.
+
+** Adapting the tests                                              :emfviews:
+Oh hey, Viewpoint.getAllContents() returns an empty array.
