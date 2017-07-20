@@ -4215,3 +4215,49 @@ lookup features/classifiers by name.
 
 ** Adapting the tests                                              :emfviews:
 Oh hey, Viewpoint.getAllContents() returns an empty array.
+
+* [2017-07-20 jeu.]
+** Adapting the tests                                              :emfviews:
+Update on yesterday: Viewpoint.getAllContents() returns what I need.  But I
+don't know what's the best way to test it.
+
+It's a tree iterator.  I could check it against a simple Iterator, but that
+would be checking against an infix walk of the contents, so you lose some
+information.
+
+Also, there's the matter of /how/ to describe the expected structure.  Using
+only names is too restrictive.  It seems I need to be able to check, for each
+level, the value of some feature.  So I need a tree of "feature: value".
+
+I wish I was in Lisp... making and iterating over a tree would be trivial.
+
+Using the reflective API is verbose, even with shortcuts.  Before I wrote this:
+
+#+BEGIN_SRC java
+EClass A = (EClass) ((EPackage) l.get(0)).getEClassifier("A");
+assertEquals(0, A.getEStructuralFeatures().size());
+
+EClass B = (EClass) ((EPackage) l.get(1)).getEClassifier("B");
+assertNotNull(B.getEStructuralFeature("b"));
+#+END_SRC
+
+Now I have to write this:
+
+#+BEGIN_SRC java
+EObject A = (EObject) ecall(l.get(0), EcorePackage.EPACKAGE___GET_ECLASSIFIER__STRING, "A");
+assertEquals(0, ((List) eget(A, "eStructuralFeatures")).size());
+
+EObject B = (EObject) ecall(l.get(1), EcorePackage.EPACKAGE___GET_ECLASSIFIER__STRING, "B");
+assertNotNull(ecall(B, EcorePackage.ECLASS___GET_ESTRUCTURAL_FEATURE__STRING, "b"));
+#+END_SRC
+
+When all I really want to do is to test the resource against an expected result
+of:
+
+#+BEGIN_EXAMPLE
+- minimalA
+  - A
+- minimalB
+  - B
+    - b
+#+END_EXAMPLE
