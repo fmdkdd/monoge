@@ -4261,3 +4261,100 @@ of:
   - B
     - b
 #+END_EXAMPLE
+
+* [2017-07-21 ven.]
+** Adapting the tests for the reflective API on Viewpoint          :emfviews:
+I went with a few helper methods to reduce the boilerplate, and now the tests
+use the reflective API /and/ are more readable.
+
+The "check an expected structure" seemed to cumbersome.
+
+Here is yesterday's example:
+
+#+BEGIN_SRC java
+EObject A = getClassifier(l.get(0), "A");
+assertEquals(0, getFeatures(A).size());
+
+EObject B = getClassifier(l.get(1), "B");
+assertNotNull(getFeature(B, "b"));
+#+END_SRC
+
+It made other places much neater:
+
+#+BEGIN_SRC diff
+-    @SuppressWarnings("unchecked")
+-    EList<EObject> ea_labels =
+-        (EList<EObject>) ea.eGet(ea.eClass().getEStructuralFeature("labels"));
+-    @SuppressWarnings("unchecked")
+-    EList<EObject> vea_labels =
+-        (EList<EObject>) vea.eGet(vea.eClass().getEStructuralFeature("labels"));
++    EList<EObject> ea_labels = eList(ea, "labels");
++    EList<EObject> vea_labels = eList(vea, "labels");
+#+END_SRC
+
+Looking at the whole diff, all changes are as long or shorter than the previous
+code.  Crucially, we don't have way fewer casts.  So I guess it's a win.
+
+Now, does it help with the EStore backing for Viewpoint?
+
+** Using EStore implementations for Viewpoint contents             :emfviews:
+So the tests do not magically all pass using this reflective API, unfortunately.
+
+Most of them fail trying to cast Boolean to EObject... That's weird.
+
+: getClassifier(l.get(0), "A")
+
+Okay, so that's because getClassifier calls o.eInvoke on an operation that we
+got from o.eClass.  On regular EMF classes, that works, but on our virtual
+element, the eInvoke call never goes back to our EStore implementation and
+returns ~eIsProxy~ in EObjectImpl instead.
+
+Does that mean that eInvoke does not work on EViews?  If so, that would probably
+be a nail in the coffin for this approach.
+
+Hmm, there are no operations on EViews.. for objects of the minimalref model.
+Maybe it's because there is no generated code for this metamodel?
+
+What about TOGAF?  Still empty.  eClass() always seems to be an EClassImpl, so
+eOperations is a feature, but it's empty.
+
+Hmm, I was under the impression that some operations were generated for
+getter/setters of attribute, but it seems it's not the case.  Operations are a
+separate type of element in the metamodel.  So the Ecore metamodel has
+operations, but TOGAF doesn't seem to have any.
+
+Okay, so the question remains: does eInvoke works for ReproduceElements created
+by EView?  I could load Ecore as a model and try it out...
+
+The nsURI is: http://www.eclipse.org/emf/2002/Ecore
+
+Hmm, that's interesting.  No errors when creating the EView, but the contents
+are empty.
+
+As far as I can tell, in View.loadContributingModels, we do
+virtualResourceSet.getResource() and as a side-effect the resources attributes
+of virtualResourceSet contains the contributing models resources.
+
+However, when given a model as HTTP, it /finds/ something and returns an
+EResourceFactory (instead of, say, an XMIResourceImpl), but the resources
+attributes remains empty.
+
+Since this resources attribute is used to build the contents of the View, the
+contents will be empty.
+
+Getting the returned value and explicitly adding the resource to the
+virtualResourceSet seems to fix it.
+
+Finally: I do get a ReproduceElement around an EPackage.  Calling
+eClass().getEOperations on this reproduceElem gives me...
+
+: [org.eclipse.emf.ecore.impl.EOperationImpl@56c0a61e (name: getEClassifier) (ordered: true, unique: true, lowerBound: 0, upperBound: 1)]
+
+But, using my getClassifier helper gives me the same Boolean to EObject class
+cast exception.
+
+So: it doesn't work on the EView ReproduceElement either.
+
+I should write a self-contained test with an EStoreEObject backed by an EStore
+and try an eInvoke on it.  But my guess is that it doesn't work out of the box,
+and I don't know yet if there is a way to make it work.
