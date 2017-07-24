@@ -6,17 +6,24 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 
 import org.eclipse.emf.common.util.Diagnostic;
+import org.eclipse.emf.common.util.ECollections;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.eclipse.emf.ecore.InternalEObject;
+import org.eclipse.emf.ecore.impl.DynamicEObjectImpl;
+import org.eclipse.emf.ecore.impl.EStoreEObjectImpl;
+import org.eclipse.emf.ecore.impl.EStoreEObjectImpl.EStoreImpl;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
@@ -233,6 +240,42 @@ public class PackageComposition {
       // EObject o2 = wm.getContributingModels().get(0).getConcreteElements().get(1).getObject();
       // System.out.println(o2);
     }
+  }
 
+  @Test
+  public void testEStore() throws InvocationTargetException {
+    // How does EStore react to eInvoke?
+    EStoreEObjectImpl o = new EStoreEObjectImpl();
+    o.eSetClass(EcoreFactory.eINSTANCE.createEPackage().eClass());
+
+    // This actually ends up calling o.eIsProxy, since the operation ID is 1, the same as EOBJECT___ISPROXY, and
+    // EStoreEObject is an EObject, not an EPackage
+    assertEquals(false, o.eInvoke(EcorePackage.Literals.EPACKAGE___GET_ECLASSIFIER__STRING,
+                                  ECollections.asEList("Foo")));
+
+    // So EStoreEObject does not delegate eInvoke, but it does delegate eGet and eSet
+    o.eSetStore(new EStoreImpl() {
+      @Override
+      public Object get(InternalEObject eObject, EStructuralFeature feature, int index) {
+        return "foo";
+      }
+    });
+    assertEquals("foo", o.eGet(EcorePackage.Literals.EPACKAGE__NS_URI));
+  }
+
+  @Test
+  public void testDynamicEObject() throws InvocationTargetException {
+    // Is DynamicEObject a better fit for a VirtualElement base?
+
+    // How does eInvoke behave here?
+    DynamicEObjectImpl o = new DynamicEObjectImpl();
+    o.eSetClass(EcoreFactory.eINSTANCE.createEPackage().eClass());
+
+    // It throws because the getEClassifier operation is not defined for EObject. The DynamicEObject doesn't know what
+    // actual object it represents, so it can't invoke operation more precise than EObject.
+
+    // A VirtualElement could delegate the eInvoke call to the concrete object.
+    System.out.println(o.eInvoke(EcorePackage.Literals.EPACKAGE___GET_ECLASSIFIER__STRING,
+                                 ECollections.asEList("Foo")));
   }
 }

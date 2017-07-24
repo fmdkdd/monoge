@@ -4358,3 +4358,114 @@ So: it doesn't work on the EView ReproduceElement either.
 I should write a self-contained test with an EStoreEObject backed by an EStore
 and try an eInvoke on it.  But my guess is that it doesn't work out of the box,
 and I don't know yet if there is a way to make it work.
+
+* [2017-07-24 lun.]
+** Finding out if EStore supports eInvoke or not               :emfviews:emf:
+If it doesn't, I'll have to check DynamicEObject, or write our own EObject
+implementation.
+
+Writing simply:
+
+#+BEGIN_EXAMPLE java
+    EStoreEObjectImpl o = new EStoreEObjectImpl();
+    o.eInvoke(EcorePackage.Literals.EPACKAGE___GET_ECLASSIFIER__STRING,
+              ECollections.asEList("Foo"));
+#+END_EXAMPLE
+
+(I found a new way to get the EOperation)
+
+Violates an assertion in BasicEObjectImpl: "The operation 'getEClassifier' is
+not a valid operation".
+
+Setting the class:
+
+#+BEGIN_EXAMPLE java
+    EStoreEObjectImpl o = new EStoreEObjectImpl();
+    o.eSetClass(EcoreFactory.eINSTANCE.createEPackage().eClass());
+    o.eInvoke(EcorePackage.Literals.EPACKAGE___GET_ECLASSIFIER__STRING,
+              ECollections.asEList("Foo"));
+#+END_EXAMPLE
+
+returns ~false~.  A boolean.  Probably eIsProxy again.
+
+After debugging, yes, we end up in EStoreEObjectImpl.eInvoke with the
+operationID of 1, and it happens to be the ID of ~EOBJECT___EIS_PROXY~, so we
+call that method and return false.
+
+Am I using this wrong?  It looks like using eInvoke on EStoreEObject is used to
+call /EObject operations/.  And I want it to /delegate/ eInvoke on a backing
+object.  But EStoreEObject has no notion of a backing object.
+
+It /does/, however, delegate attributes get and set to the backing store.
+
+Using eGet on the EStoreEObject ends up calling dynamicGet(featureID), which
+delegates to eStore().get().
+
+Hmm.  But we could extend EStoreEObjectImpl to delegate eInvoke to the backing
+store... but we would have to extend the store interface as well.  And,
+ultimately, it seems that extending EStoreEObject is not the proper solution: an
+EStoreEObject /delegates/ to a an EStore, but a VirtualElement aims to be
+/transparent/.
+
+Is DynamicEObject a better fit?
+
+** Exploring DynamicEObject                                    :emfviews:emf:
+Doing:
+
+#+BEGIN_SRC java
+DynamicEObjectImpl o = new DynamicEObjectImpl();
+o.eSetClass(EcoreFactory.eINSTANCE.createEPackage().eClass());
+o.eInvoke(EcorePackage.Literals.EPACKAGE___GET_ECLASSIFIER__STRING,
+          ECollections.asEList("Foo"));
+#+END_SRC
+
+throws UnsupportedOperationEx "eInvoke not implemented for getEClassifier"
+
+Promising!  We end up in BasicInvocationDelegate.dynamicInvoke, which will only
+invoke the given operations if it is an EObject operation:
+
+#+BEGIN_SRC java
+ if (eOperation.getEContainingClass() == EcorePackage.Literals.EOBJECT)
+ {
+   switch (eOperation.getEContainingClass().getEAllOperations().indexOf(eOperation))
+   {
+     case EcorePackage.EOBJECT___ECLASS:
+       return target.eClass();
+     case EcorePackage.EOBJECT___EIS_PROXY:
+       return target.eIsProxy();
+ ...
+#+END_SRC
+
+Otherwise, it throws.
+
+So it looks like we need to define an InvocationDelegate that does something
+else.
+
+An invocation delegate is a property /of an operation/.  It's a class that tells
+the operation how it should execute itself given the arguments.  So we go from:
+
+#+BEGIN_EXAMPLE
+obj.eInvoke(operation, args)
+eInvocationDelegate(operation).dynamicInvoke(obj, args)
+BasicInvocationDelegate.dynamicInvoke(obj, args)
+switch (operation id)
+  ECLASS => obj.eClass()
+  ECONTAINER => obj.eContainer()
+  ...
+#+END_EXAMPLE
+
+It's a bit convoluted.
+
+Invocation delegates are created through annotations... or we can set them
+directly on the operation.
+
+But I don't want to set them per operation.  I just want to delegate the eInvoke
+call to a concrete object, which will know how to handle it.
+
+So it looks like we'll have to build our own EObject implementation.  However,
+DynamicEObject can serve as a reference of what is actually useful in there.
+There is very little actual logic in that class, so it should serve as a guide.
+
+I think we could have a DelegatingEObject class that just delegates to a
+concrete element.  Then we could extend this Delegating class as VirtualEObject
+which adds additional control related to views (potentially filtered, etc.).
