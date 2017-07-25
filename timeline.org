@@ -4469,3 +4469,97 @@ There is very little actual logic in that class, so it should serve as a guide.
 I think we could have a DelegatingEObject class that just delegates to a
 concrete element.  Then we could extend this Delegating class as VirtualEObject
 which adds additional control related to views (potentially filtered, etc.).
+
+* [2017-07-25 mar.]
+** Using a DelegateEObject for virtualizing Viewpoint              :emfviews:
+Have to make some adjustments.
+
+We used a ResourceSet to hold the cloned and modified packages, and got them
+back through registry.getEPackage.  However, getEPackage returns null when the
+objects we put there are not instances of EPackage.
+
+When using a DelegateEObject instead of cloning the EPackages, this cannot
+work.  Instead, a simple Map from the package URI to the package object
+(actually, a delegate) works.
+
+Now, most of the tests pass; there is the issue that applyFilters just deletes
+stuff from the original packages through the delegate.  We can't do that
+anymore.
+
+Instead, we should /hide/ elements.  Having a VirtualEObject class that extends
+DelegateEObject and has a ~filtered~ field would work.  However, at the moment
+we use DelegateEObject only at the package level, but we should make sure that
+every object inside this delegated package is also delegated.
+
+One way would be to iterate on the contents of each EPackage at first, and wrap
+them in DelegateEObject.  Another would be to do it lazily at runtime, using
+membranes.
+
+Let's try to do it at construction time.
+
+Hmm, I need the original structure of the package to guide me.  What if cloned
+the packages, but then replaced every object inside by a delegate to itself?
+
+ArrayStoreException
+
+Argh, seems I can't just store anything I want here.  Okay, fine, let's go with
+the membrane approach then.
+
+First hole to plug is eContents: this gives access to non-Delegate object, and
+we should change that.
+
+Defining a MembraneEObject (for lack of a better name), that constructs a
+MembreEList and wraps objects in the get(index) method.
+
+Objects are saved in a Map to avoid creating duplicate wrappers (and to help
+preserve reference equalify).
+
+Problem: calling EcoreUtil.delete on a MembraneEObject doesn't work, because
+they are casted as InternalEObject.
+
+Well, good thing we don't need actually want to delete these objects then.  But
+wait, filters don't work that I understand, but creating new elements should
+work.
+
+Hmm, that's because we are casting to EClass in order to be able to access and
+modify getESuperTypes.  Can't we use the reflective API?
+
+: ((EList<EClass>) sub.eGet(EcorePackage.Literals.ECLASS__ESUPER_TYPES)).add(klass);
+
+It's not pretty, but we can.
+
+Hmm, wait.  The addSubConcept is more interesting.
+
+#+BEGIN_SRC java
+EObject sup = findEObject(e, registry);
+if (!(sup instanceof EClass))
+  throw EX("Superconcept '%s' of new concept '%s' should be an EClass", e, c.getName());
+klass.getESuperTypes().add((EClass) sup);
+#+END_SRC
+
+If sup is a MembraneObject, then we can't cast it to EClass obviously.  We could
+use his delegate object... but should we?
+
+It seems we have to, because we can't add anything other than an EClass a super
+type.  MembraneEObject does not implements EClass, and if we start duplicating
+Membranes to include MembraneEClass, MembreEReference, etc., then we are not
+sharing code with the View level anymore.
+
+What happens if we use the delegate?  It means we mix virtual classes and
+original classes.  And it adds a way to get to original classes from synthetic
+elements in the virtual package.
+
+Hmm I think I see a solution:
+
+     delegates to
+ D_1 ------------> C_1
+                   ^
+                   |
+ D_2 ------------> C_2
+
+C_1 is the original concept, C_2 is a new subconcept.  Since we deal with
+delegates, we can't subclass D_1 with C_2 directly.  However, we can subclass C_1
+with C_2, and then expose a delegate D_2 to C_2.
+
+That also solves the question of whether to expose synthetic elements directly
+or through delegates.
