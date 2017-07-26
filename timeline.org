@@ -4563,3 +4563,63 @@ with C_2, and then expose a delegate D_2 to C_2.
 
 That also solves the question of whether to expose synthetic elements directly
 or through delegates.
+
+* [2017-07-26 mer.]
+** On yesterday's solution to the subconcept problem               :emfviews:
+There's one downside: if the inheritance link is added to the concrete elements,
+then we are modifying the existing model, rather than modifying the view.
+
+The alternative is then to create the inheritance link between the delegates:
+
+     delegates to
+ D_1 ------------> C_1
+ ^
+ |
+ D_2 ------------> C_2
+
+But then, the delegates need to hold extra information.  Basically, we need to
+have a VirtualClass object that implements EClass.
+
+Trying the VirtualClass/VirtualProperty approach.  First VirtualProperty:
+
+#+BEGIN_SRC java
+public class VirtualEAttribute implements EAttribute {
+
+  protected VirtualProperty virtualProperty;
+  protected EAttribute backing;
+#+END_SRC
+
+It implements EAttribute to be transparent for EMF.  But it holds the
+VirtualProperty instance it is supposed to represent.  The backing EAttribute is
+used to hold all the relevant EAttribute fields, rather than duplicating them.
+
+But now, this object cannot be cast to InternalEObject when doing:
+
+: parentClass.getEStructuralFeatures().add(attr);
+
+Well, we don't want to do that anymore anyway.  The VirtualEAttribute already
+has a parent that is held by its VirtualProperty.  The more interesting question
+is what happens when we interrogate our VirtualEAttribute?
+
+We fail at:
+
+#+BEGIN_SRC java
+   EObject f = getFeature(A, "newProperty");
+   assertNotNull(f);
+#+END_SRC
+
+~f~ is null, because we can't find the feature on A.  So in order to make this
+work, we have to implement VirtualEClass as well, and create these.
+
+Similar problem with VirtualEClass:
+
+: virtualPackage.getEClassifiers().add(klass);
+
+Cannot cast to InternalEObject.  Seems EMF doesn't want us to mix our homebrewed
+virtual EObjects with regular EPackage.
+
+Have to implement VirtualEPackage then.
+
+Or maybe we can work around this restriction, since the only thing that we do
+with our new concepts is to expose them in our VirtualContents.  If instead of
+priving a package, we provide a list EClass, it could work.
