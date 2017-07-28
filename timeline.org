@@ -4622,4 +4622,4 @@ Have to implement VirtualEPackage then.
 
 Or maybe we can work around this restriction, since the only thing that we do
 with our new concepts is to expose them in our VirtualContents.  If instead of
-priving a package, we provide a list EClass, it could work.
+providing a package, we provide a list EClass, it could work.
