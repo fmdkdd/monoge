@@ -4623,3 +4623,78 @@ Have to implement VirtualEPackage then.
 Or maybe we can work around this restriction, since the only thing that we do
 with our new concepts is to expose them in our VirtualContents.  If instead of
 providing a package, we provide a list EClass, it could work.
+
+* [2017-08-01 mar.]
+** Picking up on VirtualEClass                                     :emfviews:
+VirtualEClass.getName() does return the name of the backing virtual concept or
+EClass, but toString doesn't.
+
+Oh, that's why.  Here is ENamedElementImpl:
+
+#+BEGIN_SRC java
+public String toString() {
+  if (eIsProxy()) return super.toString();
+
+  StringBuffer result = new StringBuffer(super.toString());
+  result.append(" (name: ");
+  result.append(name);
+  result.append(')');
+  return result.toString();
+}
+#+END_SRC
+
+It uses the name attribute directly, instead of using the getter.  If we want
+toString to be transparent, we have to change the attribute as well then.
+
+But that's again an issue: are there other such attributes that are used
+internally without going through the accessors?
+
+I'm dreading what happens on equals...
+
+Hmm, okay, looks like we end up in Object.equals, which uses reference
+equality.  I was wondering whether Object.equals was an equivalence, and the
+documentation says it is.  Good.
+
+Now, do we need to implement equals on VirtualEClass?
+
+Hmm, even if we did, it wouldn't be symmetric:
+
+: x.equals(y)
+
+would work when X is a VirtualEClass, but not when X is an EClass and Y is
+virtual, because X would juste reference equality.
+
+So I guess this is a nail in the coffin of the "completely transparent"
+objective.  Hmm.  We could always tell a virtual EClass from its backing class
+using object reference directly though.  So I guess what's still missing is a
+definition of what "transparent" means here.
+
+In any case, maybe the tests are the one that need to change here.
+
+Hmm, actually, the issue here is that we test:
+
+: assertEquals(getClassifier(l.get(0), "A"), sups.get(0));
+
+In words: the super type "A" of our new virtual concept "C" should be equal to
+the class "A" we obtain from the first contributing package in the viewpoint.
+
+Given the equals implementation on EClass, equality here means that they should
+be /the same object/.
+
+I think the test is correct in expecting both to be the same objects.  It's
+related to issue #1: What happens to classes of a contributing package that are
+not referenced.
+
+But here the case is pretty clear I think: the virtual C references the concrete
+A, so we must lift A into the virtual world.  That the test fail is a leak in our
+virtual world abstraction.
+
+So, that means that the virtual contents should lift everything it contains.
+How do we do that?  That's issue #5: how to make sure that the virtual contents
+are always virtual objects?
+
+To start with, I'll wrap all the EClass of the contributing packages into a
+VirtualEClass.
+
+Now all the addConcept tests pass.  But surely, it does not stop here as we only
+delegate the /name/ of the EClass in our VirtualEClass, and nothing else.
