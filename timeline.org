@@ -4698,3 +4698,35 @@ VirtualEClass.
 
 Now all the addConcept tests pass.  But surely, it does not stop here as we only
 delegate the /name/ of the EClass in our VirtualEClass, and nothing else.
+
+* [2017-08-02 mer.]
+** New plan for the virtual metamodel                              :emfviews:
+First, try to see if we can trick EMF into taking VirtualEClass by implementing
+InternalEObject.  Maybe it's feasible, maybe it's a hassle.  Maybe we have to
+add so many attributes that are too similar to the reference EClassImpl
+implementation that it makes little sense.
+
+The main benefit of implementing InternalEObject would be to be lightweight by
+having less attributes than an EClass.  If we end up with too many attributes,
+then it's probably not worth it.
+
+** Different ways of handling filters                              :emfviews:
+There are two ways of using the filters in the weaving model.
+
+First, we can use them statically, at the creation of the virtual metamodel: we
+create only the VirtualEClass that are not filtered.  This is equivalent with
+what we have now.
+
+Or, we use the filters dynamically.  VirtualEClass (or rather, VirtualEObject)
+has a list of filters to apply, and whenever we ask for the contents of
+VirtualEClass, we only return the ones that are non-filtered.
+
+Again, there are two ways of doing that.
+
+We could populate the VirtualEClass, at creation time, with proxies for all its
+potential contents.  When asked for its contents, it will just return those that
+are not filtered out.
+
+Or, we could be fully lazy, and just keep a list of created proxies so far.
+Whenever we get asked for the contents, we populate a list with the proxies of
+unfiltered classifiers, and if a proxy does not exist, we create it on the fly.
