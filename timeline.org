@@ -4730,3 +4730,240 @@ are not filtered out.
 Or, we could be fully lazy, and just keep a list of created proxies so far.
 Whenever we get asked for the contents, we populate a list with the proxies of
 unfiltered classifiers, and if a proxy does not exist, we create it on the fly.
+
+* [2017-08-03 jeu.]
+** Trying out implementing InternalEObject                         :emfviews:
+Doesn't seem to make much sense.  Right now it's asking me for:
+
+: public NotificationChain eInverseAdd(InternalEObject otherEnd, int featureID, Class<?> baseClass,
+                                       NotificationChain notifications) {
+
+To be implemented.  But, first it really looks like it deals with internal
+matters of EMF, so it might be a very bad idea.  Second, I actually have no clue
+on how to implement that.
+
+However, maybe we can inherit from BasicEObjectImpl instead of EClass, and
+implement EClass on top of that.
+
+** Extending BasicEObjectImpl                                      :emfviews:
+Haha.  I get an UnsupportedOpEx, not in my VirtualEClass, but in
+BasicEObjectImpl itself:
+
+#+BEGIN_SRC java
+protected EPropertiesHolder eBasicProperties()
+{
+  throw new UnsupportedOperationException();
+  // return eProperties;
+}
+#+END_SRC
+
+Even though BasicEObjectImpl is not abstract, it's not a class you can use
+without overriding methods.  Trying this:
+
+#+BEGIN_SRC java
+EPropertiesHolder eProperties;
+
+@Override
+protected EPropertiesHolder eProperties() {
+  if (eProperties == null) {
+    eProperties = new EPropertiesHolderImpl();
+  }
+  return eProperties;
+}
+
+@Override
+protected EPropertiesHolder eBasicProperties() {
+  return eProperties;
+}
+#+END_SRC
+
+Doesn't work, because the EPropertiesHolderImpl constructor is not visible, even
+though the class is protected.
+
+Hmm.  Protected should be available to subclasses, but for some reason it
+doesn't work here.  Maybe the /constructor/, being implicit, has the default
+visibility.
+
+Hmm, doing:
+
+#+BEGIN_SRC java
+public class TestVisibility {
+  protected static class A {
+    protected A() {}
+  }
+}
+#+END_SRC
+
+and:
+
+#+BEGIN_SRC java
+public class Foo extends TestVisibility {
+  public void foo() {
+    A a = new A();
+  }
+}
+#+END_SRC
+
+in another package, still doesn't work.  Changing the constructor A to public is
+the only way to make it accessible.
+
+Is it that way for non-inner classes as well?
+
+#+BEGIN_SRC java
+public class TestVisibility {
+  protected TestVisibility() {}
+}
+#+END_SRC
+
+#+BEGIN_SRC java
+public class Foo extends TestVisibility {
+  public Foo() {
+    super();
+  }
+  public static void main() {
+    TestVisibility t = new TestVisibility();
+  }
+}
+
+#+END_SRC
+
+Here, the explicit call to ~new TestVisibility()~ is failing because the
+constructor is not visible.  But the call to ~super~ is okay, even though we use
+the same constructor: because the constructor is available to subclasses.
+
+If however we remove the ~protected~ on the TestVisibility constructor, then the
+~super~ call is illegal.
+
+Okay, coherent.
+
+Now, for the inner class, ~protected~ makes the constructor only available to
+subclasses of /that inner class/, and not to subclasses of its parent class.
+
+And since I don't see any constructor, I'm guessing a ~protected~ inner class
+has a default constructor with ~protected~ visibility.
+
+One trick would then be to extend the inner class, just to be able to
+instantiate it:
+
+#+BEGIN_SRC java
+public class Foo extends TestVisibility {
+  protected static class MyA extends A {}
+  public void foo() {
+    A a = new MyA();
+  }
+#+END_SRC
+
+And this works.  It's a tad stupid looking, because it's just saying: "ok,
+please let me construct this class", and usually the visibility is controlled by
+the class that defines it, not the class that uses it.  Meh.
+
+Found two relevant SO threads:
+- https://stackoverflow.com/q/11605388
+- https://stackoverflow.com/a/17610709
+
+In both, the accepted answer is to make the inner class constructor public.  But
+what if it's not code you can modify?  In the second link, someone suggests to
+extend the class like I did here.
+
+Let's try that on BasicEObject then.  Yes, I can construct MyEPropertiesHolder.
+
+Now it doesn't work yet because... I need to implement getStaticClass().
+
+Okay, done.
+
+Now, another method that is unsupported but not abstract:
+
+#+BEGIN_SRC java
+public InternalEObject eInternalContainer()
+{
+  throw new UnsupportedOperationException();
+  //return eContainer;
+}
+
+public int eContainerFeatureID()
+{
+  throw new UnsupportedOperationException();
+  // return eContainerFeatureID;
+}
+#+END_SRC
+
+I do notice that at some point it was implemented, maybe?
+
+At this point, it might make more sense to directly extend EObjectImpl, since
+I'm lifting code from it anyway.
+
+** Extending EObjectImpl                                           :emfviews:
+Oh, wow.  The addConcept test passes, all the other stack overflow.
+
+For the first test addProperty, I've isolated the stack overflow to
+buildNewProperties.findEObject.  Then in EMFViews.findElement.
+
+Then in this:
+
+: return dynamicFeatureID < 0 ?
+      eGet(eFeature, resolve) /* backward compatibility with old generated overrides */
+
+And that's where we loop, because that ~eGet~ will call the ~eGet~ on the same
+BasicEObjectImpl.
+
+So it looks like we have to override eGet to get out of this loop.
+
+Or, that comment seems to indicate that maybe we shouldn't go through this
+branch.
+
+Hmm, implementing eGet is not enough, as it looks like we need eIsSet as well.
+And probably eSet and eUnset.  Crapshoot.
+
+Or maybe we shouldn't pass as /the/ EClass class in eStaticClass.
+
+Trying to override eStaticFeature count to 0 so always go through the dynamicGet
+method... we then go through eSettings[featureID] instead, but this array is
+full of nulls.
+
+When is it populated?  Looks like neither BasicEObject or EObject populates it,
+so... no wonder it's empty.
+
+Out of curiosity, extending MinimalEObjectImpl instead of EObjectImpl makes no
+difference.  From the docstring, the Minimal variant is "space-compact", but it
+doesn't say if its inner workings are different.
+
+Let's try the eGet route one more time.
+
+Copying the eGet/eIsSet methods of EClassImpl.  Get a bunch of errors because
+these sometimes refer to attributes that exist in EClassImpl, not merely
+accessors.
+
+Replacing with UnspportedOpEx, we end up in:
+
+#+BEGIN_SRC java
+  public boolean eIsSet(int featureID) {
+    switch (featureID) {
+    case EcorePackage.ECLASS__EANNOTATIONS:
+#+END_SRC
+
+Replacing with ~return false~ then (let's say VirtualEClass does not support
+Annotations currently).
+
+Same for ~ETYPE_PARAMETERS~.  EOPERATIONS.  ~ESTRUCTURAL_FEATURES~.
+~EGENERIC_SUPER_TYPES~.
+
+Then, overriding getESuperTypes like this:
+
+#+BEGIN_SRC java
+@Override
+public EList<EClass> getESuperTypes() {
+  if (virtualConcept != null) {
+    List<EClass> l = new ArrayList<>();
+    for (Concept c : virtualConcept.getSuperConcepts()) {
+      l.add((EClass) viewpoint.findEObject(c));
+    }
+    return ECollections.asEList(l);
+  } else {
+    return eClass.getESuperTypes();
+  }
+}
+#+END_SRC
+
+makes the addSubConcept test pass.
+
+However, the addSuperConcept has a worrying ClassCastException.  We'll see tomorrow.
