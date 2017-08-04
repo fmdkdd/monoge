@@ -5005,4 +5005,170 @@ sups.add(C);
 
 That's because the feature ESuperTypes is typed to contain only EClass, and even
 though the reflective API allows you to send any EObject, there is still a
-runtime check for the type.
+runtime check for the type.  In DelegatingEcoreList.validate:
+
+#+BEGIN_SRC java
+if (object != null && !isInstance(object))
+{
+  throw new ArrayStoreException();
+}
+#+END_SRC
+
+And isInstance ends up doing:
+
+: getEStructuralFeature().getEType().isInstance(object);
+
+So, no dice.
+
+Back to extending EClass then.
+
+** Extending EClassImpl                                            :emfviews:
+VirtualEPackage, VirtualEClass, VirtualEAttribute, ...
+
+If I turn of the Ecore validation, all tests pass except the
+filterBidirectionalReference.
+
+We can still access the parentA feature through eOpposite.  I'm guessing now
+that we partly copy stuff and partly proxy them, we have some dangling links.
+
+For instance here, I have parentA that's a feature in the ProxyEClass for B, but
+its eOpposite field is the manyB feature in the concrete class A.
+
+So we have mixed concrete and virtual elements.
+
+** Summary of the different solutions to make the metamodel virtual :emfviews:
+Note that we are really talking about the /metamodel/ level here, and not the
+model level.  The model level is already virtual with ReproduceElement and other
+elements, so for instance updates on the contributing models are propagated to
+the view without any difficulty.
+
+So, we wanted to make the metamodel (Viewpoint) virtual in the same way.
+
+*** Previous behavior: cloning everything
+Previously, for the metamodel level was simply cloned each of the contributing
+metamodels into a "virtual" resource set.
+
+After that, we could simply delete the cloned elements (classes/features) that
+were filtered out.  Then add any virtual elements
+(concepts/properties/associations) to these cloned and filtered packages.
+
+What are the downsides with the cloning approach?  Mainly, that it's not
+virtual, so we lose the ability to react to changes to the contributing
+metamodels.  Also, it's static: the contributing metamodels are cloned at the
+construction of the Viewpoint, so we cannot adapt to change in the weaving model
+either.  There is a slight memory hit as well, as ideally the metamodel level
+would contain only lightweight proxies to the contributing elements of the
+metamodel, and not full EPackage/EClass/EAttribute instances.  Finally, it would
+have been neater to have some symmetry between the metamodel level and the model
+level, as it was announced in the EMFViews paper.
+
+So, now what are our options for making the metamodel level virtual?
+
+*** Using EStore
+The first one is using EStore, as this is what is used at the model level.  At
+the model level, our proxies are EStoreEObjectImpl objects, that use singleton
+EStore instances (e.g., ReproduceRule) that captures eGet/eSet calls.
+
+Why can't we use EStore at the metamodel level?  In the viewpoint, we can add
+new properties or new concepts.  To add a property, we create an EAttribute and
+we add it to a parent concept using:
+
+: concept.getEStructuralFeatures().add(attr)
+
+But in order for that to work, ~concept~ must be an ~EClass~, and ~attr~ must be
+an EStructuralFeature.  An EStoreEObject is neither of those.
+
+Can't we subclass EStoreEObject and implement EClass?  Well, first of all,
+implementing EClass is far from trivial.  There are many methods, and it's not
+all clear how we would define them, apart from lifting code from EClassImpl.
+But more importantly, EClassImpl implements two additional, /internal/
+interfaces InternalEObject and ESuperAdapter.Holder.  If we don't implement
+these, our EStoreEObject won't be able to pass off as a regular EClass and we'll
+get a ClassCastException.  Again, implementing InternalEObject and
+ESuperAdapter.Holder could be done in theory, but in practice I have no idea
+what to put in these methods that is not already defined by EClassImpl itself.
+
+So, it seems the only practical solution is to reuse an implementation like
+EClassImpl and to override the right methods.
+
+However, we could also reuse a more generic implementation, like
+BasicEObjectImpl and work from there.
+
+*** Extending BasicEObjectImpl
+BasicEObjectImpl is nearly at the top of the hierarchy of Ecore.  We could
+create:
+
+: VirtualEObject extends BasicEObjectImpl
+
+Then:
+
+: VirtualEClass extends VirtualEObject implements EClass
+
+This way we would be able to pass off as a proper EObject with internal
+interfaces, satisying EMF, but we would still neatly implement only interfaces,
+in order to have less coupling with EMF in the subclasses of VirtualEObject.
+
+Why doesn't this work?  Because BasicEObjectImlp, as the name might have
+implied, is not complete: it has methods that throw UnsupporteOperationEx.  Even
+though the class is not abstract, you cannot use instances of it without
+overriding some methods like eProperties, eBasicProperties, eContainer,
+eInternalContainer...
+
+We can go down in the hierarchy and try EObjectImpl.
+
+*** Extending EObjectImpl
+EObjectImpl basically overrides the methods that BasicEObjectImpl left throwing
+UnsupportedOperationEx, and not much else.
+
+Why doesn't this work?  Because EClassImpl has an additional internal interface,
+ESuperAdapter.Holder, so we face the same issue as with InternalEObject.  A
+VirtualEClass, being an EObjectImpl, cannot be cast as yet another internal
+interface.  Though, ESuperAdapter.Holder contains only two methods, but one of
+them is to return a new ESuperAdapter, and again I have no idea how to create
+one other than lifting the code from EClassImpl.
+
+So, again, we end up with extending EClassImpl as being the only practical
+solution for a VirtualEClass.
+
+*** Foreseen challenges in extending EClassImpl
+So, let's see where are at: we wanted lightweight proxies by avoiding the
+creation of a full EObject/EClass/EAttribute as that was the case in the cloning
+approach.  But now, we are proposing to have VirtualEClass, VirtualEAttribute,
+etc., and each one would /be/ an instance of EClass or EAttribute.  So we
+wouldn't be any more lightweight in this case.
+
+Also, the step after the virtualization of the metamodel is to use the same
+architecture for the model level, unifying the two.  For that, a VirtualEObject
+seems indicated.  If we had VirtualEClass as a subclass of VirtualEObject, then
+the whole thing would have make much sense.  But we can't have that if
+VirtualEClass is already a subclass of EClassImpl.  That's a bummer.
+
+However, we would be able to be more dynamic, so it's still a gain in this
+respect.
+
+The main challenges of this approach is that, while cloning was rather
+straightforward, now we have proxies to the elements of the contributing
+metamodels, and we have to make sure the assembled virtual metamodel is
+coherent, with respect to the many pointers between bidirectional references,
+containers, and the like.
+
+It's also somewhat harder to be sure that we don't modify the contributing
+metamodels.  In the cloning case, well we had full clones, so we trust EMF to do
+the right thing.  But here, our proxies have to use the data from the underlying
+metamodel elements, without giving direct access to them or accidentally
+modifying them.
+
+*** An unexplored solution with EStore
+Writing this, I realize there's a trail I have left unexplored.
+
+I've said that EStore was insufficient, because we couldn't cast an
+EStoreEObject to an EClass.  But that restriction stems from the fact that we
+are /populating/ the virtual metamodel with actual instances of
+EClass/EAttribute etc.
+
+It seems to me that, at least in theory, we could make the virtual layer lazy,
+and "just" intercept interesting features through eGet/eSet in EStore, in order
+to make the relationships described by the weaving model "appear" real to the
+callers, even though the instances would be short-lived.
+
+Or, we can memoize the instances.  Shouldn't make much of a difference.
