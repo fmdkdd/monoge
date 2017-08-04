@@ -10,10 +10,12 @@ import java.lang.reflect.InvocationTargetException;
 
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.common.util.ECollections;
+import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
@@ -277,5 +279,26 @@ public class PackageComposition {
     // A VirtualElement could delegate the eInvoke call to the concrete object.
     System.out.println(o.eInvoke(EcorePackage.Literals.EPACKAGE___GET_ECLASSIFIER__STRING,
                                  ECollections.asEList("Foo")));
+  }
+
+  @Test
+  public void testReflectiveAPI() {
+    // We must have an EClass to add as ESuperType, but can we use a non-EClass
+    // when adding through the reflective API?
+
+    EClass A = EcoreFactory.eINSTANCE.createEClass();
+    A.setName("A");
+    EClass B = EcoreFactory.eINSTANCE.createEClass();
+    B.setName("B");
+
+    // This works
+    A.getESuperTypes().add(B);
+
+    // This throws, because the ESuperTypes feature has an eType of EClass, so even
+    // through the reflective API there is a runtime check on the type of the argument
+    // given to add()
+    EObject C = EcoreFactory.eINSTANCE.createEObject();
+    EList<EObject> sups = (EList<EObject>) A.eGet(EcorePackage.Literals.ECLASS__ESUPER_TYPES);
+    sups.add(C);
   }
 }

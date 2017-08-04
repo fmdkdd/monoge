@@ -4966,4 +4966,43 @@ public EList<EClass> getESuperTypes() {
 
 makes the addSubConcept test pass.
 
-However, the addSuperConcept has a worrying ClassCastException.  We'll see tomorrow.
+However, the addSuperConcept has a worrying ClassCastException.  We'll see
+tomorrow.
+
+* [2017-08-04 ven.]
+** ESuperAdapter class cast exception                              :emfviews:
+Okay, so EClassImpl actually implements ESuperAdapter.Holder in addition to
+EClass.
+
+That's getting tiring.  There's only two methods in there, but it's still yet
+other code that has no bearing on VirtualEClass.
+
+I feel I've exhausted this path at this point.
+
+I'll go back to extending EClassImpl.
+
+But before that, I want to check whether it's possible to use the reflective API
+of EMF in Viewpoint.
+
+** Using the reflective API in Viewpoint                           :emfviews:
+Since I rewrote the tests using the reflective API to avoid casting, there might
+also be a way to rewrite the code in Viewpoint the same way.
+
+And then, maybe we don't even have to extend EClass, but just use EStore, maybe?
+
+I think I just need to test whether you can add an EObject as super type through
+the reflective API to start with.
+
+When trying this:
+
+#+BEGIN_SRC java
+EObject C = EcoreFactory.eINSTANCE.createEObject();
+EList<EObject> sups = (EList<EObject>) A.eGet(EcorePackage.Literals.ECLASS__ESUPER_TYPES);
+sups.add(C);
+#+END_SRC
+
+: ArrayStoreException
+
+That's because the feature ESuperTypes is typed to contain only EClass, and even
+though the reflective API allows you to send any EObject, there is still a
+runtime check for the type.
