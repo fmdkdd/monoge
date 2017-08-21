@@ -5067,7 +5067,7 @@ So, now what are our options for making the metamodel level virtual?
 *** Using EStore
 The first one is using EStore, as this is what is used at the model level.  At
 the model level, our proxies are EStoreEObjectImpl objects, that use singleton
-EStore instances (e.g., ReproduceRule) that captures eGet/eSet calls.
+EStore instances (e.g., ReproduceRule) to capture eGet/eSet calls.
 
 Why can't we use EStore at the metamodel level?  In the viewpoint, we can add
 new properties or new concepts.  To add a property, we create an EAttribute and
@@ -5172,3 +5172,69 @@ to make the relationships described by the weaving model "appear" real to the
 callers, even though the instances would be short-lived.
 
 Or, we can memoize the instances.  Shouldn't make much of a difference.
+
+* [2017-08-21 lun.]
+** Exploring the alternative EStore solution                       :emfviews:
+As a way to refresh my mind on how this all works.
+
+I think using EStore for proxifying contributing classes should work fine.  At
+least at the top level, for exposing packages.  But then, I guess it's not
+sufficient if we want to make sure that the contents of this virtual package are
+also virtual objects.
+
+Let's see.
+
+Trying to use ReproduceElementImpl directly as my EStore backing to see how if
+it can be used directly on Viewpoint as-is.  Looks like no, because
+ReproduceRule will cast the resource of the element to a View in order to get
+the MetamodelManager and access to translateToVirtualElement.
+
+Let's try to implement EStore ourselves.
+
+Implementing EStore.get like this:
+
+#+BEGIN_SRC java
+public Object get(InternalEObject object, EStructuralFeature feature, int index) {
+  Object value = concreteElement.eGet(feature);
+  if (index != NO_INDEX) {
+    List<Object> list = (List<Object>) value;
+    return list.get(index);
+  } else {
+    return value;
+  }
+}
+#+END_SRC
+
+is enough to fool eGet(o, "name").  But then I run into [[*Using%20EStore%20implementations%20for%20Viewpoint%20contents][the same issue I had
+with getClassifier]], namely that calling eInvoke on EStoreEObject does not
+delegate to the EStore, like eGet does.
+
+Okay, getClassifiers() works because it returns the eClassifiers /feature/, so
+that is delegated to the EStore.  But getClassifier(String) actually looks up
+the classifier by name using the getEClassifier(String) operation on the
+EPackage class, through eInvoke.  The latter is not delegated to the EStore and
+thus calls the wrong method.
+
+Well, if we reimplement getClassifier(String) to not use eInvoke, we should be
+good.
+
+Yep, that's enough.
+
+So it looks like this could work.  The major hurdle I encountered previously
+wasn't really one.  I was confused, and did not think of using the reflective
+API to its full extent.
+
+The main difference with extending EClassImpl is that we are not an EClass, but
+merely an EObject.  Consumers would be restricted to use the reflective API to
+list classifiers etc., whereas they could just cast to
+EPackage/EClass/EAttribute in the other solution.
+
+Both solutions have the same challenges: making sure that elements returned by
+our proxies are also proxified.  Although, in the EStore case, we have less
+methods to worry about (many of the EStore methods are defined in
+TranslationRule in terms of a core set including ~get~, ~isSet~...).
+
+Ultimately, the EStore solution has the advantage of being much simpler /and/
+would allow us to share most of the code between the model and metamodel levels.
+
+Tomorrow: see how to add a virtual concept.
