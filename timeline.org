@@ -5238,3 +5238,40 @@ Ultimately, the EStore solution has the advantage of being much simpler /and/
 would allow us to share most of the code between the model and metamodel levels.
 
 Tomorrow: see how to add a virtual concept.
+
+* [2017-08-22 mar.]
+** Virtualizing all objects                                        :emfviews:
+I'm not /sure/ it virtualizes everything, but I based the logic off
+ReproduceRule, and it's a start.
+
+The tricky bit is that EStore.get can return EObject as well as basic Java
+objects (depending on the feature).  And it also can return a whole list, or an
+individual element, depending on the index argument.  All these cases are munged
+together in this method.
+
+And when we return a list, we have to make sure that accessing an element from
+it doesn't leak a non-virtual object.
+
+Adding a virtual concept works the same, for the time being, since virtual
+concepts are put into a new virtual package (that is actually not virtual at
+all, it's just an EPackage instance).
+
+Adding a property, as well as filtering, modifies the original metamodel.  The
+reason for that is that's we actually do in Viewpoint right now: we create a new
+EAttribute and add it to the /original/ classes.  Then in getContents we return
+a proxy to this class, but it's already modified.
+
+What we should do instead is, when we list the features of A, we answer with a
+list made of its concrete features /plus/ its virtual features.  We can
+intercept that in EStore.get.
+
+Yep, that works.  And this may hint at a specifity of the metamodel
+virtualization: we have to add specific logic for features of EcorePackage if we
+want to disguise our virtual objects as EPackage, EClass, and so on.  Whereas,
+at the model layer, we don't need this special handling code.
+
+In fact, it might make more sense to have this logic be in separate class.
+Singletons, since we only need one instance of each type
+(EPackage/EClass/EAttribute) to redefine the EStore methods.
+
+Tomorrow: assocations and filtering.
