@@ -5275,3 +5275,118 @@ Singletons, since we only need one instance of each type
 (EPackage/EClass/EAttribute) to redefine the EStore methods.
 
 Tomorrow: assocations and filtering.
+
+* [2017-08-23 mer.]
+** That Eclipse bug about the disappearing cursor                   :eclipse:
+is really irritating.
+
+I can reproduce reliably: hover on a warning, click on quickfix: invisible
+caret.  I can still type and text will appear where the caret was, but not all
+bindings work (like undo).
+
+Moving the mouse to the window title bar restores the caret.
+
+Tried in Unity: caret doesn't disappear.
+
+Tried with compiling latest i3 (4.13): caret disappears.
+
+Tried to get a log of i3, but didn't see anything.  Here is a timeline of events
+that seem relevant:
+
+#+BEGIN_EXAMPLE
+23/08/2017 13:15:16 - focused now = 0xea2110 / foo.java - Eclipse Platform
+...
+23/08/2017 13:15:16 - x.c:x_push_changes:1116 - Updating focus (focused: 0xea2110 / foo.java - Eclipse Platform ) to X11 window 0x01c000ce
+23/08/2017 13:15:16 - ipc.c:ipc_send_window_event:1279 - Issue IPC window focus event (con = 0xea2110, window = 0x01c000ce)
+...
+23/08/2017 13:15:18 - ClientMessage for window 0x01c0497f
+23/08/2017 13:15:18 - handlers.c:handle_client_message:656 - Unknown atom in clientmessage of type 367
+23/08/2017 13:15:19 - handlers.c:handle_event:1369 - event type 33, xkb_base 85
+23/08/2017 13:15:19 - ClientMessage for window 0x01c0565d
+23/08/2017 13:15:19 - handlers.c:handle_client_message:656 - Unknown atom in clientmessage of type 367
+23/08/2017 13:15:19 - handlers.c:handle_event:1369 - event type 18, xkb_base 85
+23/08/2017 13:15:19 - handlers.c:handle_unmap_notify_event:446 - UnmapNotify for 0x01c0497f (received from 0x000000fb), serial 3997
+23/08/2017 13:15:19 - Not a managed window, ignoring UnmapNotify event
+23/08/2017 13:15:19 - handlers.c:handle_event:1369 - event type 85, xkb_base 85
+23/08/2017 13:15:19 - handlers.c:handle_event:1378 - xkb event, need to handle it.
+23/08/2017 13:15:19 - handlers.c:handle_event:1404 - xkb state group = 0
+23/08/2017 13:15:19 - handlers.c:handle_event:1369 - event type 10, xkb_base 85
+23/08/2017 13:15:19 - handlers.c:handle_event:1369 - event type 28, xkb_base 85
+23/08/2017 13:15:19 - handlers.c:handle_event:1369 - event type 85, xkb_base 85
+23/08/2017 13:15:19 - handlers.c:handle_event:1378 - xkb event, need to handle it.
+23/08/2017 13:15:19 - handlers.c:handle_event:1404 - xkb state group = 0
+23/08/2017 13:15:19 - handlers.c:handle_event:1369 - event type 33, xkb_base 85
+23/08/2017 13:15:19 - ClientMessage for window 0x01c000ce
+23/08/2017 13:15:19 - handlers.c:handle_client_message:705 - _NET_ACTIVE_WINDOW: Window 0x01c000ce should be activated
+23/08/2017 13:15:19 - workspace visible? fs = 0xea1f20, ws = 0xea1f20
+23/08/2017 13:15:19 - handlers.c:handle_client_message:744 - Focusing con = 0xea2110
+23/08/2017 13:15:19 - workspace.c:_workspace_show:384 - Not switching, already there.
+23/08/2017 13:15:19 - con.c:con_focus:199 - con_focus = 0xea2110
+23/08/2017 13:15:19 - con.c:con_focus:199 - con_focus = 0xea1f20
+23/08/2017 13:15:19 - con.c:con_focus:199 - con_focus = 0xea1d50
+23/08/2017 13:15:19 - con.c:con_focus:199 - con_focus = 0xea0ee0
+23/08/2017 13:15:19 - con.c:con_focus:199 - con_focus = 0xe96270
+#+END_EXAMPLE
+
+Might try to ask on IRC when I have more time.
+
+** Adding associations with EStore                                 :emfviews:
+Memoizing the virtual objects created to ensure reference equality works is
+enough to pass this test.
+
+But now I need to do the same trick as for properties, and not modify the
+original metamodels.
+
+Interesting thing: when we create a new association, it's an EReference. It
+needs an EType, and that must be an EClassifier, so we cannot wrap the argument
+in a virtual object at this point.  However, we need to make sure that whenever
+someone asks for eType on this EReference, it returns a VirtualEObject wrapping
+the eType.
+
+We can wrap the EReference itself for that, and VirtualEObject will take care of
+mapping to the corresponding virtual object when asked for the eType.  So, in
+the end we have:
+
+1. EClass "B" containing feature 2
+2. EReference "assoc" with EType 1
+3. VirtualEObject wrapping 1
+4. VirtualEObject wrapping 2
+
+Asking for eType on 3 will return 2.
+
+** Adding virtual concepts with EStore                             :emfviews:
+Another interesting situation: new concepts are added to the virtual package.
+New concepts are plain, unwrapped EClasses.  When we add C as a super type to A,
+a contributing class, we don't touch the original A, but C will appear in the
+eSuperTypes feature of the virtual object standing in for A.  However, C will be
+wrapped automatically, and we will get the virtual object standing in for C, not
+the C EClass.
+
+That's a slight inconsistency.  It means we should probably wrap the synthetic
+objects that are exposed in the virtual package.  We can do that when building
+the virtual contents.
+
+Other thing: virtual objects have to know about their potential (virtual) super
+types.  The easiest way to do that is hold a list of them in VirtualEObject, and
+populate it when building the viewpoint.  If we wanted to add a super type
+dynamically, we would just add it to this list, and it would be reflected on the
+next call to eSuperTypes.
+
+Same thing with virtual features.
+
+That leads to an interesting specialization: all virtual objects do not need
+these lists of super types and features, only the virtual objects that stand in
+for a virtual class do.  We can thus have a VirtualEClass class that handles
+these extra concerns.
+
+** Fixing filtering for EStore                                     :emfviews:
+Tackling filters now... instead of deleting the metamodel objects from the
+copied package, we should just do as is the filtered elements do not exist.  We
+can add a ~filtered~ flag on VirtualEObject to keep track of filtered objects.
+In VirtualEList, we just ignore filtered elements.
+
+That makes the blacklist and whitelist tests pass, without having to modify the
+Viewpoint code extensively.
+
+Next time: the remaining failing tests are NullPointerExceptions due to the View
+layer not liking our changes. Investigate.
