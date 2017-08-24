@@ -5390,3 +5390,102 @@ Viewpoint code extensively.
 
 Next time: the remaining failing tests are NullPointerExceptions due to the View
 layer not liking our changes. Investigate.
+
+* [2017-08-24 jeu.]
+** Fixing the View layer                                           :emfviews:
+NullPointerException happen in MetamodelManager.buildMaps, because
+compositionClasses is empty.  The culprit is this cast:
+
+#+BEGIN_SRC java
+for (Iterator<EObject> i = viewpoint.getAllContents(); i.hasNext();) {
+  EObject obj = i.next();
+  if (obj instanceof EClass) {
+#+END_SRC
+
+since we now have VirtualEObject and not EClass.  I ought to rewrite this code
+at some point anyway.  But right now, using the reflective API to test the
+instance will do.
+
+Argh, actually, most of the code here in there assumes we have EClass or
+EStructuralFeature instances.  But now we have VirtualEObjects.  Should we only
+deal with these objects using the reflective API, or should we bypass the
+virtual layer and deal with the underlying concrete objects?
+
+At some point, we /have/ to produce concrete objects.  For instance, in
+ReproduceRule.getContainingFeature:
+
+#+BEGIN_SRC java
+public EStructuralFeature getContainingFeature(InternalEObject object) {
+  View vModel = (View) object.eResource();
+  EObject cElement = ((ReproduceElementImpl) object).getConcreteElement();
+  EStructuralFeature vFeature = vModel.getMetamodelManager()
+      .translateToVirtualFeature(object, cElement.eContainingFeature());
+
+  return vFeature;
+}
+#+END_SRC
+
+We have to return an EStructuralFeature, so we cannot return a VirtualEObject.
+We have no choice but returning the concrete feature behind the virtual object.
+But where does it go?  If it's used internally by EMF, it may cause confusion
+since the virtual object will also be flying around.
+
+Okay, maybe this is not really used.  Let's throw in this method for now and
+we'll see about doing the correct thing later.
+
+Other place where it matters, ReproduceElement.init:
+
+#+BEGIN_SRC java
+private void init(View vModel, EObject concreteElement, EClass eClass) {
+  this.eProperties().setEResource(vModel);
+  this.concreteElement = concreteElement;
+  this.eSetClass(eClass);
+#+END_SRC
+
+Here we need to pass an EClass instance, but the metamodel has only virtual
+objects.  Here we need to use the underlying concrete EClass.
+
+It might not cause confusion if the concrete elements are used behind the
+scenes, as long as the interface exposes virtual objects.
+
+Grmbl, all this code is too tied up to the previous way of doing things.
+
+I'll try a clean approach of rewriting EView with my own VirtualViewEObject to
+see what's really needed.
+
+Arg, still not working.  The crux of the issue seems to be that the virtual
+objects at the view level need an EClass.  That EClass is used to know which
+features the object possess.  When we request a virtual feature on a virtual
+view object, EMF uses the EClass to compute the feature ID, then find out the
+feature object, then ultimately will call EStore.get with the feature object.
+
+So ideally, what should happen is: I request the virtual feature "assoc", it
+exists on the metaclass of the virtual view object; in fact, it's a virtual
+object wrapping an EReference.  Then, EMF should call EStore.get on the virtual
+view object with that virtual feature object, and we could do the correct
+mapping.
+
+Instead, what happens is that EMF does not find the feature "assoc" on the
+metaclass of the virtual view object, since its EClass is the /concrete/ "A"
+class from the contributing metamodels, and /not/ the virtual class containing
+that virtual feature.
+
+I tried to call eGet with the virtual feature directly:
+
+#+BEGIN_SRC java
+EObject virtualFeature = getFeature(v.viewpoint.getVirtual(A.eClass()), "assoc").get();
+assertEquals(B, A.eGet((EStructuralFeature) ((VirtualEObject) virtualFeature).concreteElement));
+#+END_SRC
+
+but this fails because the feature is not passed to EStore.get directly, as EMF
+first finds its ID by looking up the metaclass, again.
+
+And as far as I can tell, there is no way to fool EMF, since eClass must return
+an EClass.
+
+If we have to return an EClass, I guess we could return one that delegates to
+a VirtualEObject, so we can masquerade that object.  Although it would, in the
+end, be very similar to extending EClassImpl directly to implement
+VirtualEObjects that represent EClasses.  Except that, maybe that way we could
+preserve a hierarchy of Virtual* objects, and have an EClass be a simple bridge
+to fool EMF.
