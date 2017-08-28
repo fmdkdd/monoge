@@ -301,4 +301,14 @@ public class PackageComposition {
     EList<EObject> sups = (EList<EObject>) A.eGet(EcorePackage.Literals.ECLASS__ESUPER_TYPES);
     sups.add(C);
   }
+
+  @Test
+  public void testEClass() {
+    // Can we access eClass as a feature on an EObject, or is it only an operation?
+
+    EClass A = EcoreFactory.eINSTANCE.createEClass();
+
+    assertEquals(A.eClass(), A.eGet(A.eClass().getEStructuralFeature("eClass")));
+    // There's no feature "eClass" on A's metaclass, so eClass is only an operation (in accordance with the diagrams)
+  }
 }

@@ -4444,8 +4444,11 @@ else.
 An invocation delegate is a property /of an operation/.  It's a class that tells
 the operation how it should execute itself given the arguments.  So we go from:
 
+: obj.eInvoke(operation, args)
+
+to:
+
 #+BEGIN_EXAMPLE
-obj.eInvoke(operation, args)
 eInvocationDelegate(operation).dynamicInvoke(obj, args)
 BasicInvocationDelegate.dynamicInvoke(obj, args)
 switch (operation id)
@@ -4509,7 +4512,7 @@ First hole to plug is eContents: this gives access to non-Delegate object, and
 we should change that.
 
 Defining a MembraneEObject (for lack of a better name), that constructs a
-MembreEList and wraps objects in the get(index) method.
+MembraneEList and wraps objects in the get(index) method.
 
 Objects are saved in a Map to avoid creating duplicate wrappers (and to help
 preserve reference equalify).
@@ -4518,7 +4521,7 @@ Problem: calling EcoreUtil.delete on a MembraneEObject doesn't work, because
 they are casted as InternalEObject.
 
 Well, good thing we don't need actually want to delete these objects then.  But
-wait, filters don't work that I understand, but creating new elements should
+wait, filters don't work, that I understand, but creating new elements should
 work.
 
 Hmm, that's because we are casting to EClass in order to be able to access and
@@ -5489,3 +5492,50 @@ end, be very similar to extending EClassImpl directly to implement
 VirtualEObjects that represent EClasses.  Except that, maybe that way we could
 preserve a hierarchy of Virtual* objects, and have an EClass be a simple bridge
 to fool EMF.
+
+* [2017-08-28 lun.]
+** Using an EClass bridge between the virtual model and metamodel  :emfviews:
+So, the problem is: what is the eClass of a virtual view object?  If we put the
+/concrete/ eClass there, the virtual view object won't have any virtual
+features, features won't be filtered, etc.  Basically, it's useless, it's the
+wrong answer.
+
+We cannot put the virtual object that corresponds to the concrete class because
+setEClass requires an EClass.  And eClass is not a feature, but an operation, so
+we cannot use the reflective API to fool it.
+
+So, I tried to pass a VirtualEClass object that contains a reference to the
+virtual object representing the concrete eclass.  That works, of course.  And we
+can now override the getEStructuralFeature() to something like this:
+
+#+BEGIN_SRC java
+public EStructuralFeature getEStructuralFeature(String name) {
+  for (EObject c : virtualClass.getFeatures()) {
+    if (name.equals(eGet(c, "name"))) {
+      return (EStructuralFeature)c; // <- problem: the cast fails
+    }
+  }
+  return null;
+}
+#+END_SRC
+
+But now we have another problem: we have to return an EStructralFeature here,
+but the features of the virtual object are VirtualEObjects, again.  That's
+basically the same issue as with eClass(EClass).
+
+We could again, create an EStructralFeature bridge.  But now it's trickier,
+because I don't know what methods in that bridge would be called.  And, more
+importantly, we would then return a bridge, and that bridge would /not be the
+same/ object as the virtual object representing the feature.  It was already
+hard to have to deal with virtual objects and concrete objects, but if we add
+bridges to the mix... it becomes chaotic.
+
+What would be great would be to have a hierarchy under EStoreEObject:
+EStoreEClass, EStoreEReference, etc.  That way we could use these objects as
+EClass/EStructuralFeature where EMF expects them, but they would also delegate
+all their lookups to the EStore, so we could capture all relevant methods /and/
+keep a clean hierarchy.
+
+Ultimately, that's a lot like a DelegateEObject/DelegateEClass situation... it
+seems at the metamodel level we have no choice but implement EClass/EReference
+in order to mesh with the existing EMF infrastructure.
