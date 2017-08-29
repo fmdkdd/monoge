@@ -5539,3 +5539,159 @@ keep a clean hierarchy.
 Ultimately, that's a lot like a DelegateEObject/DelegateEClass situation... it
 seems at the metamodel level we have no choice but implement EClass/EReference
 in order to mesh with the existing EMF infrastructure.
+
+* [2017-08-29 mar.]
+** Summarizing the roadblocks with EStore                          :emfviews:
+I've used an EStore to represent the virtual metamodel objects.  That worked
+until I had to bind these virtual metaobjects to the virtual model objects.  The
+virtual model objects use an EStore, so it needs an eClass, and that eClass must
+be an instance of EClass.  But the metaclass of that virtual model object is
+represented by an EStoreEObjectImpl; we can't pass the EClass from the
+contributing metamodel that EStore object contains, since it won't contain
+virtual features, and won't have any filters, etc.
+
+To solve this eClass problem, I've tried to use a dummy EClass to use as that
+eClass value, which delegates to the virtual metamodel object.  But this is not
+enough, because now I would also need to add bridges for structural features,
+and probably all the objects from the virtual metamodel.
+
+Now, maybe the problem stems from the fact that we are using EStoreEObject at
+the view level, which refuses to work with a virtual metaclass.  If the view
+layer used the reflexive API to access its metaclass, that would work fine
+(albeit slowly).  We could implement an EObject, like a DelegateEObject or
+whatever, to behave as such.  But ultimately, eClass: EClass is a method on the
+EObject interface, so at some point we have to give a proper EClass back to EMF.
+And once that EClass is out, we must take care of preserving referential
+equality.
+
+And, since it seems we /have/ to have an EClass, we might as well use it to
+represent directly the virtual metaobject, rather than putting the logic
+separately in an EStore.  It's better for referential equality, and just simpler
+to deal with fewer classes and objects.
+
+** Getting the goods into master                                   :emfviews:
+Commits to cherry-pick into master from the EStore branch:
+- 610db2b72869f86ea78573b87f819453bd214daf
+- 25bfd11eefe73e9725b1448eb78f3b9f5629d033
+- ad84a7604fd94c9810e492e8b9c5d7e38110d641
+- 95fdff7067f55479b5a3596b33839ffa66984664
+- 5523c1834c44fc2befd3c4e834e72d8647e90c4d
+- bf9a7c56b489582f74e078077ff853eecc61aea0
+
+- part of 59e3a237fb6632a72f38733f6306f950d6c01eb4
+
+Discovered that I could jut log a specific branch (l o) in Magit, then do (A A) or
+(A a) to either cherry pick the commit directly, or apply its changes to the
+working tree, thus letting me select what I want from it.  Very convenient.
+
+** Using DynamicEObject in lieu of EStore                          :emfviews:
+I've looked previously at DynamicEObject when searching for a solution to the
+invoke() problem.
+
+DynamicEObject has a simpler implementation than EStoreEObject.  I wonder if I
+can use it as a base.  Does it funnel all feature access to a single method like
+EStoreEObject?  There's a ~dynamicGet(int feature)~.  Doing:
+
+#+BEGIN_SRC java
+EObject o = new DynamicEObjectImpl(EcorePackage.Literals.ECLASS) {
+  @Override
+  public Object dynamicGet(int featureID) {
+    System.out.println("dynamicGet: " + featureID);
+    return "foo";
+  }
+};
+#+END_SRC
+
+It is indeed called for features that all the features that exist on the
+metaclass.  DynamicEObjectImpl has zero static features, that's how everything
+is routed through the dynamic* methods.
+
+So it looks like DynamicEObject could serve just as well as EStoreEObject.  In
+fact, EStoreEObject does work that we end up duplicating in EStore.get:
+
+#+BEGIN_SRC java
+public Object dynamicGet(int dynamicFeatureID)
+{
+  Object result = eSettings[dynamicFeatureID];
+  if (result == null)
+  {
+    EStructuralFeature eStructuralFeature = eDynamicFeature(dynamicFeatureID);
+    if (!eStructuralFeature.isTransient())
+    {
+      if (FeatureMapUtil.isFeatureMap(eStructuralFeature))
+      {
+        eSettings[dynamicFeatureID] = result = createFeatureMap(eStructuralFeature);
+      }
+      else if (eStructuralFeature.isMany())
+      {
+        eSettings[dynamicFeatureID] = result = createList(eStructuralFeature);
+      }
+      else
+      {
+        result = eStore().get(this, eStructuralFeature, InternalEObject.EStore.NO_INDEX);
+        if (eIsCaching())
+        {
+          eSettings[dynamicFeatureID] = result;
+        }
+      }
+    }
+  }
+  return result;
+}
+#+END_SRC
+
+Here it already dispatches to different code depending on the structural feature
+type.  But ~createList~ creates a list that will end up calling back into
+eStore.get.
+
+EStoreEObject also caches values by default, which we do not want.
+
+I believe DynamicEObject would be a better base.
+
+However it does not solve the main issue: we need a DynamicEClass, and assorted
+family of classes.  Say we use DynamicEObject.  It still needs an EClass as
+metaclass, and we want to use a Dynamic object for that.  We can't have a
+DynamicEClass that extends DynamicEObject and EClassImpl, because we don't have
+multiple inheritance.
+
+We have two solutions:
+1. DynamicEClass must extend EClassImpl first, and then implement
+   DynamicValueHolder to funnel all calls to dynamicGet.  If we can capture
+   calls to eStructuralFeatures that way, it would greatly simplify the
+   implementation.  Although, we pay the price of inheriting from the large
+   EClassImpl, with many methods we will never use.
+
+2. DnyamicEClass extends DynamicEObject and implements EClass and associated
+   interfaces.  It's lighter, and it's the conceptually cleaner way.  But one
+   issue is that we may have a bunch of interface methods which we have no clue
+   how to fill.  That's especially true for associated interfaces, because "does
+   not simply implements EClass".
+
+I'll try #2 first because it's the proper way; the additional control from
+implementing all methods ourselves will also help in ensuring we do not leak any
+non-virtual object.
+
+** Virtual values in BasicEObjectImpl                          :emf:emfviews:
+In BasicEObjectImpl, there is code relating to "virtual values".  It looks like
+dead code, since the core methods to set and retrieve virtual values throw:
+
+#+BEGIN_SRC java
+protected Object[] eVirtualValues()
+{
+  // return eVirtualValues;
+  throw new UnsupportedOperationException();
+}
+
+protected void eSetVirtualValues(Object[] newValues)
+{
+  // eVirtualValues = newValues;
+  throw new UnsupportedOperationException();
+}
+#+END_SRC
+
+Though the previous code is still commented out... I have no idea if this is
+used anywhere, but basically, it looks like an array of Object that you could
+set and get.
+
+Nothing related to what EMFViews is trying to do; and nothing usable.  Red
+herring.
