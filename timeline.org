@@ -5664,8 +5664,8 @@ We have two solutions:
 2. DnyamicEClass extends DynamicEObject and implements EClass and associated
    interfaces.  It's lighter, and it's the conceptually cleaner way.  But one
    issue is that we may have a bunch of interface methods which we have no clue
-   how to fill.  That's especially true for associated interfaces, because "does
-   not simply implements EClass".
+   how to fill.  That's especially true for associated interfaces, because "one
+   does not simply implements EClass".
 
 I'll try #2 first because it's the proper way; the additional control from
 implementing all methods ourselves will also help in ensuring we do not leak any
@@ -5695,3 +5695,23 @@ set and get.
 
 Nothing related to what EMFViews is trying to do; and nothing usable.  Red
 herring.
+
+* [2017-08-30 mer.]
+** Trying to implement EClass for DynamicEClass                    :emfviews:
+Wrote a simple standalone implementation for now, to avoid interactions with the
+existing code.  I want to make sure we can link the model and metamodel layers
+without any hiccups.
+
+And here's the first one: "b" is a virtual feature on the virtual class VA, and I
+create a virtual object VO with VA as its metaclass.  When I access "b" on VO, I
+get a null pointer exception because the feature "b" (EAttribute in VA) has no
+eContainingClass.
+
+The thing is, eStructuralFeatures is a bidirectional reference in Ecore, with
+eContainingClass as its opposite.  When you add stuff to eStructuralFeatures,
+EMF makes sure to update the opposite as well.  But here, I'm holding the
+virtual features in a separate (plain) list, and the eContainingClass opposite
+is never updated.
+
+I could update the opposite myself.  Or I could use a VirtualEAttribute and
+override eContainingClass.
