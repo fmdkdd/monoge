@@ -5715,3 +5715,48 @@ is never updated.
 
 I could update the opposite myself.  Or I could use a VirtualEAttribute and
 override eContainingClass.
+
+* [2017-09-01 ven.]
+** Setting the bidirectional reference                             :emfviews:
+I can't seem to set eContainingClass using eSet on the EAttribute.  Because
+eContainingClass is not a proper feature of EAttribute, strangely.
+
+What happens when we add a feature to getEStructuralFeatures on a basic EClass?
+
+1. getEStructuralFeatures() returns an EObjectContainmentWithInverseEList
+2. Then we call add() on that list, which proceeds into addUnique()
+3. It does doAddUnique, then inverseAdd()
+4. Which calls eInverseAdd() on the EAttribute(a) (the /added/ attribute), and
+   passes the EClass A (where it is added) and the feature ID of the opposite
+   end of the EReference.
+
+   Getting the feature ID, it casts the structural feature into an EReference.
+5. This ends up in inverseAdd on EStructuralFeatureImpl, which does:
+
+   #+BEGIN_SRC java
+   case EcorePackage.ESTRUCTURAL_FEATURE__ECONTAINING_CLASS:
+     if (eInternalContainer() != null)
+       msgs = eBasicRemoveFromContainer(msgs);
+     return eBasicSetContainer(otherEnd, EcorePackage.ESTRUCTURAL_FEATURE__ECONTAINING_CLASS, msgs);
+   #+END_SRC
+
+   Which ultimately sets the container of the EAttribute to the EClass, and also
+   sets the feature ID corresponding to the containment.
+
+And when we add the virtual feature on the virtual class, none of that happens.
+
+Why can't I add the virtual attribute to the actual structural features of the
+virtual EClass?  Oh right, our VirtualEClass does not have an actual list of
+structural features, it just implements the EClass interface, by answering to
+the getEStructuralFeatures() method.  The only list of structural features that
+exists is the one in the concrete EClass, and we certainly don't want to modify
+that one.
+
+But maybe we could lie about our containing class?
+
+Ok, so I created VirtualEAttribute that implements EAttribute, but it also has
+to implement EStructuralFeature.Internal, since BasicEObject needs the feature
+to cast into that.
+
+Then I need to return a SettingDelegate in getSettingDelegate... which is a
+615-lines method in EStructuralFeature!  Argh.
