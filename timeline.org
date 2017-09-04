@@ -5760,3 +5760,37 @@ to cast into that.
 
 Then I need to return a SettingDelegate in getSettingDelegate... which is a
 615-lines method in EStructuralFeature!  Argh.
+
+* [2017-09-04 lun.]
+** Stubbing ESetttingsDelegate                                     :emfviews:
+Doing this:
+
+#+BEGIN_SRC java
+@Override
+public SettingDelegate getSettingDelegate() {
+  SettingDelegate.Factory f = EcoreUtil.getSettingDelegateFactory(this);
+  return f.createSettingDelegate(this);
+}
+#+END_SRC
+
+and EcoreUtil walks up the hierarchy and asks for the eContainingClass of the
+VirtualEAttribute, and the EPackage of the VirtualEClass.
+
+... and ultimately returns null.  Grmbl.  Okay so it was looking for existing
+setting delegates, but it seems I have none.
+
+And SettingDelegate is an interface.  When I instantiate a ~new
+SettingsDelegate()~, its dynamicGet() method is called... this is a bit
+confusing, since I already have a dynamicGet on VirtualEAttribute.
+
+Debugging with G, we managed to make the example working.  The SettingDelegate
+just calls back into the DynamicValueHolder... a bit dumb, but it works.
+
+So now I can actually create a VirtualEObject with a VirtualEClass as metaclass,
+and I can set/get virtual features on this VirtualEObject without affecting the
+original object.
+
+I'm not sure what happens if that feature is an EReference though.
+
+But I guess I could start using these virtual objects for the Viewpoint and
+EView now.
