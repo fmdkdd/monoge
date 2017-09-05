@@ -5794,3 +5794,21 @@ I'm not sure what happens if that feature is an EReference though.
 
 But I guess I could start using these virtual objects for the Viewpoint and
 EView now.
+
+* [2017-09-05 mar.]
+** Expanding on VirtualClass                                       :emfviews:
+Okay so my plan would be to write a new suite of tests that create virtual
+objects directly, rather than using Viewpoint.  This way I can make sure I have
+basic functionality of adding properties, reference, etc.  Even testing that it
+works at the model level.
+
+Then, I can go back to Viewpoint and EView and integrate these changes.
+
+Okay so I'm trying to test adding a virtual reference.  What should eGet return?
+An EList, preferably one we can add and remove from.
+
+I think I've got the basics, except filtering.
+
+Just adding a filtered field on virtual objects should do it.  But then the list
+of virtual features should take these filtered objects into account, like I did
+in the EStore implementation.
