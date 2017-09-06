@@ -5812,3 +5812,75 @@ I think I've got the basics, except filtering.
 Just adding a filtered field on virtual objects should do it.  But then the list
 of virtual features should take these filtered objects into account, like I did
 in the EStore implementation.
+
+* [2017-09-06 mer.]
+** Filtering elements                                              :emfviews:
+It stands to reason that all elements of the metamodels can be filtered.  I
+don't know if it makes sense to filter a VirtualEObject directly, but it
+wouldn't be difficult to do so.
+
+If the "filtered" attribute is held by virtual elements, then to be able to say
+that a feature "a" on class "A" is filtered, we need to set the attribute on the
+virtual element that wraps this feature.  So when asking for a feature on a
+virtual class, it should wrap its contents.
+
+Moreover, when asking for the list of features, we want the virtual class to
+report only the non-filtered features.  For that to work, the virtual class
+needs to be able to interrogate the filtered status; it can do that if it holds
+the virtual elements that wrap the concrete features directly.
+
+There are at least two ways to implement that, and I'm not sure which is better
+for our purpose.  The first one would be to have VirtualEClass simply hold a
+list of structural features, and when constructing the VirtualEClass, we would
+wrap features before adding them to the class.  That way, VirtualEClass does not
+need to know which features map to concrete objects and which are purely
+virtual.  And it can report the non-filtered features, since every feature has a
+"filtered" attribute.
+
+The second way to implement it would be to keep a reference to the concrete
+EClass and a list of virtual features, but when we report the list of features,
+we wrap it in a virtual one.  And we keep track of the mapping from concrete
+features to virtual ones.  That way, we can still report non-filtered features,
+but we only wrap objects on demand.  It can also allow us to respond to changes
+in the contributing metamodels, though we don't know if that would often be
+useful in practice.
+
+So, if we go the first route, then I would have trouble discerning that from the
+previous state of affairs: we would construct the Viewpoint in the same way, but
+wrapping everything instead of copying.
+
+The second route is more lazy, so closer to the "lightweight proxies" idea.
+Besides, the point is to have a symmetry between model and metamodel, and
+wrapping objects on the fly is what already happens at the model layer, so...
+Second route it is.
+
+Okay so it works now.  I created a VirtualFeature object to hold the filtered
+attribute to start with.  I'm sure I can lift that higher, as classifiers should
+be able to be filtered from a package as well.
+
+Haha!  Interesting complication:
+
+#+BEGIN_SRC java
+EObject o = EcoreUtil.create(A);
+o.eSet(a, 1);
+o.eSet(a2, 2);
+VirtualEObject Vo = new VirtualEObject(o, VA);
+
+assertEquals(2, eGet(Vo, "a2"));
+#+END_SRC
+
+On the class VA, the feature "a" is filtered out.  But we should still be able
+to access "a2", right?  We do!  But, we return 1, instead of 2.
+
+Why?  Because we end up calling VirtualEObject.dynamicGet(0), 0 being the
+dynamicFeatureID since "a2" is now the first feature on the meta class.  But
+VirtualEObject is oblivious to the filtered feature and gets the value of the
+feature 0 in the concrete object.
+
+So oviously we have to instruct VirtualEObject of the filtered features.
+
+For the same reason, the following let us access the value of feature "a":
+
+: Vo.eGet(0, false, false);
+
+because we also end up in dynamicGet(0).
