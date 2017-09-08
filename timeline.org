@@ -5884,3 +5884,38 @@ For the same reason, the following let us access the value of feature "a":
 : Vo.eGet(0, false, false);
 
 because we also end up in dynamicGet(0).
+
+* [2017-09-08 ven.]
+** Fixing feature ID with filtered features                          :megado:
+Given the class A with features "a" and "a2", with respective feature IDs of 0
+and 1.  If we filter "a", what should be the ID of "a2"?
+
+Currently, EMF returns 0, and that explains the bugs from last time.  If a2
+kepts its ID of 1, it would fix the first bug, but not the second: calling
+eGet(0) would still give us access to the filtered feature "a".
+
+What we need is to be able to map the virtual ID back to a concrete ID.  In this
+case, ID 0 is feature "a2", so we to look for that feature and get its ID.
+
+When I do eGet(o, "a2"), here is what happens:
+
+- a2 is looked up in the features of the VirtualEClass, so we get the
+  VirtualEAttribute "a2"
+- eGet then calls eDerivedFeatureID which calls
+  VirtualEClass.getFeatureID(feature), which returns the ID among filtered
+  features: 0
+- eGet then gets the feature object back from the VirtualEClass, so we get again
+  the VirtualEAttribute "a2"
+- eGet gets the setting delegate for this feature, and calls dynamicGet on it,
+  with its feature ID (0)
+- which calls VirtualEObject.dynamicGet(0)
+
+So if we want to know which feature was called from the original eGet, we can
+get it back from the VirtualEClass (again!).
+
+In the end, I went with adding a getFeatureAbsoluteID(feature) on VirtualEClass,
+which goes through all (filtered and non-filtered) features to give the ID.
+This ID can then be used to query the concrete EClass and compute the offset in
+the array of values in VirtualEObject.
+
+I think I have all I need to implement back into Viewpoint.  At last!
