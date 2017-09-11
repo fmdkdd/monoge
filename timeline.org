@@ -5886,7 +5886,7 @@ For the same reason, the following let us access the value of feature "a":
 because we also end up in dynamicGet(0).
 
 * [2017-09-08 ven.]
-** Fixing feature ID with filtered features                          :megado:
+** Fixing feature ID with filtered features                        :emfviews:
 Given the class A with features "a" and "a2", with respective feature IDs of 0
 and 1.  If we filter "a", what should be the ID of "a2"?
 
@@ -5919,3 +5919,50 @@ This ID can then be used to query the concrete EClass and compute the offset in
 the array of values in VirtualEObject.
 
 I think I have all I need to implement back into Viewpoint.  At last!
+
+* [2017-09-11 lun.]
+** Implementing Viewpoint with VirtualEClass and co.               :emfviews:
+Forgot VirtualEPackage.  It's basically the same thing as VirtualEClass: it
+holds classifiers instead of features.
+
+And at this point, I should also make sure that referential equality holds
+between created virtual objects, using a common object to manage the map of
+concrete to virtual objects.
+
+Can't seem to use EcoreUtil.create() on a virtual class that does not belong to
+a package... and that package also needs a factory.  Well, I'm not sure we will
+create many objects at runtime through the virtual API anyway, so I'll just use
+a dummy EPackage to create this instance and wrap it in a VirtualEObject.
+
+Or, I guess the other way is to create a dynamic object ourselves and set its
+metaclass.
+
+I was a bit surprised that this bit worked:
+
+: DynamicEObjectImpl Vo = new DynamicEObjectImpl(Vc);
+
+where Vc is a VirtualEClass instance.
+
+I don't have to wrap the dynamic object in a VirtualEObject in order to eGet or
+eSet its features...  The reason it works is because here the Virtual class is a
+simple proxy, and I only interact with a concrete feature existing on the
+concrete class.  A DynamicEObject is oblivious to virtual features and filtered
+features.
+
+Hmm, actually, a DynamicEObject is perfectly capable of handling virtual
+features and filtered features, as long as the metaclass /does not change/
+dynamically.  Does that mean that a VirtualEObject can handle changes?
+
+Yep, it does.  I made it even more flexible by storing the values in a map from
+features to object, as the indexed array was too messy with filtered features
+changing IDs and so on.  It's probably eating more memory though, but we'll
+worry about that later.
+
+Hmm, interesting!  In VirtualEObject.dynamicGet:
+
+: return concreteEObject.eGet(concreteFeature);
+
+fails because at some point, EAttribute looks up for the settingDelegate of its
+containing class's /package/.  If the containing class is not part of the
+package, null pointer exception.  So it looks like I need to have a concrete
+EPackage on top of synthetic EClass even.
