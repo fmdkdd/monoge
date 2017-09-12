@@ -5966,3 +5966,125 @@ fails because at some point, EAttribute looks up for the settingDelegate of its
 containing class's /package/.  If the containing class is not part of the
 package, null pointer exception.  So it looks like I need to have a concrete
 EPackage on top of synthetic EClass even.
+
+* [2017-09-12 mar.]
+** Recapitulating tradeoffs for the new metamodel                  :emfviews:
+Here is a class diagram of the new elements I've created so far:
+
+[[file:doc/emfviews-new-class-diagram.svg]]
+
+Rather straightforward: we have Virtual* classes that wrap concrete EMF objects
+and delegate to them, but also support filtering and virtual features.
+
+*** Why DynamicEObjectImpl and not, say, EStore, or implement EObject?
+Implementing EObject seemed like a waste of time, since we could reuse existing
+implementations.  Also, the docstring of EObject advises against it:
+
+#+BEGIN_QUOTE
+Implementations of EObject should extend BasicEObjectImpl or one of its derived
+classes because methods can and will be added to this API.
+#+END_QUOTE
+
+(Also, while EObject has only a few methods, you really need to implement
+InternalEObject to do anything with EMF, which has many more methods that are
+not strictly relevant to our virtual layer)
+
+For EStore, I've looked into the implementation, and I didn't see anything it
+did more than DynamicEObjectImpl that could be useful.  The eStore.get API is
+cumbersome: you get feature and an index into it, which leads to an overly
+complex implementation to deal the different cases.  It's simpler to just
+intercept dynamicGet, so we might as well extend DynamicEObjectImpl directly
+rather than taking cruft.
+
+The point is to have lightweight proxies.  We could probably even shed
+DynamicEObjectImpl and extend BasicEObject and implement DynamicValueHolder
+directly.  But this extending DynamicEObjectImpl was easy enough to start with.
+
+*** Why do you need as VirtualEClass separate from VirtualEObject?
+We need to control the metaclass (eClass) of VirtualEObject instances.  Since
+a VirtualEObject is a DynamicEObjectImpl, we use eSetClass(EClass).  That
+requires an EClass instance!
+
+In fact, the ~EClass eClass()~ method is part of the EObject interface, so
+there's no getting around it: we need an actual EClass implementation for the
+metaclass.
+
+VirtualEClass also holds a list of extra (virtual) features that do not exist on
+the  concrete backing EClass.
+
+*** Why do you need VirtualFeature?
+A VirtualFeature is more than an EStructuralFeature: it can be filtered out, so
+we need to keep track of that flag somewhere.  We could keep it in
+VirtualEClass, along side the list of features, or we could keep it in a
+"MetamodelManager" class (essentially, the Viewpoint).
+
+But there's another reason to implement EStructuralFeature: EMF
+(BasicEObjectImpl) uses the settingsDelegate of a feature in the reflexive
+eGet/eSet calls to an EObject.  So, in order to capture the eGet calls to a
+virtual object, we need to control the settingsDelegate of its features.  Hence,
+we need to implement EStructuralFeature.Internal.
+
+*** Why do you need VirtualEPackage?
+We need a place to store pure virtual classes: those that are not backed up by
+any concrete EClass from the contributing metamodels.
+
+Also, since, virtual classes can be filtered out, having VirtualEPackage lets us
+implement getEClassifiers() to return the list of non-filtered classifiers.
+
+*** Why VirtualEAttribute and VirtualEReference?
+I'm not sure we actually need those.  At the moment, it looks like we could move
+their functionality to VirtualFeature and everything would work.
+
+But while I haven't finished plugging this model back into Viewpoint and EView,
+I don't want to prematurely factorize.
+
+*** Why isn't VirtualEObject a parent for the others?
+It could, possibly; I try to avoid prematurely factoring.  After I plug this
+into Viewpoint/Eview, I will look into refactoring.
+
+Currently, I think there's no benefit, apart from making a pretty class diagram,
+to making VirtualEClass inherit from VirtualEObject:
+
+- We don't want to inherit the dynamicGet/Set implementation of VirtualEObject,
+  since they are specific to the model layer.
+- We don't need to treat a collection of VirtualEClass as VirtualEObject.  If we
+  put the filtered attribute on VirtualEObject, then it could be interesting.
+
+*** Why does VirtualEClass need to wrap all its contents in virtual objects?
+That is, when you ask for the features of VirtualEClass, you will get all the
+concrete features of the backing EClass /wrapped in VirtualEFeature/ (same thing
+for VirtualEPackage/VirtualEClass).  Is that necessary?  Why not give the
+original feature back?
+
+I think currently wrapping features in VirtualFeature is just a way to be able
+to filter them.  Since the filtered attribute is held by a VirtualFeature, I
+chose to create a VirtualFeature for each concrete feature in an EClass.
+Another solution would be to have another object to ask whether a feature is
+filtered, and where we would set the filters.
+
+We still need VirtualFeature for purely virtual features, to catch the
+settingsDelegate though.
+
+*** Things to investigate later
+- Referential equality does not hold; need a repository of virtual objects.
+  This might get obsoleted if we simply do not wrap existing objects.  If the
+  filtered bit for features is held by VirtualEClass for instance, then we not
+  need to map concrete features to virtual features anymore, so referential
+  equality holds.
+
+  Otherwise, we need to keep track of the mapping between concrete and virtual
+  objects.  Maybe on a virtual class scope, maybe on a viewpoint scope.
+
+- Lot of stub methods.  Some might not make sense on a "virtual" object (so we
+  can let them throw unsupported), but some do, and we have to make a decision
+  about what they should answer.
+
+  Also, the dynamicGet methods are supposed to work with all methods of the
+  metaclass.
+
+- VirtualEClass, VirtualEObject, etc. should be interfaces.  To mimic EMF class
+  diagram, and so we could see what they add to EClass, EObject.
+
+  Currently, there are really three differences: VirtualEClass has virtual
+  features, VirtualEPackage has virtual classes, and all (including non-virtual)
+  features/classes can be filtered.
