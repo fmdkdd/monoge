@@ -6088,3 +6088,62 @@ settingsDelegate though.
   Currently, there are really three differences: VirtualEClass has virtual
   features, VirtualEPackage has virtual classes, and all (including non-virtual)
   features/classes can be filtered.
+
+* [2017-09-13 mer.]
+** Factorizing into VirtualEFeature                                :emfviews:
+Changed my mind about waiting for factorizing that, because it was an easy thing
+to do, and I don't think I will need to revert it:  VirtualEFeature implements
+EStructuralFeature.Internal, and now the EAttribute/EReference-specific methods
+are more visible in VirtualEAttribute and VirtualEReference.
+
+** Plugging back into Viewpoint                                    :emfviews:
+Wrapping the contributing packages in VirtualEPackage.  All tests fail.  Yeah!
+
+The validator is asking for an eFactoryInstance.  We don't have that on the
+Viewpoint.  Turning off validation I'm afraid.
+
+Easiest thing to do would be to plug back the filters.  Interestingly, we now
+need a hold on the parent element to be able to filter something in the
+metamodel.  Specifically, the Virtual parent.  It means that, in the Viewpoint,
+we need to turn at least the EClass into VirtualEClass if we want to be able to
+filter features.
+
+Seems VirtualEPackage.getEClassifiers() cannot return an unmodified EList, as
+EStructuralFeature.dynamicIsSet casts the return value to
+EStructuralFeature.Setting!
+
+#+BEGIN_SRC java
+Object setting = settings.dynamicGet(index);
+if (setting == null)
+{
+  return false;
+}
+else
+{
+  return ((EStructuralFeature.Setting)setting).isSet();
+}
+#+END_SRC
+
+Hmmmmmm.  So EcoreEList$UnmodifiableEList implements EStructuralFeature.Setting,
+but ECollections$UnmodifiableEList does not.  Sigh.
+
+Have to use the former, which is a bit awkward.
+
+Looks like I can't use the debugger to "Run to line" in a lambda.  Sad.  Back to
+loops instead of forEach then.
+
+AAArgh.  So blacklisting works, but whitelisting doesn't.  Everything is
+filtered out when whitelisting.  Why?  Because EMFViewsUtil.getEObjectPath does
+not return a full path, but only the name of object ("Element" instead of
+"contentfwk.Element").  That's because we build the path by going up the
+container hierarchy:
+
+#+BEGIN_SRC java
+    while (o != null) {
+      comps.add(((ENamedElement) o).getName());
+      o = o.eContainer();
+    }
+#+END_SRC
+
+But for virtual objects, eContainer is null.  Probably have to fix that, and/or
+find another way to build the path.
