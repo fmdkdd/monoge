@@ -6147,3 +6147,27 @@ container hierarchy:
 
 But for virtual objects, eContainer is null.  Probably have to fix that, and/or
 find another way to build the path.
+
+* [2017-09-15 ven.]
+** Fixing empty eContainer                                         :emfviews:
+eContainer is a method on the EObject interface.  According to the docs:
+
+#+BEGIN_QUOTE
+An object is contained by another object if it appears in the {@link #eContents
+contents} of that object.  The object will be contained by a {@link
+#eContainmentFeature containment feature} of the containing object.
+#+END_QUOTE
+
+Since a VirtualEPackage's contents return VirtualEClasses, the eContainer of the
+VirtualEClass should return the VirtualEPackage.  I should /also/ implement
+eContainmentFeature to return the ID of the containment feature of the
+eContainer.
+
+Overriding eContainer to return the container from the concrete feature, but
+virtualized, works.
+
+At this point however, I wonder if I should just not simply return to the
+DelegatedEObject implementation strategy.
+
+Hit an interesting Java problem when trying to be a little more strict in
+Viewpoint.  Summed up my thoughts [[file:emfviews-test/src/another/MyMap.java][here]].
