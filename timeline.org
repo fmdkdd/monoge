@@ -6171,3 +6171,30 @@ DelegatedEObject implementation strategy.
 
 Hit an interesting Java problem when trying to be a little more strict in
 Viewpoint.  Summed up my thoughts [[file:emfviews-test/src/another/MyMap.java][here]].
+
+* [2017-09-18 lun.]
+** Adding superTypes to a VirtualClass                             :emfviews:
+Seems I did not anticipate this scenario in my previous tests.  Doing:
+
+: klass.getESuperTypes().add((EClass) sup);
+
+where ~sup~ is a VirtualEClass fails because the VirtualEClass cannot be cast to
+an ESuperAdapter.Holder.  I guess we can delegate this call to the concrete
+EClass.
+
+Yep that works.  Although, I also need to keep a list of virtual supertypes,
+i.e., super types that only exist on the virtual metamodel.
+
+Damned.  Can supertypes be filtered?  I guess they could.  Did not take that
+into account.  If filters on classifiers are held by the package... we would
+have to ask the package to know what to answer in VirtualEClass.getESuperTypes.
+
+Similar issues arise with creating associations: the eOpposite feature should be
+set on the virtual feature, but what happens if one end is filtered?
+
+Updated the tests to work with a mock viewpoint (really, an interface to keep
+track of virtualized objects).  How filters behave on supertypes is an
+interesting problem.  Might not be solved right away, but it's a good thing to
+register it.
+
+Tomorrow: resolve the eOpposite issue.
