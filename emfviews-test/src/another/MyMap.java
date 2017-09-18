@@ -130,8 +130,8 @@ public class MyMap {
   void testAttempt5() {
     Map<A, A> map = new HashMap<>();
 
-    map.put(b, b); // compiles
-    map.put(b, c); // FAIL: compiles, but should not
+    put(b, b, map); // compiles
+    put(b, c, map); // FAIL: compiles, but should not
 
     // Similar to attempt 3, without the MyMap wrapper
   }
@@ -222,5 +222,30 @@ public class MyMap {
     // pinning the type of the first parameter before unifying V.
 
     // I want macros.
+  }
+
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Attempt 9: SUCCESS
+  //
+  // There *is* syntax to fix the generic type of a method call, it's just
+  // often elided because of syntactic sugar!
+
+  static class MyMap9<E> {
+    Map<E, E> map = new HashMap<>();
+
+    <K extends E> void put(K key, K value) {
+      map.put(key, value);
+    }
+  }
+
+  void testAttemp9() {
+    MyMap9<A> map = new MyMap9<>();
+
+    map.put(b, b); // compiles
+    map.<B>put(b, c); // SUCCESS: does not compile
+    map.<C>put(c, c); // compiles
+
+    // You have to explicitly fix the argument, instead of inferring as in Attempt6.
+    // But, at least it's zero-cost.
   }
 }
