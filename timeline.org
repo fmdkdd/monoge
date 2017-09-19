@@ -6198,3 +6198,47 @@ interesting problem.  Might not be solved right away, but it's a good thing to
 register it.
 
 Tomorrow: resolve the eOpposite issue.
+
+* [2017-09-19 mar.]
+** Resolving the eOpposite issue                                   :emfviews:
+When we add a bidirectional reference, it's only after we first create a
+synthetic EReference.  That synthetic reference can be altered (it's part of the
+virtual package).  However, it can point to a synthetic EReference, or it can
+point to a concrete EReference.  In both cases, the eOpposite link should only
+exist virtually and not alter the concrete metamodel elements.
+
+That means, that we have to add a virtualEOpposite feature on EReference.  Or,
+setting the eOpposite on a VirtualEReference does not set it on the concrete
+ERef.
+
+Okay, that works.  Went with the first option, as having an explit
+setVirtualOpposite is less confusing for the moment.
+
+Now all viewpoint tests pass.  On to EView.
+
+** Converting EView to use VirtualEObject                          :emfviews:
+When "projecting" virtual links in EView:
+
+Trying to set VirtualERef 184 (-> ERef detailedProcess 196)
+-> dynamicSet with featureID = 16
+absoluteID = 16  (VirtualERef 184)
+
+But 29 features on the concrete EClass, not 15.
+
+Using getEStructuralFeature(int) on EClassImpl will look up the feature among
+/all/ structural features, local and inherited.  While my lookup for absolute ID
+only accounts for local features.
+
+Okay, implemented EAllStructuralFeatures.
+
+Now I need to override VirtualEObject.eContents to virtualize objects from
+containment references.
+
+Need to implement EAllContainments... which uses EAllReferences...
+
+Now VirtualEObject needs a virtualizer.. which is the EView.
+
+And that's it!  It works!  All tests pass!
+
+Tomorrow: make sure that the constructed viewpoint/view are all virtualized, and
+add tests for cases where they are not.
