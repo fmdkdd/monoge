@@ -6242,3 +6242,94 @@ And that's it!  It works!  All tests pass!
 
 Tomorrow: make sure that the constructed viewpoint/view are all virtualized, and
 add tests for cases where they are not.
+
+* [2017-09-20 mer.]
+** Double-checking correctness of the new class diagram            :emfviews:
+A note about correctness of the virtualization: looking at getAllContents of a
+viewpoint, the objects that are not virtualized mostly seem to be:
+
+- EAnnotationImpl
+- EGenericTypeImpl
+- EStringToStringMapEntryImpl
+
+All model elements can have annotations.  Since it's a containment reference, an
+EAnnotation has an eContainer attribute pointing to the containing EClass, say.
+Not the virtual one.  You should be able, however, to iterate over annotations
+of a VirtualEClass.  The containment link is just broken in the other way.
+
+I fear it's the same for other containment links; we don't take extra care of
+maintaining consistency for these currently.  How hard would it be, in practice?
+I think it's just a matter of wrapping EAnnotationImpl, override eContainer(),
+and return the corresponding VirtualEClass.
+
+So, not really hard to do if we find out that it's something we need further
+down the road.
+
+Samething goes for EGenericType.  The StringToString map are contained by
+annotations.. so if annotations are virtualized, these map entries should also
+point to the virtualized container.
+
+Found a few more:
+
+- EEnumLiteralImpl
+- EEnumImpl
+
+Same remarks: we can obtain the concrete versions from getAllContents on a
+virtualized package.  Going up the eContainer reference, we'll end up on the
+concrete metamodel.
+
+Hmm.  Calling getAllContents on an EView raises an NPE.  There's an eGet in
+VirtualEObject.eContents that returns null.  Should it?  Can it?  It looks as if
+the TreeIterator is not happy about it in any case, because it tries to get the
+contents of null.
+
+Maybe I should just not add a null value to the eContents list.  Yeah, it looks
+like calling getAllContents on the original model does not produce any null.
+
+But now, EMF wants to cast a VirtualEReference to
+an... EStructuralFeatureExtendedMetaData.Holder.  Yuck.
+
+But this only happens because we end up in BasicEObjectImpl.eOpenGet, because
+the featureID is -1.
+
+The reference is reqif10.Identifiable.alternativeId.  It's not found on the
+structural features of the virtual EClass, hence the -1.
+
+If it was filtered, it shouldn't have appeared in the getAllContents in the
+first place.  So it's not filtered.  But then, if it's not filtered, why does it
+appear in the getEStructuralFeatures list?
+
+So actually, we are looking for the feature ID of 'alternativeID' on the EClass
+'DatatypeDefinitionStringImpl', which is a subtype of Indentifiable.  And the
+feature is on the parent, so we miss it.
+
+Well, I guess getFeatureID should look into getAllEStructuralFeatures and take
+inherited features into account.  That's what EClassImpl does.
+
+Same thing for getEStructuralFeature(int) and getEStructuralFeature(String):
+they both look up into the /all/ structural features, including inherited.
+
+Hmmmm.  eGet in eContents returns a boolean.  Shouldn't we always have EObjects
+in features?
+
+Oh, okay.  in VirtualEObject.dynamicGet, we return a completely wrong feature.
+(Damn you, feature IDs!).
+
+dynamicFeatureID = 17
+feature is the VirtualERef for the 'monitoring' ERef
+absoluteFeatureID = 17
+concreteFeature = 'isExecutable' EAttribute <-- wrong
+
+'monitoring' is the feature of index 3 in the eStructuralFeatures list of
+Process.  And feature of index 13 in eAllStructuralFeatures.
+
+Something is clearly very wrong here.  But these IDs are getting on my nerves,
+so I will simply lookup the feature by name in the concrete class.  Feature
+names are unique anyway.
+
+Yeah!  Tests pass.  And the eAllContents of my objects are all VirtualEObjects
+in front of DynamicEObjectImpl or instances of generated classes.
+
+Next time: make a class diagram of the ways things work now.  Also make diagrams
+for on a couple of examples of what is created and what the links look like when
+we have a viewpoint and a view.

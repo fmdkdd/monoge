@@ -27,7 +27,7 @@ public class MyMap {
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Attempt 1: FAIL
 
-  Map<E extends A, E> map1 = new HashMap<>(); // <- does not compile, syntax error
+  //Map<E extends A, E> map1 = new HashMap<>(); // <- does not compile, syntax error
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Attempt 1b: FAIL
@@ -38,12 +38,12 @@ public class MyMap {
   private Map<? extends A, ? extends A> map1b = new HashMap<>();
 
   void testAttempt1b() {
-    map1b.put(b, b); // FAIL: does not compile
+    //map1b.put(b, b); // FAIL: does not compile
 
     // Actually, it seems we can't put anything into this map.
     // Would be interested to know why.
 
-    map1b.put((A)b, (A)b); // FAIL: does not compile
+    //map1b.put((A)b, (A)b); // FAIL: does not compile
 
     // Only valid arguments seems to be `null`:
     map1b.put(null, null);
@@ -167,7 +167,7 @@ public class MyMap {
     MyMap6<A> map = new MyMap6<>();
 
     map.put(b).putValue(b); // compiles
-    map.put(b).putValue(c); // SUCCESS: does not compile
+    //map.put(b).putValue(c); // SUCCESS: does not compile
 
     // Two downsides: 1) more awkward to use 2) may create an unncessary closure
     // at runtime (but maybe the compiler optimizes it away)
@@ -190,7 +190,7 @@ public class MyMap {
     MyMap7<A> map = new MyMap7<>();
 
     map.put(b).accept(b); // compiles
-    map.put(b).accept(c); // SUCCESS: does not compile
+    //map.put(b).accept(c); // SUCCESS: does not compile
   }
 
   // Still unsolved: is there a way to define the `put` function to take the key and value
@@ -242,7 +242,7 @@ public class MyMap {
     MyMap9<A> map = new MyMap9<>();
 
     map.put(b, b); // compiles
-    map.<B>put(b, c); // SUCCESS: does not compile
+    //map.<B>put(b, c); // SUCCESS: does not compile
     map.<C>put(c, c); // compiles
 
     // You have to explicitly fix the argument, instead of inferring as in Attempt6.
