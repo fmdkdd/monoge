@@ -6333,3 +6333,135 @@ in front of DynamicEObjectImpl or instances of generated classes.
 Next time: make a class diagram of the ways things work now.  Also make diagrams
 for on a couple of examples of what is created and what the links look like when
 we have a viewpoint and a view.
+
+* [2017-09-22 ven.]
+** Notes on the new class diagram                                  :emfviews:
+[[file:doc/emfviews-new-class-diagram3.svg]]
+
+I tried to simplify the original architecture while keeping its functionality
+intact, and bringing it closer to the original idea.
+
+The main idea is to mirror EMF classes to virtual counterparts.  So we have
+VirtualEObject, VirtualEPackage, VirtualEClass, etc.
+
+The point of these virtual classes is twofold.  First, they act as proxies to
+the objects in the contributing models and metamodels.  We can decide whether to
+write back changes to the original objects, or make the proxies read-only.  We
+can intercept any method call, any feature set, and change its behavior.
+Second, the virtual classes allow us to /filter/ and /extend/ the contributing
+metamodels without modifying them.
+
+Any classifier in a VirtualEPackage can be filtered, any feature in a
+VirtualEClass can be filtered.  Since a VirtualEObject has a VirtualEClass as
+metaclass, the filtered features are reflected on the VirtualEObject as well.
+These filters are dynamic: we can filter or unfilter a feature and see the
+changes on the next call to getEStructuralFeatures, without the need to
+reconstruct the virtual metamodel.
+
+Following the weaving model, we can also add features to existing concepts: a
+VirtualEClass has a list of such virtual features.  A virtual feature is part of
+the VirtualEClass eStructuralFeatures feature, but does not affect the backing
+concrete class.  All virtual links specified by the weaving model exist in this
+new virtual layer (virtualFeatures, virtualClasses, virtualSuperTypes,
+virtualOpposite): these links exist solely between the virtual objects, without
+modifying the concrete metamodels underneath.
+
+The Virtualizer is needed to maintain consistency between objects; it maps a
+concrete object to its virtual counter part.  For instance, a VirtualEPackage
+contains classifiers.  These classifiers are VirtualEClass instances.  When we
+ask for the super type of a VirtualEClass, these are classifiers from the same
+package, hence, the super types should be the /same VirtualEClass instances/
+found in the list of classifiers from the VirtualEPackage.  The VirtualEPackage
+and VirtualEClass objects need to communicate somehow to make sure these
+instances are the same: that's the role of the Virtualizer.
+
+In the previous architecture, this role was filled by the VirtualLinkManager and
+MetamodelManager.  They managed the maps between concrete and virtual objects,
+for the model and metamodel layers respectively.  The MetamodelManager made
+distinctions between the types of objects, and a larger API surface as a result.
+The Virtualizer is much simpler, conceptually and implementation-wise, and is
+used the same way by both layers.
+
+** Advantages over the the previous architecture                   :emfviews:
+Mostly, the previous architecture suffered from growing organically, in the face
+of new requirements.  It was baroque, and in need of a good cleaning.  Dead
+code, duplicated code, coupling between classes, and many questionable,
+and crucially undocumented, decisions.
+
+In rethinking the whole thing, we have shed a lot of weight, to obtain something
+that's conceptually clearer and leaner.
+
+We also gained some flexibility.  The main defect of the previous architecture
+was in the Viewpoint, where it duplicated all the contributing metamodels
+elements.  This had a upfront cost when loading the Viewpoint resource, both in
+time and memory.  More importantly, it meant we didn't have a symmetry between
+the implementations of the virtual model and virtual metamodel.
+
+Now, instead of duplicating contributing metamodel objects, we simply wrap them,
+but lazily.  When we load the Viewpoint resource, we simply wrap the
+contributing metamodel packages in VirtualEPackage.  That's all we do with the
+contributing metamodels.  We don't virtualize the contents of these package
+until they are actually requested.  So, when we call getEClassifiers on
+VirtualEPackage, that's when we virtualize the classifiers to provide the list.
+
+(And ideally, we could provide a lazy list, which would only virtualize the
+classifier when one is accessed.  This is useful in case only one element in the
+list is accessed, or if the list is actually never used!).
+
+So, instead of having the full contributing metamodels duplicated, in practice,
+we only build what's used.  Furthermore, even if we end up building virtual
+objects to stand in for every object in the contributing metamodels, these
+virtual objects still have a smaller memory footprint than the default EMF one,
+since they contain less information.  The virtual objects can delegate most of
+their knowledge to the backing concrete object.
+
+For the model layer, the previous architecture was already using
+ReproduceElement instances as proxies for concrete model objects.  I simplified
+the implementation by using only View and VirtualEObject, whereas before we had
+View, EView, VirtualElement, ReproduceElementImpl, ReproduceRule,
+TranslationRule, and VirtualAssociation (without mentioning the unused
+MergeElementImpl and FilterElementImpl).
+
+** Rationale for cutting classes from the previous architecture    :emfviews:
+I'm referring to [[file:doc/emfviews-class-diagram.svg][this diagram of the previous architecture]].
+
+- LinksProjector.  This was easy, it's only job was to populate the contents of
+  virtual features at the model level.  When virtual features are created on the
+  viewpoint, the weaving model of the model tells us what model objects to put
+  into them.  The LinksProjector did that.  It was a one-time thing, when the
+  View is loaded.
+
+  I turned it into 25 lines in View.doLoad.
+
+- MetamodelManager.  I'm not quite sure why we needed to separate features and
+  classes in these maps.  Or why we needed this class at all.  We built these
+  maps ahead of time, which made them inflexible.  It seemed to me we didn't
+  need to keep track of all this; the View only has to use the Viewpoint as
+  metamodel.
+
+  In fact, in VirtualEObject, it's quite easy to find out if a feature is
+  virtual or not without these maps.  And we could put the information into
+  Viewpoint itself.
+
+- View/EView.  I merged them into View, since it was really a split class, with
+  View being intended to act as a superclass for Viewpoint, I think.  But this
+  was never the case.
+
+- VirtualContents.  These was an awkward list implementation that allowed
+  multiple list to behave as one.  Unnecessary, since we had to build the
+  sublists anyway, we might as well flatten them and put all the objects
+  directly into a plain list.
+
+- VirtualModelList.  This was one was more interesting.  It was a kind of lazy
+  list that virtualized its contents.  Used by ReproduceRule to turn the
+  contents of a reference into ReproduceElementImpl instances.
+
+  We can build this list ahead of time without any change in functionality.  But
+  I may resuscitate a similar "delayed" list for virtualizing only objects that
+  are accessed if we find that premature virtualization has impacts performance.
+
+- TranslationRule, VirtualElement, ReproduceRule, ReproduceElementImpl,
+  VirtualAssociation.  All these are replaced by the single VirtualEObject
+  class, which is not very complex.  The Rule/Element split was needed because
+  that's how EStore works.  Other causes were unncessary abstraction, and
+  duplicated code.
