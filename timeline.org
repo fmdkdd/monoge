@@ -6465,3 +6465,60 @@ I'm referring to [[file:doc/emfviews-class-diagram.svg][this diagram of the prev
   class, which is not very complex.  The Rule/Element split was needed because
   that's how EStore works.  Other causes were unncessary abstraction, and
   duplicated code.
+
+* [2017-09-25 lun.]
+** Writing more tests for virtual objects                          :emfviews:
+I reluctantly added a mock virtualizer to the virtual objects, since at first I
+didn't need one to construct the tests.  However, the virtualizer is necessary
+to maintain consistency in the design.  When writing a new test for inherited
+virtual features for instance, if I create the VirtualEClass instances in the
+tests (to add attributes to them), then they won't be registered by the
+virtualizer, and the virtual features will never be seen by the virtual class.
+
+So, the virtualizer is integral to the design.  Something to keep in mind when
+writing tests.
+
+Hmm, in fact, it turns out my mock virtualizer was too complex: it actually
+/did/ virtualize objects, while this was not necessary for most of the tests I
+had already written.
+
+Instead, it can just return its argument.  For tests that require a virtualizer
+that does actuall creation of virtual objects, then I can use Viewpoint and View
+directly, instead of testing my duplicate implementation in MockVirtualizer.
+
+I added the tests for the cases I encountered while rewriting Viewpoint/View.
+I'm thinking of adding a few more tests, one for each feature of the EMF class
+diagram.
+
+** Filtering classifiers in getESuperTypes                         :emfviews:
+So, the list of filtered classifiers is held by the virtual package, since it
+allows us to filter any classifier, not just EClass, without having to define a
+VirtualEClassifier class.
+
+However, we can ask to filter any classifier, including:
+
+1. classifiers that are not even part of the package, and
+2. virtual counterparts for classifiers that are part of the package (and
+   vice-versa).
+
+The first is easy to solve: just check the classifier is in the package.  The
+second...  Conceptually, when you ask for the classifiers of a VirtualEPackage,
+you get virtual elements.  Well, a mix of virtual elements and concrete elements
+that are not virtualized (EDataType).  So the question is really: when we
+filter an EClass A, should its virtual counterpart be filtered as well?
+
+Maybe, to be consistent and not too lenient, we should just be able the
+classifiers that are returned by getEClassifiers.  That way, it's predictible.
+
+Ah, now it seems the mock virtualizer is not enough.  Most of the tests fail
+because they lack the internal consistency brought by the viewpoint/view
+virtualizers.  Too bad.
+
+But, otherwise, it works.  Except that classifiers are now required to have a
+package, although conceptually that was already the case in EMF anyway.
+
+** Interesting property of getVirtual                              :emfviews:
+For methods that return an EObject, getVirtual has the following property:
+
+: getVirtual(concreteEClass.getEPackage()) == getVirtual(concreteEClass).getEPackage()
+: f(g(c)) = g(f(c))
