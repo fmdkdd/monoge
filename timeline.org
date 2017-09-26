@@ -6522,3 +6522,22 @@ For methods that return an EObject, getVirtual has the following property:
 
 : getVirtual(concreteEClass.getEPackage()) == getVirtual(concreteEClass).getEPackage()
 : f(g(c)) = g(f(c))
+
+* [2017-09-26 mar.]
+** Adding tests for all proper features of the EMF diagram         :emfviews:
+Most of this is straightforward.  Just a bit tedious to write.
+
+Tried to add a reference via getEReferences(), to see if it would work.  It
+does, but EMF outputs on stderr:
+
+#+BEGIN_SRC java
+public boolean add(EReference object)
+{
+  System.err.println("Please fix your code to add using EClass.getEStructuralFeatures() instead of EClass.getEReferences()");
+  return getEStructuralFeatures().add(object);
+}
+#+END_SRC
+
+"I will add the reference, but please don't do that".  I'm not sure what's the
+effectiveness of such a statement.  But I guess there's no way to deprecate an
+override... so, better than nothing.
