@@ -6541,3 +6541,50 @@ public boolean add(EReference object)
 "I will add the reference, but please don't do that".  I'm not sure what's the
 effectiveness of such a statement.  But I guess there's no way to deprecate an
 override... so, better than nothing.
+
+* [2017-09-27 mer.]
+** More tests                                                      :emfviews:
+Finishing the tests for each Virtual* component I reimplemented.
+
+** EOpposite troubles                                              :emfviews:
+A thorny issue arises once again with EOpposite.  Consider the situation where R
+and R2 are two concrete references, opposite of each other, and VR and VR2 are
+their respective virtual counterparts.
+
+Clearly, VR and VR2 are opposite of each other.  The concrete opposite link is
+reflected at the virtual level.
+
+Now, consider the situation where R is a concrete reference, and R2 is created
+as part of a new association, and has R as opposite.  The opposite link then
+only exists at the virtual level, not the concrete one.  Hence, it must be
+materialized, and that's why I added a virtualEOpposite attribute.
+
+But now, what should VR2.getEOpposite() return, in general?  The value of the
+virtual opposite, or the value of the concrete one?
+
+It seems strange to me that this is the only place where this problem arises.
+But I guess it's also the only feature of arity 0..1 that's reflected at the
+virtual level.
+
+For now, returning the virtual opposite if present and falling back on the
+concrete one seems the most natural solution to me.
+
+** Another snag with bidirectional references                      :emfviews:
+When adding a virtual feature to a VirtualEClass, we do not set the
+eContainingClass of the feature propertly.
+
+Problem: how do we actually set the eContainingClass feature?  There is no
+setter, and eSet says it "is not a changeable feature", even though, indirectly,
+it is.
+
+I should probably trace how EMF effectively changes the feature value, and hack
+it into VirtualEClass.addVirtualFeature.
+
+** Next time                                                       :emfviews:
+- Solve the bidirectional reference issue
+- Compute how many virtual objects are created when loading the viewpoint on a
+  large model/metamodel like TOGAF
+- Add javadoc for core methods/classes
+- Update README
+- Update copyright notices (and close TODO)
+- Merge back in master
