@@ -1872,7 +1872,8 @@ Hmm, it crashes, but not where I expected.  Actually, I see other downcasts in
 the same method, and they seem unsafe, but no warnings.  Need to check that as
 well.
 
-*** TODO Check copyright/contributions
+*** DONE Check copyright/contributions
+CLOSED: [2017-09-29 ven. 17:54]
 Copyright is attributed to Inria in some places, Atlanmod in others (or should
 it be AtlanMod?).
 
@@ -6588,3 +6589,20 @@ it into VirtualEClass.addVirtualFeature.
 - Update README
 - Update copyright notices (and close TODO)
 - Merge back in master
+
+* [2017-09-29 ven.]
+** Solving the bidirectional reference issue                       :emfviews:
+When we do A.getEStructuralFeatures().add(r), we end up in r.eInverseAdd(A, 17),
+where 17 is the feature ID of eContainingClass.
+
+Ultimately, that sets eContainer to A, and eContainerFeatureID to 17.
+
+Yep, calling eInverseAdd works.  We don't want to do that in
+VirtualEClass.addVirtualFeature though, since we could potentially modify a
+contributing metamodel that way.  Instead, I do it in the Viewpoint, since there
+I know the structural feature is synthetic and can be modified.
+
+The only other place where we would have the same issues is the
+eClassifiers/ePackage containment reference.  But there, we actually add the
+VirtualEClass to the virtual package using getEClassifiers().add(), because we
+can modify the virtual package.
