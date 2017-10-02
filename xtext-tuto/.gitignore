@@ -1,0 +1,6 @@
+bin/
+src-gen/
+org.example.domainmodel*/
+example/Test/.classpath
+example/Test/.project
+example/Test/.settings

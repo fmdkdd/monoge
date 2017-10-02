@@ -6606,3 +6606,18 @@ The only other place where we would have the same issues is the
 eClassifiers/ePackage containment reference.  But there, we actually add the
 VirtualEClass to the virtual package using getEClassifiers().add(), because we
 can modify the virtual package.
+
+* [2017-10-02 lun.]
+** Working through Xtext tutorial                                  :emfviews:
+[[http://www.eclipse.org/Xtext/documentation/102_domainmodelwalkthrough.html][There]].  Xtext is a language engineering platform (or "language workbench", as
+others have called it).   Given a grammar, it will generate a bunch of code for
+parsing, syntax highlighting, serialization...  It will infer an EMF model based
+on the grammar, or you can use an existing one.
+
+It's tailored to define your own DSLs inside Eclipse.  And it seems it's a
+low-friction way to do so.
+
+That's exactly what we use it for in EMFViews: it for our two DSLs.
+
+** Next time                                                       :emfviews:
+Make our SQL2Views DSL work with the new weaving model
