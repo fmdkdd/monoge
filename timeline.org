@@ -6621,3 +6621,79 @@ That's exactly what we use it for in EMFViews: it for our two DSLs.
 
 ** Next time                                                       :emfviews:
 Make our SQL2Views DSL work with the new weaving model
+
+* [2017-10-03 mar.]
+** Exploring VPDL                                                  :emfviews:
+ViewPoint Description Language: our DSL for creating a viewpoint using a
+SQL-like language instead of writing Eviewpoint files and weaving models by
+hand.
+
+In the VPDL file, like this one:
+
+#+BEGIN_EXAMPLE
+create view myEAviewpoint on
+'http://www.obeonetwork.org/dsl/togaf/contentfwk/9.0.0' as togaf,
+'http://www.omg.org/spec/BPMN/20100524/MODEL-XMI' as bpmn,
+'http://www.omg.org/spec/ReqIF/20110401/reqif.xsd' as reqif
+select togaf.EnterpriseArchitecture.architectures, togaf.StrategicArchitecture.strategicElements,
+  togaf.BusinessArchitecture.processes, togaf.Process.processCritiality, togaf.Process.isAutomated,
+  togaf.Requirement.statementOfRequirement, togaf.Requirement.rationale, togaf.Requirement.acceptanceCriteria,
+  bpmn.Process.isClosed, bpmn.Process.isExecutable, bpmn.Process.processType
+from togaf.Process join bpmn.Process as detailedProcess,
+  togaf.Requirement join reqif.SpecObject as detailedRequirement
+where togaf.Process.name=bpmn.Process.name and
+ togaf.Process.isAutomated = 'false'
+#+END_EXAMPLE
+
+It lists the contributing metamodels, so we can put that into the eviewpoint.
+
+It lists the features that should be visible (via 'select'), and that
+should go into the weaving model for the viewpoint.
+
+It also tells us how we should merge the contributing models, and that should go
+into the ECL file.
+
+(Sidenote: Cheng remarked that the syntax for comparison in the ~where~ could be
+more expressive, using OCL expressions.  Looking at the grammar, it looks like
+we accept arbitrary ECL expressions, in the form of strings).
+
+Looking at what we have, beside the grammar, there is a generator that writes
+the Eviewpoint file and the ECL file.  However, the ECL generation is hardcoded
+to output only the ECL for the three model composition...
+
+If there is a metamodel for ECL, we should preferably use that in the generator.
+
+And lastly, there is a SQL2VirtualLinks ATL transformation that should create a
+weaving model from the VPDL.  There is Java code to run the transformation, but
+it's not plugged in the generator in any way.
+
+Regarding the grammar, we could define the metamodel for the parsed language
+ourselves, as currently it generates a lot of useless nodes that are needed by
+the grammar, but not by the end model.
+
+Alternatively, we could map to WeavingModel directly, but I don't think that's a
+good idea, since it's clear now that one VPDL maps to 3 differents models:
+EViewpoint, ECL, and weaving model.
+
+** Xtend font troubles                                        :eclipse:xtext:
+The Xtend plugin (in addition to having its own syntax coloring scheme, separate
+from the base Java one) was stuck using Monospace-10, not picking up my default
+editor font.  There was a promising setting under General->Appearance under
+"Xtend editor font", but changing it had no effect.  In fact, it resets when I
+load the preferences panel again (!).
+
+Curiously, each syntax class under Xtext->Editor->Syntax coloring /also/ has the
+possibility to set the font.  By default, it's set to Dina-Regular-8.  But it
+has no effect (!!).
+
+However, /changing/ the value from the default does have an effect.  And
+luckily, Dina 7pt and 8pt are exactly the same, since it's a bitmap font with
+only three actual different sizes.  Changing every syntax category to
+Dina-Regular-7 solves the problem.
+
+Except!  Javadoc-style comments (beginning with ~/**~) still use the default
+Monospace-10 font, and there's no syntax class to change it (!!!).  Removing the
+second star changes it into a regular multi-line comment, which has syntax class
+set to Dina.
+
+And people shrug off Emacs...
