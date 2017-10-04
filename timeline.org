@@ -6697,3 +6697,98 @@ second star changes it into a regular multi-line comment, which has syntax class
 set to Dina.
 
 And people shrug off Emacs...
+
+* [2017-10-04 mer.]
+** Syntax tryouts for VPDL                                         :emfviews:
+Trying to feel natural, without redundant information.
+
+In this one we move the contributing metamodels to the FROM, and allow a
+shortcut syntax with brackets to select multiple attributes from the same
+concept.  New associations are also moved to SELECT.
+
+#+BEGIN_EXAMPLE
+create view myEAviewpoint as
+
+select togaf.EnterpriseArchitecture.*, togaf.StrategicArchitecture.strategicElements,
+  togaf.BusinessArchitecture.processes, togaf.Process[processCritiality, isAutomated],
+  togaf.Requirement.statementOfRequirement, togaf.Requirement.rationale, togaf.Requirement.acceptanceCriteria,
+  bpmn.Process[isClosed, isExecutable, processType],
+
+  togaf.Process join bpmn.Process as detailedProcess,
+  togaf.Requirement join reqif.SpecObject as detailedRequirement
+
+from 'http://www.obeonetwork.org/dsl/togaf/contentfwk/9.0.0' as togaf,
+'http://www.omg.org/spec/BPMN/20100524/MODEL-XMI' as bpmn,
+'http://www.omg.org/spec/ReqIF/20110401/reqif.xsd' as reqif
+
+where togaf.Process.name=bpmn.Process.name and
+ togaf.Process.isAutomated = 'false'
+#+END_EXAMPLE
+
+Here we declare concepts in FROM, metamodels in ON, and select individual
+attributes in SELECT.
+
+#+BEGIN_EXAMPLE
+create view myEAviewpoint on
+'http://www.obeonetwork.org/dsl/togaf/contentfwk/9.0.0' as togaf,
+'http://www.omg.org/spec/BPMN/20100524/MODEL-XMI' as bpmn,
+'http://www.omg.org/spec/ReqIF/20110401/reqif.xsd' as reqif
+
+select tEA.architectures, tSA.strategicElements,
+  tBA.processes, tP.processCritiality, tP.isAutomated,
+  tR.statementOfRequirement, tR.rationale, tR.acceptanceCriteria,
+  bP.isClosed, bP.isExecutable, bP.processType,
+
+  tP join bP as detailedProcess,
+  tR join rS as detailedRequirement
+
+from togaf take
+       Process as tP,
+       EnterpriseArchitecture as tEA,
+       StrategicArchitecture as tSA
+       BusinessArchitecture as tBA,
+       Requirement as tR
+     and
+     bpmn take Process as bP
+     and
+     reqif take SpecObject as rS
+
+/* optional */
+where tP.name=bP.name and tP.isAutomated = 'false'
+#+END_EXAMPLE
+
+Turns out, declaring the concepts is redundant, and using labels is less
+readable.  So we go back to the bracket solution, but allow you to declare new
+associations inside the brackets as well.
+
+Labels could still be useful in WHERE, so we let you use AS there:
+
+#+BEGIN_EXAMPLE
+create view myEAviewpoint as
+
+select togaf.EnterpriseArchitecture.architectures,
+       togaf.StrategicArchitecture.strategicElements,
+       togaf.BusinessArchitecture.processes,
+       togaf.Process[processCritiality, isAutomated, join bpmn.Process as detailedProcess],
+       togaf.Requirement[statementOfRequirement, rationale, acceptanceCriteria],
+       bpmn.Process[isClosed, isExecutable, processType]
+       togaf.Requirement join reqif.SpecObject as detailedRequirement
+
+from
+  'http://www.obeonetwork.org/dsl/togaf/contentfwk/9.0.0' as togaf,
+  'http://www.omg.org/spec/BPMN/20100524/MODEL-XMI' as bpmn,
+  'http://www.omg.org/spec/ReqIF/20110401/reqif.xsd' as reqif
+
+/* optional */
+where togaf.Process as tP and
+      tP.name=bpmn.Process.name and
+      tP.isAutomated = 'false'
+#+END_EXAMPLE
+
+** Next time                                                       :emfviews:
+We should already be able to load an EViewpoint file in the Sample Ecore editor
+and see the viewpoint.  Why is this not working yet?
+
+Generate the weaving model from the ATL transformation.
+
+Generating the matching model can wait.
