@@ -6792,3 +6792,120 @@ and see the viewpoint.  Why is this not working yet?
 Generate the weaving model from the ATL transformation.
 
 Generating the matching model can wait.
+
+* [2017-10-06 ven.]
+** Loading an Eviewpoint in Ecore editor                           :emfviews:
+Throws a NullPointerException because getContents returns virtualContents, which
+at this point is null.
+
+The sample editor does not try to load the resource before listing its contents,
+strangely.
+
+Ah, no.  It does attempt to load the Viewpoint first, but doLoad throws an
+exception that is caught by EMF, which continues happily after that.
+
+The exception is thrown because the TOGAF metamodel cannot be found.  Forgot to
+open the TOGAF project!
+
+When that is fixed, doLoad still fails because the weaving model is empty, which
+is expected.
+
+** Calling the ATL transformation in the code generation           :emfviews:
+Was not too complicated (though ceremonious):
+
+#+BEGIN_SRC java
+var injector = new EMFInjector()
+var factory = new EMFModelFactory()
+
+var sourceMM = factory.newReferenceModel()
+injector.inject(sourceMM, "http://www.inria.fr/atlanmod/emfviews/vpdl")
+
+var targetMM = factory.newReferenceModel()
+injector.inject(targetMM, "http://inria.fr/virtualLinks")
+
+var sourceModel = factory.newModel(sourceMM)
+injector.inject(sourceModel, r)
+
+var targetModel = factory.newModel(targetMM)
+
+var launcher = new EMFVMLauncher();
+launcher.initialize(null)
+launcher.addInModel(sourceModel, "IN", "VPDL")
+launcher.addOutModel(targetModel, "OUT", "VL")
+launcher.launch(ILauncher.RUN_MODE, new NullProgressMonitor(), new HashMap(),
+  new URL("platform:/plugin/fr.inria.atlanmod.emfviews.vpdl/transformation/SQL2VirtualLinks.asm").openStream)
+
+var extractor = new EMFExtractor()
+// FIXME: return an outputstream or a string instead of hardcoding the path here
+extractor.extract(targetModel, "platform:/resource/test-vpdl/src-gen/" + viewpointName(r) + ".xmi")
+#+END_SRC
+
+The hardest part was getting the path right... which I didn't solve yet.
+
+But, Hugo suggested I use [[https://wiki.eclipse.org/ATL/EMFTVM][EMFTVM]] instead.
+
+** Using EMFTVM                                                    :emfviews:
+Apparently, I had a plugin for EMFTVM that came with the ATL install from the
+regular Eclipse update site, but, after adding the line:
+
+: -- @atlcompiler emftvm
+
+to the top of the ATL file, I get the error:
+
+"No compiler found for ATL emftvm.  You may need to install a compiler plugin"
+
+So I tried using the snapshot version on the marketplace, with this update site:
+
+: https://hudson.eclipse.org/shared/job/mmt-atl-master/lastSuccessfulBuild/artifact/releng/org.eclipse.m2m.atl.update/target/repository/
+
+And there was an additional "ATL EMFTVM" feature.  I also have an "ATL EMFTVM
+Compiler" plugin, and a bunch of other stuff.
+
+After that, it compiled the ATL file to EMFTVM instead of ASM.
+
+The ceremony to invoke the transformation is different this time:
+
+#+BEGIN_SRC java
+var factory = EmftvmFactory.eINSTANCE
+var rs = new ResourceSetImpl()
+
+var env = factory.createExecEnv();
+
+// Load metamodels
+var sourceMM = factory.createMetamodel()
+sourceMM.resource = rs.getResource(URI.createURI("http://www.inria.fr/atlanmod/emfviews/vpdl"), true)
+env.registerMetaModel("VPDL", sourceMM)
+
+var targetMM = factory.createMetamodel()
+targetMM.resource = rs.getResource(URI.createURI("http://inria.fr/virtualLinks"), true)
+env.registerMetaModel("VL", targetMM)
+
+// Load models
+var sourceModel = factory.createModel()
+sourceModel.resource = r
+env.registerInputModel("IN", sourceModel)
+
+var targetModel = factory.createModel()
+targetModel.resource = rs.createResource(URI.createFileURI("platform:/resource/test-vpdl/src-gen/" + viewpointName(r) + ".xmi"))
+env.registerOutputModel("OUT", targetModel)
+
+// Run the transformation
+var mr = new DefaultModuleResolver("platform:/plugin/fr.inria.atlanmod.emfviews.vpdl/transformation/",
+  new ResourceSetImpl())
+
+var timing = new TimingData()
+env.loadModule(mr, "SQL2VirtualLinks")
+timing.finishLoading
+env.run(timing)
+timing.finish
+
+targetModel.resource.save(null)
+#+END_SRC
+
+But, unfortunately, even though the ~targetModel~ resource has been successfully
+created in memory, the ~save~ call does not write the XMI file!
+
+** Next time                                                       :emfviews:
+Find out why the output model is not written.
+
+Update the ATL transformation to get all the information from the VPDL.
