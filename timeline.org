@@ -6909,3 +6909,44 @@ created in memory, the ~save~ call does not write the XMI file!
 Find out why the output model is not written.
 
 Update the ATL transformation to get all the information from the VPDL.
+
+* [2017-10-09 lun.]
+** Writing the output model with EMFTVM                            :emfviews:
+So, I'm calling:
+
+: targetModel.resource.save(null)
+
+And I've checked that the targetModel actually contains what I want.  It might
+be an issue with the path of the file?
+
+Well, I tried to trace the call, and it didn't seem to raise any error.
+
+But then I don't even want to save to a file at this point, because I'd rather
+use FileSystemAccess in doGenerate to write the file for me.  I just need to
+write the model to a string:
+
+#+BEGIN_SRC java
+var out = new ByteArrayOutputStream()
+targetModel.resource.save(out, null)
+return new String(out.toByteArray())
+#+END_SRC
+
+which I found [[https://www.eclipse.org/forums/index.php/t/1070698/][here]].
+
+** Updating the ATL transformation                                 :emfviews:
+Fighting with ATL syntax to find out how to write what I want.  But I'm a
+beginner, so that's expected.
+
+References:
+- https://www.eclipse.org/atl/atlTransformations/
+- http://wiki.eclipse.org/ATL/User_Guide_-_The_ATL_Language
+
+I've managed to generate the elements to be filtered, but now I've got to put
+them in the WeavingModel class proper.
+
+Unless I'm mistaken, it seems that ATL happily generates model that do not
+conform to the specified target metamodel at all.  That there is no static check
+for this, I understand, but no runtime checks as well?
+
+** Next time                                                       :emfviews:
+Complete ATL transformation
