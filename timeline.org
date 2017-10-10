@@ -6950,3 +6950,53 @@ for this, I understand, but no runtime checks as well?
 
 ** Next time                                                       :emfviews:
 Complete ATL transformation
+
+* [2017-10-10 mar.]
+** Working on ATL transformation and grammar                       :emfviews:
+Interesting point: when adding a new relation between A and B, both A and B
+concepts must be included in the view, and not be filtered out, otherwise the
+viewpoint creation fails.
+
+Does it make sense?  It seems best that all concepts used by the viewpoint are
+actually present in there, otherwise the view cannot conform to the viewpoint.
+
+But does the user have to actually spell out explicitly which attributes they
+want out of the concept?
+
+Also, by default, it seems I have opted for the whitelisting mode, since it's
+the most intuitive with the ~select~ syntax.  There could be syntax to reverse
+it on a concept basis.
+
+** Xtext goodies                                             :emfviews:xtext:
+Tried to implement auto completion for classes, since we already have metamodels
+and their namespace URI.  For some reason, this only works if I put the ~from~
+section before the ~select~: then the metamodels are defined before we attempt
+to look up things in them.  Otherwise, the metamodel reference in a
+SelectFeature is a proxy that I can't seem to resolve, and the nsURI is null.
+
+I also tried to implement a ScopeProvider for that (thinking that
+auto-completion and validation would both come from implementing the scope
+provider correctly).  But I would need to return EClasses, so I think I have to
+change the grammar to make references to actual EClass, not my ad-hoc 'class'
+thing.
+
+** Fixing an exception when reloading the viewpoint in sample editor :emfviews:
+I got UnsupportedOperationEx after clicking in the sample Ecore editor on the
+viewpoint resource after the viewpoint file has been updated by the VPDL
+generator.
+
+Why?  Because it the editor calls Viewpoin.doUnload, which calls
+getContents.clear(), which is unsupported.  Implementing it to clear our
+virtualContents, and to rebuild them lazily in getContents does the job.
+
+We can now refresh the contents in the sample editor with right click->Refresh.
+This works fine for renaming stuff, but it seems the editor is confused when we
+add/remove children.  We may have to build our own viewer in the end.
+
+One feature that would be nice would be to have different colors for virtual
+associations when loading a Viewpoint in the sample Ecore editor.  Maybe this is
+feasible by providing a custom label provider or something?
+
+** Next time                                                       :emfviews:
+Try to get the validation/completion working by tweaking the grammar.  If
+unsuccesful, ask around.
