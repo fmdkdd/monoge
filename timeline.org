@@ -7000,3 +7000,103 @@ feasible by providing a custom label provider or something?
 ** Next time                                                       :emfviews:
 Try to get the validation/completion working by tweaking the grammar.  If
 unsuccesful, ask around.
+
+* [2017-10-11 mer.]
+** Validation and completion with Xtext                      :emfviews:xtext:
+So, I'm trying to use [[http://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#scoping][scoping]] for that.  It seems the default implementation is
+useful.  E.g., for the metamodels in the From clause:
+
+#+BEGIN_EXAMPLE
+from
+  'http://www.obeonetwork.org/dsl/togaf/contentfwk/9.0.0' as togaf,
+  'http://www.omg.org/spec/BPMN/20100524/MODEL-XMI' as bpmn,
+  'http://www.omg.org/spec/ReqIF/20110401/reqif.xsd' as reqif,
+#+END_EXAMPLE
+
+If I do:
+
+: select tof.Bar.none,
+
+then it will:
+
+1. Recognize ~tof~ as invalid, because it's supposed to be one the Metamodel
+   from the ~From~ clause.
+2. Suggest as quick-fixes to use either ~togaf~, ~bpmn~, or ~reqif~, which is
+   exactly what I want.
+3. Autocompletion also works outside of the box, as it only suggests the
+   metamodels declared in the ~From~ clause.
+
+Stepping through the code, the quick-fix suggestions are gathered from a default
+ScopeProvider implementation.  Curiously, it only works if there are 5 or fewer
+suggestions:
+
+#+BEGIN_SRC java
+if (discardedDescriptions.size() + addedDescriptions <= 5) {
+  for(IEObjectDescription referableElement: discardedDescriptions) {
+    createResolution(issueString, referableElement, ruleName, keyword, caseInsensitive);
+  }
+}
+#+END_SRC
+
+The discarded descriptions are those that are not similar enough.  So if I have
+6 contributing metamodels, then I get no quick-fix suggestion anymore.
+Auto-completion stills suggests the right things though.
+
+Okay, so after input from Massimo, it turns out that auto-completion works when
+we remove the two alternatives in this rule:
+
+#+BEGIN_EXAMPLE
+SelectFeature: metamodel=[Metamodel|ID] '.' class=ID '.' features+=Attribute
+  | metamodel=[Metamodel|ID] '.' class=ID features+=Relation
+  | metamodel=[Metamodel|ID] '.' class=ID '[' features+=Feature (',' features+=Feature)* ','? ']';
+#+END_EXAMPLE
+
+The issue seems to be that Xtext is confused somehow by the fact the same
+reference feature appears in multiple variants.  Or the ambiguity of rule is
+enough to throw Xtext off the rails?
+
+Strangely, this parses just fine, and the model builds without any issue.
+
+Factoring the commong prefix:
+
+#+BEGIN_EXAMPLE
+SelectFeature: metamodel=[Metamodel] '.' class=[ecore::EClass] rest=SelectFeatureRest;
+
+SelectFeatureRest: '.' features+=Attribute
+  | features+=Relation
+  | '[' features+=Feature (',' features+=Feature)* ','? ']';
+#+END_EXAMPLE
+
+makes completion works.  Sort of.
+
+I actually just implemented the ScopeProvider, and auto-completion appears to
+work automatically from the default generated code.
+
+When I type:
+
+: togaf.|
+
+and trigger auto-completion, then I get nothing.  However, if I do:
+
+: togaf.a|
+
+then I get a bunch of classifiers, beginning with 'A'.
+
+If I now put the cursor back:
+
+: togaf.|a
+
+then I get all the classifiers in the TOGAF metamodel.
+
+Auto-completion works for metamodel names, which do not benefit from my own
+version of ScopeProvider.
+
+Maybe I need to override the default auto-completion behavior to capture just
+these cases?
+
+** Next time                                                       :emfviews:
+Make auto-completion works perfectly.
+
+After that, wildcards?  I would need to go back on the weaving model though...
+
+Or take a look a generating a proper ECL file.
