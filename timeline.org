@@ -7095,8 +7095,54 @@ Maybe I need to override the default auto-completion behavior to capture just
 these cases?
 
 ** Next time                                                       :emfviews:
-Make auto-completion works perfectly.
+Make auto-completion work perfectly.
 
 After that, wildcards?  I would need to go back on the weaving model though...
 
-Or take a look a generating a proper ECL file.
+Or take a look at generating a proper ECL file.
+
+* [2017-10-13 ven.]
+** Creating a View from a VPDL-generated viewpoint                 :emfviews:
+I should just have to create an eview file, give it the viewpoint and three
+models, and it should work, right?
+
+First ordeal: relative paths do not work here, although they work in the tests.
+
+Second ordeal: the sample reflexive editor cannot cast VirtualEClass to
+EClassifierExtendedMetaData.Holder.
+
+Then VirtualEReference cannot be cast to
+... EStructuralFeatureExtendedMetadata.Holder!
+
+After that, it loads.  Hmm except I'm still struggling with paths for loading
+the ECL.
+
+Hardcoding it to see what we get...  Yep, the View loads, but there are lots of
+unforeseen consequences of filtering.
+
+The editor throws a bunch of UnsupportedOperationException due to things I've
+not implemented in VirtualEClass/VirtualFeature...  implementing now.
+
+Strange thing: attributes have no name, because presumably the name feature is
+an inherited one, and not filtered in.  Even when filtering in the feature from
+the parent class, the name does not appear in the editor picked up.
+
+References to objects cannot be followed, as the objects do not appear if their
+containers are not filtered in, and recursively.
+
+I'm not sure if we should solve the problem by including the container
+implicitly... No, that's almost always the wrong approach.
+
+Rather, the user should include the attributes themselves.  However, doing that
+seems to have no effect.
+
+** Next time                                                       :emfviews:
+Resolve the filepath issue with the ECL delegate.
+
+Figure out how the sample Ecore editor determines a name for something?  Because
+maybe we could provide our own label editor rather than rely on the default one.
+
+The bigger issue to resolve is: how to make an inherited attribute appear in the
+sample Ecore editor?
+
+And/or, how to filter it in using VPDL?
