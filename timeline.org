@@ -7146,3 +7146,98 @@ The bigger issue to resolve is: how to make an inherited attribute appear in the
 sample Ecore editor?
 
 And/or, how to filter it in using VPDL?
+
+* [2017-10-16 lun.]
+** Fixing paths in ECL delegate                                    :emfviews:
+So, I've got a string supposedly pointing to a matching model file, as a
+'platform:/resource' URI.  Then, I want to open that file using the java.io.File
+API.  How hard can that be?
+
+Seems EMF has no issues opening resources when an EMF URI is created using this
+platform URI scheme.
+
+Okay, so I got it with:
+
+#+BEGIN_SRC java
+IContainer wsroot = ResourcesPlugin.getWorkspace().getRoot();
+IFile ifile = wsroot.getFile(new Path(URI.createURI(filePath).toPlatformString(true)));
+File f = new File(ifile.getLocationURI());
+#+END_SRC
+
+That's a lot of objects, but whatever.
+
+I'm wondering though, it seems this assumes that an EView file will always
+contain platform URI?  What if we want to specify any kind of URI, and
+especially, ~file:~ directly?
+
+Looking into URIConverter and what EMF does when I try to load a resource from a
+relative URI:
+
+: new ResourceSetImpl().getResource(URI.createURI("foo.xmi"), true)
+
+getResource is supposed to look in the already loaded resources for the resource
+set and return it.  If not, it creates and loads the resource.
+
+To find the resource, it normalizes the URI using the URIConverter.
+
+I got an ExtensibleURIConverterImpl instance for the resource set used by
+Viewpoint.  Here is what it does on a relative URI:
+
+#+BEGIN_SRC java
+if (scheme == null)
+    {
+      if (workspaceRoot != null)
+      {
+        if (result.hasAbsolutePath())
+        {
+          result = URI.createPlatformResourceURI(result.toString(), false);
+        }
+      }
+      else
+      {
+        if (result.hasAbsolutePath())
+        {
+          result = URI.createURI("file:" + result);
+        }
+        else
+        {
+          result = URI.createFileURI(new File(result.toString()).getAbsolutePath());
+        }
+      }
+    }
+#+END_SRC
+
+It constructs a file URI only if there is no workspace root, i.e., we are not
+running inside Eclipse.  Otherwise, it constructs a platform resource URI, but
+/only/ if it's absolute, i.e., begins with ~/~.
+
+If it's relative and you are inside Eclipse... tough luck.  It returns the URI
+as-is.
+
+I think the intent is clear: in the Eviewpoint file, if the path is relative, it
+is relative to the location of the EViewpoint file on the file system.
+Otherwise... let EMF handle it.
+
+Hmm, but if do that, and resolve relative paths in the Eviewpoint and Eview
+files with the Viewpoint/View as a base, the test fails.
+
+Because in the tests, I give relative paths for the Viewpoint and View
+resources.  And EMF is happy to construct them.  But they can't be used to
+resolve other URIs.  In fact, the docstring to Resource.getURI states that the
+URI should be hierarchical and absolute.
+
+So maybe I have to fix my tests... but that is very convenient to be able to
+pass a project-relative path as URI for the resource.
+
+Easiest fix would be to test if the resource URI is in fact hierarchical and
+absolute.  This works without needing to change the tests.
+
+But then, if I use a relative path inside an Eviewpoint, it cannot be resolved.
+That's dumb.
+
+So the issue is to find the actual, absolute location of the Resource, and
+resolve relative paths from that.  If there is no absolute location for the
+resource, then we cannot resolve relative paths.  Simple as that?
+
+** Next time                                                       :emfviews:
+Solve out this paths issue.
