@@ -7241,3 +7241,111 @@ resource, then we cannot resolve relative paths.  Simple as that?
 
 ** Next time                                                       :emfviews:
 Solve out this paths issue.
+
+* [2017-10-17 mar.]
+** Constructing a VPDL for a coherent model                        :emfviews:
+The current VPDL example I'm using is incoherent: targets of references point to
+nowhere, because we haven't included them in the metamodel.
+
+We could include such targets implicitly, as syntactic sugar.  Or we could catch
+such errors in the validation phase for the VPDL and have the user write them
+out.
+
+But first of all, I should be able to manually build a VPDL that gives us a
+coherent view.
+
+First mystery: where are the BPMN instances?  I see ReqIF and TOGAF, but not
+BPMN.
+
+Although, there is a strange annotation.  Could that be it?  When I open the
+BPMN model, it has custom icons in the TreeViewer... it may be related.
+
+I traced the creation of the labels in the Sample Reflective Editor to
+org.eclipse.emf.edit.ui.provider.DecoratingColumLabelProvider.
+
+Which calls org.emf.edit.ui.provider.AdapterFactoryLabelProvider.getText.
+
+With a BPMN object (DefinitionsImpl), it fails to adapt to a label provider, and
+just uses toString.  On ReqIF and TOGAF instances, it gets a
+ReflectiveItemProvider which prints the EClass name followed by the "label"
+feature, which is determined by the following code:
+
+#+BEGIN_SRC java
+protected EStructuralFeature getLabelFeature(EClass eClass)
+ {
+   EAttribute result = null;
+   for (EAttribute eAttribute : eClass.getEAllAttributes())
+   {
+     if (!eAttribute.isMany() && eAttribute.getEType().getInstanceClass() != FeatureMap.Entry.class)
+     {
+       if ("name".equalsIgnoreCase(eAttribute.getName()))
+       {
+         result = eAttribute;
+         break;
+       }
+       else if (result == null)
+       {
+         result = eAttribute;
+       }
+       else if (eAttribute.getEAttributeType().getInstanceClass() == String.class &&
+                result.getEAttributeType().getInstanceClass() != String.class)
+       {
+         result = eAttribute;
+       }
+     }
+   }
+   return result;
+ }
+#+END_SRC
+
+A "name" feature, or the latest feature of type String, or the latest feature.
+
+When I open the BPMN model in the sample editor, then the adapter factory finds
+a DefinitionsLabelProvider.
+
+So, how does that factory works?
+
+In adapt(DefinitionsImpl), the delegateAdapterFactory is
+Bpmn2ItemProviderAdapterFactory.  Then it calls this factory to adapt the
+DefinitionsImpl into a DefinitionsItemProvider.
+
+Now, when opening the view, the delegateAdapterFactory is still
+Bpmn2ItemProviderAdapterFactory.  And this time it returns null.  But I don't
+have the code -_-
+
+But I think what's going on is that the adapter factory tests checks for
+instances of metamodel objects, and VirtualEObject isn't one of them.
+
+Indeed, when stepping, we end up in the default case:
+
+#+BEGIN_SRC java
+public Adapter createEObjectAdapter() {
+    return null;
+}
+#+END_SRC
+
+Since the adapter factory has already been chosen, it won't fall back on the
+ReflectiveAdapterFactory, and we have a dumb toString.
+
+So one solution is to force it to use the ReflectiveAdapterFactory.
+
+I tried to add the ReflectiveItemProvider to the adapters of virtual objects,
+and it works if I cheat a bit:
+
+#+BEGIN_SRC java
+eAdapters().add(new ReflectiveItemProvider(null) {
+  @Override
+  public boolean isAdapterForType(Object type) {
+    return true;
+  }
+});
+#+END_SRC
+
+this forces the ReflectiveItemProvider to be used in lieu of the Bmpn2 adapter.
+That way I can load the BPMN model elements just fine.
+
+This is not the proper way to fix out however, because forcing an adapter for
+the Ecore editor has nothing to do in the core of EMFViews.
+
+It seems we have to define our own editor for views, which could just use the
+stuff that's already implemented and available from EMF.edit.
