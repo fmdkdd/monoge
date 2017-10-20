@@ -7409,3 +7409,27 @@ Added tests.  Found bugs.  Moving on.
 ** Next time                                                       :emfviews:
 Need to write my own TreeViewer for View/Viewpoint.  We may have some code in
 the ui plugin already.
+
+* [2017-10-20 ven.]
+** Writing our custom viewer                                       :emfviews:
+I've got a basic editor going on.  At least it shows us BPMN instances out of
+the box.  No icons, no thrills.
+
+- should reload dynamically when the file changes
+
+I may have found how the BPMN adapter factory registers itself to EMF: the
+extension point
+
+: org.eclipse.emf.edit.item.itemProviderAdapterFactories
+
+This may allow us to give an adapter factory for VirtualEObjects.  Need to
+check.
+
+Spent a long time figuring out how to get the properties working... for some
+reason.  In the end I'm not quite sure what I did wrong.  I fiddled with it
+until, somehow, it worked.
+
+** Next time                                                       :emfviews:
+Make a coherent VPDL file.
+
+See if we can plug our own adapter factory for VirtualEPackage/VirtualEObject.
