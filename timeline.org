@@ -7433,3 +7433,20 @@ until, somehow, it worked.
 Make a coherent VPDL file.
 
 See if we can plug our own adapter factory for VirtualEPackage/VirtualEObject.
+
+* [2017-10-23 lun.]
+** Making a coherent VPL                                           :emfviews:
+There are indeed a bunch of stuff we have to explicitly include if we want to
+see anything in the view.  And finding out what to include is not an easy
+process.
+
+An "auto" mode that implicitly includes containers for instance would be great.
+
+I managed to build a coherent VPDL.  There are still some references missing,
+but I guess they shouldn't even be in the view to begin with.
+
+** Next time                                                       :emfviews:
+Investigate why including one attribute from a parent actually displays /all/
+features in the subtypes.
+
+Look into using the adapter factory mechanism for EMF.
