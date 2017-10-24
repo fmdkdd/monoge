@@ -7450,3 +7450,100 @@ Investigate why including one attribute from a parent actually displays /all/
 features in the subtypes.
 
 Look into using the adapter factory mechanism for EMF.
+
+* [2017-10-24 mar.]
+** First day                                                       :megamart:
+*** TEK use case
+Ultra-wide band positioning.
+
+Use hardware emulators for testing.  They want to not have to write the
+emulators in order to create the tests.
+
+Issue with team collaboration when changing models used by other models.
+
+*** IKER use case
+Product: smart warehouse supervision system.
+
+Problems: physical and logical failures.
+
+Use modelling and want to use modelling for code generation, versioning, and
+tracking model changes.
+
+*** NOK use case
+Product: Nokia Pico Base Station.
+
+Want continuous feedback in their development process.  300-400 persons working
+on the same project.
+
+Want: versioning of models (branches, delta view for traceability of features)
+
+Want: Feedback in model, as in integrating runtime data back into models.
+
+Focus on real-time UML modeling.  (UML RT is a UML profile tailored to real-time
+and embedded systems).
+
+*** Bombardier use case
+Train producer.
+
+Need coordination between different types of trains (electric, high-speed,
+local, ...) and over distributed teams.
+
+Current workflow: functional requirements, UML/SysUML models. then test, then
+generation to C code, and more tests.  These are done by different teams,
+different persons.  Opportunities for loss of signal.
+
+Ideally, they want to refine models between each steps.  E.g., refine software
+requirements refined from the functional requirements, rather than writing the
+former by eyeballing the latter.
+
+Technos: Simulink, SysML, SIL2.
+
+*** CSY use case
+Coppilot platform screen door control.  Screen doors like in the M14 line in
+Paris: they are the doors on the train platform, not the doors of the train.
+
+They must open when the train doors open, close when the train doors close, etc.
+
+The safety-critical parts were created with a B model, and are not modifiable
+anymore, apparently.
+
+They have troubles with keeping track of logs, especially for network usage.
+They want to aggregate logs at runtime whenever nodes are idling.
+
+*** AINA use case
+Product: SMS gateway.
+
+Want: methods and tools for run-time analysis, to find out root causes.  (Is
+that realstic?)
+
+*** Volvo use case
+Specifically: Volvo Construction Equipment branch, which manufactures machines
+for construction.
+
+Need traceability from requirements to the runtime, possibly with feedback from
+runtime data back to requirements.
+
+Technos: UPDM, SysML, Simulink.
+
+*** Thales
+Product: Flight Management System.  This is the system that computes a flight
+plan according to localization information gathered by sensors.  This flight
+plan can be used by the guidance sub-system for autopilot, or its information
+can be used by the human pilot.
+
+Need: earlier verification, reduce risk of costly errors.  (Don't we all?)
+
+Hard requirements:
+- every command instructed by the pilot to the system shall have a visual
+  display in less than 1s.
+- new flight plan should be computed in 3sec or less.
+
+Want: tools that estimate the worst time in a simulation, and report the causes
+of deadline misses to the designer.
+
+Technos: Capella
+
+*** Architecture presentation by Andrey
+They harvested the requirements and the tool interfaces and put that into
+models.  So they can track what kind of format the tool expects, what format
+they output, and requirement providers could peruse this info to synchronize.
