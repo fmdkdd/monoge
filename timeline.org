@@ -7625,3 +7625,49 @@ in the framework
 [more back and forth]
 
 Orlando agrees to include information about methodologies in the framework
+
+*** Gunnar: WP7 administration stuff
+All partners need to sign an agreement of acceptance for joining Artemis.
+
+Gunnar says European money won't come until the PCA (consortium agreement) is
+signed by all partners.
+
+For some countries, national funds won't be unblocked before the PCA either.
+
+On the continuous reporting portal, we should:
+- report the number and gender of researchers involved
+- update any relevant risks
+- make sure publications are visible, but don't edit directly the tab (contact
+  Clara or Gunnar?)
+
+Planning of next meetings:
+- April 2018 in Finland (city not determined yet)
+- May 2018 Brussels (first review, not plenary)
+- October 2018 France?
+- ...rest unclear
+
+Local partners should decide exactly on the location, venue, week, and cost.
+
+Suggestion: draw up a list of probable locations with full costs, and let other
+partners take a look.
+
+Gunnar is not convinced.
+
+Clara insists.
+
+** Trying to preserve the state of tree viewer when refreshing     :emfviews:
+I got refreshing to work on right-click.  It's already not bad and more reliabe
+than the sample editor.
+
+Apparenty using the expand* methods is useless.  But using setExpandedState
+works.
+
+The main issue with preserving the open state is that currently I'm rebuilding
+the whole resource, and all the virtual objects are re-created anew.  So, how
+can we match the new virtual objects to the previous ones?
+
+If we use numbers, then it breaks when a node is added or removed between
+updates.  We can't use names, because some nodes don't have any.
+
+So we need to determine an ID that should be preserved between updates.  Note:
+we only need nodes that bear children to have consistent IDs.
