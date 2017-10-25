@@ -7547,3 +7547,81 @@ Technos: Capella
 They harvested the requirements and the tool interfaces and put that into
 models.  So they can track what kind of format the tool expects, what format
 they output, and requirement providers could peruse this info to synchronize.
+
+* [2017-10-25 mer.]
+** Second day                                                      :megamart:
+*** Hugo: work package 4
+On global model & traceability management.
+
+Goal: link WP2 (design time models) and WP3 (run time traces and logs)
+together.
+
+Upcoming deadline: architecture report (waiting on WP2 and WP3).
+
+Tools in WP4:
+- Modelio Constellation (Softeam)
+- EMF Views
+- AM3/MoScript (legacy)
+- NeoEMF
+- JTL (traceability)
+- PADRE (anti-patterns detection)
+- MDEForge (repository solutions for models)
+
+Interfaces in WP4:
+- model storage,
+- model versionning,
+- model access control,
+- model query,
+- model cartography,
+
+Still open questions about traces between design-time and run-time models: need
+more use info from use cases.
+
+Volvo guy: focus more on methodologies.  They want to use views and viewpoints,
+but they need more info?
+
+Guy 1: if we have tools first, then we can build the methodology.
+
+Industry Guy: methodology is more important than the tools.
+
+Guy 1: if we have matched use-cases to tasks first, then we can build the
+methodology.
+
+Guy 2: as a company, would you prefer a complete tool, or to change your whole
+methodology?
+
+Industry Guy: things will evolve, so we'd rather support a methodology than a
+specific tool that would become obsolete, and is more rigid.
+
+Hugo: how do use case providers feel about filling a questionnaire about what
+models you use?
+
+Room: [silence]
+
+Hugo: okay so we'll do that.
+
+*** Orlando (ATOS): WP5
+They are in charge a making a framework bundling most of the tools.
+
+Principles: we should try to orchestrate version pinning so it's transparent to
+the users.
+
+Use loose coupling and asynchronous messaging: interact with publish/subscribe,
+message queues rather than direct API calls.
+
+There should be a joint release of tools bundled in the framework at M22
+(initial release) and M36 (final release).
+
+Hugo: will the framework include documentation on the processes (methodologies)?
+
+Orlando: no, that's not our responsibility.
+
+Bombardier gal: we are really missing info about processes.  What you should
+model, how you should model, how you can validate the model.
+
+Hugo: even if it's not the responsibility of WP5, the info should be reflected
+in the framework
+
+[more back and forth]
+
+Orlando agrees to include information about methodologies in the framework
