@@ -7671,3 +7671,16 @@ updates.  We can't use names, because some nodes don't have any.
 
 So we need to determine an ID that should be preserved between updates.  Note:
 we only need nodes that bear children to have consistent IDs.
+
+* [2017-10-26 jeu.]
+** Third day                                                       :megamart:
+*** Wrap-up
+Tool provides should set up meetings/demos with use-case providers.  These
+meetings should be synchronized at the work package level.
+
+WP4 task: writing a survey to find out what models are used by use-case
+providers, in what amount, etc.  Share with other work packages.
+
+Dragos: also, focus on methods, not just tools.
+
+Bombardier girl & Volvo guy: yes.
