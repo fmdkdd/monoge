@@ -7684,3 +7684,90 @@ providers, in what amount, etc.  Share with other work packages.
 Dragos: also, focus on methods, not just tools.
 
 Bombardier girl & Volvo guy: yes.
+
+* [2017-11-13 lun.]
+** Back in the saddle                                              :emfviews:
+So I was working on a custom EView editor, for two reasons:
+
+- the sample Ecore editor does not handle refresh from resources graciously
+- a custom EView editor could indicate synthetic elements with a different color
+
+Currently, the EView editor has basic functionality.  What to improve:
+
+- the presentation in the "Properties" tab is a bit lacking.  Although it allows
+  for expanding references inline.
+- One issue in the "properties" tab is that I'm not quite sure to understand why
+  some properties are present.  It looks like inherited properties are present,
+  sometimes?  Investigate.
+- auto-refresh from resource change as an option
+- add button for manual refresh from resource
+
+A thorny issue is how to preserve the state of opened nodes when reloading the
+resource.  I think it amounts to making a diff of the trees.  But we could get
+by with a simple hash function that preserves identity between resource reloads.
+
+Another path I've yet to explore is to use an adapter factory to provide the
+sample Ecore editor with our own info on the Eview.  But now that I'm looking at
+it again, it seems the sample Editor has no issue opening up a viewpoint or
+view.  So this might not be necessary.
+
+Also, test with the Modisco browser to see if it works.
+
+Before working on Eview, my task was to improve the VPDL language.  Still left:
+
+- create a full, coherent VPDL file
+- see if we can make containing references implicit
+- the ECL part is still untouched
+- auto-completion only works after we give one letter
+
+But for the short term, we established that I should first plug the metamodel
+extension language to the new weaving model.
+
+After that, if I have time, I should look into the ECL part of the VPDL.
+
+** Plugging the metamodel extension language                       :emfviews:
+Generated a new project with the old grammar.  Added a simple example file.
+Seems to work.
+
+Now to generate the weaving model with ATL.
+
+Things I noted while sketching out the ATL transformation:
+
+The namespace URI of the contributing metamodels is never provided.  Needs to
+extend the grammar.
+
+The weaving model supports specializing a virtual concept, but with the current
+syntax:
+
+: add class Y specializing uml.C
+
+It's unclear how we could know in the ATL transformation whether the parent
+class is virtual or concrete.  Maybe if it doesn't have a prefix, it's virtual?
+
+I should generate an Eviewpoint file alongside the weaving model.
+
+The syntax:
+
+: extending UML:uml, BPMN:bpmn
+
+does not actually tie the metamodel to its prefix in the parsing model (unless
+the order of addition in containments references is deterministic).
+
+There's renaming to be done in the grammar.
+
+As I did not want to touch the grammar just yet, but still wanted to generate
+the Generalize clause correctly, it resulted in this gem:
+
+#+BEGIN_SRC atl
+subConcepts <- s.prefix->iterate(p; tu : OclAny = Tuple{idx=0, concept=Sequence{}} |
+            Tuple{idx = tu.idx + 1,
+                  concept = tu.concept->append(thisModule.LazyRule(p, s.class.get(tu.idx)))
+             }).concept
+#+END_SRC
+
+Just to be able to get the corresponding element from the ~s.prefix~ and
+~s.class~ lists.  A zip would have been more elegant, but it's not in the
+language.  For a one-shot, might as well use an accumulator to populate a list
+and keep track of the current index.
+
+Have to fix the grammar.
