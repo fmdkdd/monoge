@@ -7733,7 +7733,7 @@ Now to generate the weaving model with ATL.
 
 Things I noted while sketching out the ATL transformation:
 
-The namespace URI of the contributing metamodels is never provided.  Needs to
+The namespace URI of the contributing metamodels is never provided.  Need to
 extend the grammar.
 
 The weaving model supports specializing a virtual concept, but with the current
@@ -7771,3 +7771,29 @@ language.  For a one-shot, might as well use an accumulator to populate a list
 and keep track of the current index.
 
 Have to fix the grammar.
+
+* [2017-11-14 mar.]
+** Working on MEL                                                  :emfviews:
+On AddProperty, the type probably shouldn't be optional.
+
+I'm not sure what ModifyProperty is for.  The example
+
+: modify property propertyC attribute="name", value="propertyC2"
+
+is not very telling.
+
+Oh wait, I think I get it.  It modifies the name of the propertyC to be
+propertyC2 instead.  Ok.
+
+Well, that's a bit too open unfortunately.  We should either fix what we can
+modify on an attribute in the language, or remove this construct.  Besides
+changing the name, we could change the cardinality, or the type.  Is there
+anything else?
+
+Also, this raises the question: what happens to models that use this property?
+We should probably update the models to display the value for "propertyC" under
+"propertyC2" now.
+
+So, modifying a property would not be functionally equivalent to filter+add in
+this case, because the latter would not have this explicit link preserved at the
+model level.
