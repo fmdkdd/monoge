@@ -7797,3 +7797,12 @@ We should probably update the models to display the value for "propertyC" under
 So, modifying a property would not be functionally equivalent to filter+add in
 this case, because the latter would not have this explicit link preserved at the
 model level.
+
+* [2017-11-15 mer.]
+** Further work on MEL grammar/syntax                              :emfviews:
+We could Constraint as annotation?
+
+Reworked the grammar a bit to use namespace URIs.
+
+But now concrete concepts are not unique anymore in the weaving model after the
+transformation.
