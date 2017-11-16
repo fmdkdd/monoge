@@ -7806,3 +7806,77 @@ Reworked the grammar a bit to use namespace URIs.
 
 But now concrete concepts are not unique anymore in the weaving model after the
 transformation.
+
+* [2017-11-16 jeu.]
+** Setting up new machine                                          :emfviews:
+A Dell Latitude 7480.
+
+First gotcha: Arch does not see the nvme drive when booting in UEFI.  Legacy
+mode works fine.
+
+Switching the SATA configuration from RAID to AHCI fixes it (but breaks
+windows).
+
+After that, it seems the D6000 universal dock is badly supported.  I followed
+the [[https://wiki.archlinux.org/index.php/DisplayLink][wiki]] and installed the displaylink and evdi-git AUR packages.  The display
+ports work: the monitors are recognized by xrandr, and I can use both of them.
+However, there is unbearable lag on the monitors.
+
+This seems to be a known issue.  I tried switching drivers (without being sure
+that I had succeeded), and turning off Vsync (but with glxgears always reporting
+that it was on...).  No success so far.
+
+My best bet would probably be to use the HDMI output for one screen, and the
+USB dongle for the other HDMI screen.
+
+The dock can still be useful for the ethernet and USB ports.
+
+** MEL progress                                                    :emfviews:
+Can't specialize and supertype at the same type when creating a new class.  Is
+this useful?  I don't know, but the grammar does not support it, although the
+weaving model does.
+
+Solving the uniqueness of concrete concepts: this worked when I used a unique
+lazy rule with the tuple (metamodel, name) as argument.  From my understanding
+of ATL, the fact that it's unique will ensure that each tuple (metamodel, name)
+will always produce the same output (concreteConcept).
+
+If I pass a TargetClass instead as argument to the rule, then for different
+target class instances which have the /same content/, I get different outputs:
+
+: TargetClass1 (uml, A) -> ConcreteConcept1 (uml, A)
+: TargetClass2 (uml, A) -> ConcreteConcept2 (uml, A)
+
+So the lazy rule has to stick to the contents of the target class.  But since
+that's a little verbose to call, I added a helper:
+
+#+BEGIN_SRC atl
+helper context MEL!TargetClass def : toLink : VirtualLinks!ConcreteConcept =
+	thisModule.ConcreteConcept(self.metamodel, self.name)
+;
+
+unique lazy rule ConcreteConcept {
+  from m : MEL!Metamodel, name: ECORE!EString
+  to   t : VirtualLinks!ConcreteConcept (
+      model <- m,
+      path <- name
+  )
+}
+#+END_SRC
+
+Aaaargh.  Another issue with dupes.  The problem is that I have duplicates of
+VirtualConcepts now.  One 'add class A' statement will create a VirtualConcept A
+in the transformation, but I can also use that new class as a target for a new
+association.  In this case, the association need to refer to the virtual
+concept, but not create it.
+
+I think I found a way to solve it by finding the corresponding AddClass
+declaration.
+
+Ah yes, it works.  I can only have one rule for creating classes though.  But
+that's more flexible that way anyway.
+
+** Next time
+Cardinality for reference.
+
+Tackle modify property.
