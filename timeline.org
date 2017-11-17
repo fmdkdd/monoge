@@ -7808,7 +7808,7 @@ But now concrete concepts are not unique anymore in the weaving model after the
 transformation.
 
 * [2017-11-16 jeu.]
-** Setting up new machine                                          :emfviews:
+** Setting up new machine                                              :dell:
 A Dell Latitude 7480.
 
 First gotcha: Arch does not see the nvme drive when booting in UEFI.  Legacy
@@ -7880,3 +7880,140 @@ that's more flexible that way anyway.
 Cardinality for reference.
 
 Tackle modify property.
+
+* [2017-11-17 ven.]
+** Another look at the new machine                                     :dell:
+*** Second take on the DisplayLink issue                        :displaylink:
+: pacaur -S displaylink
+
+Requires evdi>=1.5, but package is evdi 1.3.  Using evdi-git:
+
+: pacaur -S evdi-git
+
+Succeeds after kernel headers are installed.
+
+After that, installing displaylink works.
+
+: systemctl start displaylink
+
+
+Regarding the display link: noticeable lag using the modesetting driver just by
+moving the mouse cursor around and selecting stuff in Firefox.  No perceivable
+lag in urxvt.  Small lag doing the same things in Emacs.
+
+Now, playing a video on the screen and the video plays fine but the mouse lag is
+pretty bad.
+
+No lag when doing the same thing on the laptop screen.
+
+The whole hub also disconnected and reconnected itself without me touching it.
+Though the USB-C connector looks flimsy.
+
+Same lag with PageFlip off.
+
+Also,
+
+: env vblank_mode=0 glxgears
+
+reports ~627FPS on the laptop monitor, and ~510FPS on the displaylink monitor.
+
+Let's try the Intel driver.
+
+glxgears reports ~584FPS on laptop monitor.
+
+Displaylink looks like it refuses to work with the intel driver actually.  That
+matches with the info on the wiki (except the suggested workaround does not
+work).
+
+Well, so that's it then.  Displaylink driver is garbage for linux.  I'm not
+plugging my screens this way.
+
+No noticeable lag when plugging the monitor via VGA using an USB-C dongle (also
+with ethernet plugged-in).
+
+*** Disabling the PC speaker
+Wow, somehow there is a PC speaker on that thing, and it's really loud.
+Blacklisting:
+
+: blacklist pcspkr
+
+in /etc/modprobe.d/nobeep.conf
+
+*** Emacs and hi-dpi                                              :emacs:dpi:
+Emacs seems to obey the dpi argument to startx just fine:
+
+: startx -- -dpi 120
+
+Using xrandr also works:
+
+: xrandr --dpi 120
+
+but you have to restart the application to see changes.
+
+Although, the only thing that gets scaled is the text size, not the interface.
+
+Well, the toolbar and menu bar can be scaled with:
+
+: env GDK_SCALE=2
+
+Though the tooltips are off by a large amount.
+
+But the fringe stays the same size, regardless of all these settings.
+
+In any case, even if the fringe scaled, all the regular images inside are
+bitmaps, so they would need high-resolution versions to go along.
+
+*** Multiple monitors and hi-dpi                                        :dpi:
+Also, I have a (mid) high-DPI laptop screen and regular DPI monitors.  The [[https://wiki.archlinux.org/index.php/HiDPI][wiki]]
+suggests to use the scale option of xrandr.  But scaling means a blurry output,
+which is also unacceptable.
+
+So I guess when I use the laptop alone I can set the dpi to 144 to be
+comfortable (but then I have to switch to a TTF font in Emacs and in the
+terminal).  But when plugging the external monitors I should stick to 96 DPI and
+forego the laptop screen.
+
+This, unfortunately, is not easy to change dynamically, since some applications
+require to be restarted after a DPI change.  And Firefox for instance does not
+listen to the X server DPI settings, but to the Xft.dpi resource value.
+
+This period between ubiquitous 96 DPI and ubiquitous 300 DPI has more annoyances
+than benefits.
+** MEL improvements                                                :emfviews:
+Handled cardinality.
+
+Added scoping for class names, so now we get validation and auto-completion for
+free.
+
+We could do the same for properties, but I haven't gotten back to modify the
+syntax for modify property yet.
+
+Opening the eviewpoint file now... and it seems to work!  I see the new classes,
+the new properties.
+
+There is a strange bug though, if I do:
+
+: add class Z supertyping uml.Activity, uml.Action
+
+and later:
+
+: modify class uml.Activity
+
+then loading the viewpoint fails because uml.Activity cannot be found.  When
+debugging, I see that it's only the second search for uml.Activity using
+EMFViewUtil.findElement that fails to find it.
+
+So not using the same class twice makes the viewpoint loads without issues:
+
+: modify class uml.Behavior
+
+Probably related: the Behavior classifier is nowhere to be found, even though it
+was never filtered.  If I write:
+
+: modify class uml.Behavior {
+:   filter property propertyB
+: }
+
+Then the Behavior classifier is absent.  If I remove the "filter property" line,
+then the classifier appears.  Something funky in the filtering algorithm when
+the property does not exist.
