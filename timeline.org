@@ -8017,3 +8017,211 @@ was never filtered.  If I write:
 Then the Behavior classifier is absent.  If I remove the "filter property" line,
 then the classifier appears.  Something funky in the filtering algorithm when
 the property does not exist.
+
+* [2017-11-20 lun.]
+** Fixing the filter property bug                                  :emfviews:
+Okay so the bug was on the ATL transformation side.  I told the weaving model to
+filter the Behavior class, instead of the Behavior.propertyB feature.
+
+It's a bit of a hassle to do in ATL, because I have again to use a unique lazy
+rule to ensure that there are no duplicate filters.  But hey, bug fixed.
+
+** About the duplication in the ATL transformation             :emfviews:atl:
+I think the pattern I've encountered boils down to this.  The source model has
+'add attributes' elements contained in a 'modify class':
+
+- modify class A
+  - add attribute P
+  - add attribute Q
+
+and the target model needs one element for each 'add attribute', that refer to
+the same class A.  So:
+
+#+BEGIN_SRC atl
+rule R {
+  from s : IN!AddAttribute
+  to
+  t : OUT!NewAttribute (
+    name <- s.name,
+    class <- class
+  ),
+
+  class : OUT!ReferredClass (
+    name <- s.refImmediateComposite().className
+  )
+}
+#+END_SRC
+
+This won't work, because it will generate two instances of 'ReferredClass A'.
+
+Instead, here, we can clearly have to matched rules:
+
+#+BEGIN_SRC atl
+rule R {
+  from s : IN!ModifyClass
+  to   t : OUT!ReferredClass (
+    name <- s.className
+  )
+}
+
+rule R2 {
+  from s : IN!AddAttribute
+  to   t : OUT!NewAttribute (
+    name <- s.name,
+    class <- s.refImmediateComposite()
+  ),
+}
+#+END_SRC
+
+No duplicates, as R is matched only once, and the links are taken care of in R2.
+
+So this is not the issue I'm having.  My problem is that the class A can be
+referred to in other places, like:
+
+- modify class A
+  - add attribute P
+  - add attribute Q
+- modify class A
+  - add attribute R
+  - add attribute S
+
+and I want, as a target:
+
+- new attribute P
+  - parent -> A
+- new attribute Q
+  - parent -> A
+- new attribute R
+  - parent -> A
+- new attribute S
+  - parent -> A
+- referred class A
+
+Now, if I'm using the two-rules solution above, 'ReferredClass A' will appear
+twice in the target model, which I don't want.
+
+Instead, I'm doing:
+
+#+BEGIN_SRC atl
+rule R {
+  from s : IN!AddAttribute
+  to   t : OUT!NewAttribute (
+    name <- s.name,
+    class <- thisModule.R2(s.refImmediateComposite().className)
+  ),
+}
+
+unique lazy rule R2 {
+  from name : ECORE!EString
+  to   t : OUT!ReferredClass (
+    name <- name
+  )
+}
+#+END_SRC
+
+Now, for each AddAttribute, I have a corresponding NewAttribute, which has the
+correct link to the class.  But the class is generated only once, since the rule
+is unique.
+
+I'm suggesting that instead of having to use the lazy rule, I keep using the
+solution with two matched rules, but somehow I can tell ATL that rule R should
+only match for distinct ModifyClass.className.
+
+Asking around, Massimo suggested this:
+
+#+BEGIN_SRC atl
+rule R {
+  from s : IN!ModifyClass
+   (s = s.getRepresentative())
+  to   t : OUT!ReferredClass (
+    name <- s.className
+  )
+}
+
+rule R2 {
+  from s : IN!AddAttribute
+  to   t : OUT!NewAttribute (
+    name <- s.name,
+    class <- s.refImmediateComposite().getRepresentative()
+  ),
+}
+#+END_SRC
+
+The key part being restricting the match of R using the guard:
+
+: (s = s.getRepresentative())
+
+#+BEGIN_SRC atl
+helper context IN!ModifyClass def: getRepresentative(): IN!ModifyClass =
+	IN!ModifyClass.allInstances()->select(c | c.className = self.className)->first();
+#+END_SRC
+
+** Further MEL improvements                                        :emfviews:
+- Multiple inheritance
+- Validation of property names
+- Implement 'modify property'
+
+Out of scope for now: making sure that we are not adding duplicate properties or
+classes.
+
+I thought the command:
+
+: add class B specializing Y and supertyping Z
+
+would work, but it doesn't.  I'm not seeing in the grammar why it shouldn't
+work.
+
+Oh rightn.  There's no need for that "and" in there.  Silly me.  Were I of bad
+faith, I would say the default parsing error did not help me in locating the
+error.
+
+Anyway, multiple inheritance now.  Yep, that works as well.  It even allowed me
+to get rid of that ugly condition masking the lack of option type in ATL:
+
+#+BEGIN_SRC diff
+-        superConcepts <- if s.parent.oclIsUndefined()
+-                        then Sequence{}
+-			 else Sequence{s.parent.toLink()}
+-			 endif,
++        superConcepts <- s.parents->collect(e | e.toLink()),
+#+END_SRC
+
+Fixed a couple of bugs with the EView editor.  Forgot to implement the ID
+feature for attributes in VirtualEAttribute.dynamicGet.  This also affected
+other viewers, of course.
+
+There is still an issue when wanting to print the value of the eFactoryInstance
+attribute for EPackages.  It currently throws as unimplemented, because I still
+don't know what to provide, if anything.  I guess we could provide a factory
+that does... nothing?  Or throw when you want it to actually create instances?
+
+Hmm so about that modifyProperty clause.  It seems to me the most natural way of
+writing it would be so:
+
+#+BEGIN_SRC
+modify class bpmn.Activity {
+  modify property propertyC {
+    name propertyC2
+    type X
+    cardinality 0..1
+    relation type association
+  }
+}
+#+END_SRC
+
+So that it echoes the syntax for modify class.
+
+On the implementation front, since it's supposed to be syntactic sugar for a
+filter+add property, I was hoping to be able to desugar this it with Xtext.  Not
+sure if there are any default facilities for that.
+
+Otherwise the cleanest approach would be to do one ATL transformation for
+desugaring, then one transformation for turning it into a weaving model.
+
+Since it seems wasteful to launch and run two transformations instead of one, I
+guess I'll have to translate the sugar myself.
+
+Got validation for property names working instead, since it was simpler.
+
+** Next time                                                       :emfviews:
+Finish 'modify property' ATL transformation.
