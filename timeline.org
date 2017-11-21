@@ -8225,3 +8225,128 @@ Got validation for property names working instead, since it was simpler.
 
 ** Next time                                                       :emfviews:
 Finish 'modify property' ATL transformation.
+
+* [2017-11-21 mar.]
+** Handle modify property clause in ATL transformation             :emfviews:
+So I managed to make a simplification in the grammar for the 'modify property'
+clause.  At first I went with:
+
+#+BEGIN_SRC xtext
+ModifyProperty:
+  'modify' 'property' property=[ecore::EStructuralFeature] '{'
+    operators+=ModifyPropertyOperator*
+  '}'
+;
+
+ModifyPropertyOperator:
+  ChangeName | ChangeType | ChangeCardinality | ChangeRelationType
+;
+
+ChangeName: newName=ID;
+...
+#+END_SRC
+
+But then it was a hassle to handle in the ATL transformation, because to get the
+value of name to assign to the new property, I had to find the 'ChangeName'
+instance, and use its value.
+
+Then I realized that the grammar was wrong, in that it allowed us to write
+the nonsensical:
+
+#+BEGIN_EXAMPLE
+modify property foo {
+  name bar
+  name baz
+  name null
+}
+#+END_EXAMPLE
+
+And, the grammar could be more restrictive /and/ be easier to handle as well
+using unordered groups:
+
+#+BEGIN_SRC xtext
+ModifyProperty:
+  'modify' 'property' property=[ecore::EStructuralFeature] '{'
+    (('name' newName=ID)?
+     & ('type' type=Type)?
+     & ('cardinality' cardinality=Cardinality)?
+     & ('relation' 'type' relationType=RelationType)?)
+  '}'
+;
+#+END_SRC
+
+The extra parenthesis ensures the unordered group constraint only applies inside
+it (and does not mess with what's around the curly brackets).  And, I don't have
+to dig in order to get the values in ATL.  Although... another issue arises.
+
+The point of having clauses inside 'modify property' be optional, is that you
+shouldn't have to repeat what is already there.  In this case, if I want to
+rename a property, I should just have to say:
+
+#+BEGIN_EXAMPLE
+modify class A {
+  modify property foo {
+    name bar
+  }
+}
+#+END_EXAMPLE
+
+Conceptually, this is syntactic sugar for a filter + add property:
+
+#+BEGIN_EXAMPLE
+modify class A {
+  filter property foo
+  add property bar [..]
+}
+#+END_EXAMPLE
+
+And this is done the ATL transformation.  But the devil is in the elision:
+`[..]` should specify the type and cardinality of the new property.  These
+values are known: whatever was already present for the property A.foo in the
+metamodel.  Except the ATL transformation does not have knowledge of the content
+of this property.
+
+But maybe it could.  The ATL transformation can accept multiple sources.  So we
+could, e.g., add an ECORE input model, and navigate it to populate the missing
+entries in 'modify property'.
+
+Ah, but Hugo raises a good objection: What happens if you use 'modify property'
+on different metamodels?  Your ATL transformation cannot handle N varying
+inputs, unless you first generate the transformation from... another
+(higher-order) transformation?  And you still need to sort out the
+correspondence between the input models and the modify property clauses.
+
+So, maybe the desugaring phase is the simplest solution after all.  If I find a
+'modify property' clause, I expand it into 'filter + add' and navigate the
+metamodels to find the default values.
+
+Aaaah, but I'm dumb.  I realized that we already had a reference to an EStructuralFeature
+in the grammar, so I don't need to navigate anything: I just look up its
+attributes to populate the default values in a modify property.
+
+One remaining issue with the 'modify property' clause, is that the grammar
+potentially allows you to turn an attribute into a reference and vice-versa.  If
+we allow that semantically, then it's a pain to handle in the transformation.
+
+But, we agreed with Hugo that it seems unuintuitive to allow changing the nature
+of a feature with 'modify property'.  It's fine for small changes like the name,
+the type, or cardinality.  But if you want to change its nature, then you can
+always add a new property/association, and hide the previous one (if you want
+to).
+
+So I need to change the grammar to reflect this distinction, and disallow
+invalid programs.
+
+** At some point                                                   :emfviews:
+I'll have to Write tests for both languages.  Test valid programs, invalid ones,
+and also test the generator.
+
+I'm not sure it would have sped up prototyping, since the syntax is fluid at
+this point.
+
+But once we design starts to gel, it's time to make sure the basic and corner
+cases work.
+
+** Next time                                                       :emfviews:
+I've left the cardinality to handle tomorrow.  Maybe I can update the grammar
+here as well to forbid using an unbounded one for attributes.
