@@ -7725,7 +7725,7 @@ extension language to the new weaving model.
 
 After that, if I have time, I should look into the ECL part of the VPDL.
 
-** Plugging the metamodel extension language                       :emfviews:
+** Plugging the metamodel extension language                   :emfviews:mel:
 Generated a new project with the old grammar.  Added a simple example file.
 Seems to work.
 
@@ -7773,7 +7773,7 @@ and keep track of the current index.
 Have to fix the grammar.
 
 * [2017-11-14 mar.]
-** Working on MEL                                                  :emfviews:
+** Working on MEL                                              :emfviews:mel:
 On AddProperty, the type probably shouldn't be optional.
 
 I'm not sure what ModifyProperty is for.  The example
@@ -7799,7 +7799,7 @@ this case, because the latter would not have this explicit link preserved at the
 model level.
 
 * [2017-11-15 mer.]
-** Further work on MEL grammar/syntax                              :emfviews:
+** Further work on MEL grammar/syntax                          :emfviews:mel:
 We could Constraint as annotation?
 
 Reworked the grammar a bit to use namespace URIs.
@@ -7831,7 +7831,7 @@ USB dongle for the other HDMI screen.
 
 The dock can still be useful for the ethernet and USB ports.
 
-** MEL progress                                                    :emfviews:
+** MEL progress                                                :emfviews:mel:
 Can't specialize and supertype at the same type when creating a new class.  Is
 this useful?  I don't know, but the grammar does not support it, although the
 weaving model does.
@@ -7876,7 +7876,7 @@ declaration.
 Ah yes, it works.  I can only have one rule for creating classes though.  But
 that's more flexible that way anyway.
 
-** Next time
+** Next time                                                   :emfviews:mel:
 Cardinality for reference.
 
 Tackle modify property.
@@ -7979,7 +7979,7 @@ listen to the X server DPI settings, but to the Xft.dpi resource value.
 
 This period between ubiquitous 96 DPI and ubiquitous 300 DPI has more annoyances
 than benefits.
-** MEL improvements                                                :emfviews:
+** MEL improvements                                            :emfviews:mel:
 Handled cardinality.
 
 Added scoping for class names, so now we get validation and auto-completion for
@@ -8019,14 +8019,14 @@ then the classifier appears.  Something funky in the filtering algorithm when
 the property does not exist.
 
 * [2017-11-20 lun.]
-** Fixing the filter property bug                                  :emfviews:
+** Fixing the filter property bug                              :emfviews:mel:
 Okay so the bug was on the ATL transformation side.  I told the weaving model to
 filter the Behavior class, instead of the Behavior.propertyB feature.
 
 It's a bit of a hassle to do in ATL, because I have again to use a unique lazy
 rule to ensure that there are no duplicate filters.  But hey, bug fixed.
 
-** About the duplication in the ATL transformation             :emfviews:atl:
+** About the duplication in the ATL transformation         :emfviews:atl:mel:
 I think the pattern I've encountered boils down to this.  The source model has
 'add attributes' elements contained in a 'modify class':
 
@@ -8156,7 +8156,7 @@ helper context IN!ModifyClass def: getRepresentative(): IN!ModifyClass =
 	IN!ModifyClass.allInstances()->select(c | c.className = self.className)->first();
 #+END_SRC
 
-** Further MEL improvements                                        :emfviews:
+** Further MEL improvements                                    :emfviews:mel:
 - Multiple inheritance
 - Validation of property names
 - Implement 'modify property'
@@ -8223,11 +8223,11 @@ guess I'll have to translate the sugar myself.
 
 Got validation for property names working instead, since it was simpler.
 
-** Next time                                                       :emfviews:
+** Next time                                                   :emfviews:mel:
 Finish 'modify property' ATL transformation.
 
 * [2017-11-21 mar.]
-** Handle modify property clause in ATL transformation             :emfviews:
+** Handle modify property clause in ATL transformation         :emfviews:mel:
 So I managed to make a simplification in the grammar for the 'modify property'
 clause.  At first I went with:
 
@@ -8337,7 +8337,7 @@ to).
 So I need to change the grammar to reflect this distinction, and disallow
 invalid programs.
 
-** At some point                                                   :emfviews:
+** At some point                                          :emfviews:mel:vpdl:
 I'll have to Write tests for both languages.  Test valid programs, invalid ones,
 and also test the generator.
 
@@ -8347,7 +8347,7 @@ this point.
 But once we design starts to gel, it's time to make sure the basic and corner
 cases work.
 
-** Next time                                                       :emfviews:
+** Next time                                                   :emfviews:mel:
 I've left the cardinality to handle tomorrow.  Maybe I can update the grammar
 here as well to forbid using an unbounded one for attributes.
 
