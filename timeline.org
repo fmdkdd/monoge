@@ -8350,3 +8350,101 @@ cases work.
 ** Next time                                                       :emfviews:
 I've left the cardinality to handle tomorrow.  Maybe I can update the grammar
 here as well to forbid using an unbounded one for attributes.
+
+* [2017-11-22 mer.]
+** Finishing MEL cardinality                                   :emfviews:mel:
+We assumed that attributes could only be typed using primitive types, but it is
+not the case in the UML metamodel.  uml.Behavior.isReentrant has type Boolean,
+which is part of an EENum in the same metamodel.
+
+And I see that it's perfectaly valid in Ecore, to define an EEnum, and use that
+as the type for an EAttribute.  It makes me think that we could revisit the
+weaving model to use EDataType as the type for virtual attributes, rather than
+strings.  It would make the model less prone to errors, and would get rid of
+dumb code for the translation.
+
+Same thing for using EClass in ConcreteClass, rather than this messy business of
+finding elements using a fully-qualified name.  I believe the reasoning against
+that is that we didn't want to tie the weaving model to EMF.  But it would only
+tie it to /Ecore/, which is different.
+
+Actually, it maeks me wonder why we don't also link metamodels directly in the
+Xtext grammar for MEL/VPDL.
+
+Another solution might be to include Ecore as contributing model in the weaving
+model, and refer to the EDataType as concrete elements.  But we'd still need to
+update the weaving model VirtualProperty to accept a different type.
+
+Handled cardinality.
+
+The type issue is still open: if we redefine uml.Behavior.isReentrant without
+specifying the type, we try to reuse the Boolean enum, and we have no way to
+instruct ATL or the weaving model to use that.  That's just not something we
+have considered.
+
+** Generating ECL from VPDL                                   :emfviews:vpdl:
+If there is an ECL Xtext grammar fragment, then that's great.  If not, I can
+just put the ECL expression in a string for the time being.
+
+Ah, [[https://git.eclipse.org/c/epsilon/org.eclipse.epsilon.git/tree/plugins/org.eclipse.epsilon.ecl.engine/src/org/eclipse/epsilon/ecl/parse/Ecl.g][it looks like]] they are using ANTLR for their grammar.  So... too bad.
+String it is.
+
+Also, from the 'How to' page:
+
+#+BEGIN_QUOTE
+Epsilon languages do not have Ecore-based metamodels.
+#+END_QUOTE
+
+So I can't generate the concrete syntax from a model.  Need generate text
+directly, or maybe I can build an in-memory representation of the AST, and
+pretty-print that.
+
+Okay so I did the minimal incremental functionality: pass strings in the 'where'
+clause of the VPDL directly to ECL.  So now we write:
+
+#+BEGIN_SRC vpdl
+where "s.name=t.name and
+       s.isAutomated = false"
+      for detailedProcess
+      "t.values.exists(v | v.theValue=s.name)"
+      for detailedRequirement
+#+END_SRC
+
+And it generates:
+
+#+BEGIN_SRC ecl
+//alias_togaf=http://www.obeonetwork.org/dsl/togaf/contentfwk/9.0.0
+//alias_bpmn=http://www.omg.org/spec/BPMN/20100524/MODEL-XMI
+//alias_reqif=http://www.omg.org/spec/ReqIF/20110401/reqif.xsd
+
+rule detailedProcess
+match s : togaf!Process
+with  t : bpmn!Process
+{
+  compare
+  {
+    return s.name=t.name and
+           s.isAutomated = false;
+  }
+}
+rule detailedRequirement
+match s : togaf!Requirement
+with  t : reqif!SpecObject
+{
+  compare
+  {
+    return t.values.exists(v | v.theValue=s.name);
+  }
+}
+#+END_SRC
+
+I'm pretty sure it's not composable, and is very prone to breaking.  Discovering
+ECL syntax errors only when launching the view is very bad, but it's still
+better than what we had until then.
+
+(But I'm not sure it's better than letting the user write the ECL file by
+hand...)
+
+One observation: from the look of it, I'm not really sure why we need the
+metamodels in the header.  We can certainly pass them to the ECL delegate, so
+they really don't need to appear here.
