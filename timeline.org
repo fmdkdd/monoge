@@ -8614,3 +8614,33 @@ I probably need more tests for less trivial transformations, and to profile
 both, in order to understand where the time is spent.
 
 Also, I could add the regular ATL VM to the mix.
+
+** Summarizing what's left for EMFViews when I come back           :emfviews:
+
+*** EMFViews
+- Resolve filtering interference with inheritance, references, etc.
+  Interference with metamodel coherence.
+- Resolve the data type conundrum
+- EFactory for viewpoints/views.  Do we want one?  Do we return null?
+- UI and Editor plugin are still broken.  Do we want wizards?
+
+*** VPDL/MEL
+- Add parser tests for valid programs, invalid ones
+- Add integration tests from the output of the generator
+- Add static checks for things that are not caught by the grammar?
+- Properly integrate ECL in VPDL
+
+*** Deployment
+- Continuous integration on Travis
+- Provide an easy way to use EMFViews outside of Eclipse (maven central?)
+- Start using version numbers
+- Cleanup copyright (esp. for VPDL and MEL)
+- Upgrade to EPL 2.0
+
+*** Documentation
+- Add Javadoc on EMFVIews core
+- Cleanup examples.  Remove outdated one, update the ones that can be salvaged.
+- Update or remove videos
+- Add tutorial for setting up
+- Repopulate website
+- [X] Cleanup wiki
