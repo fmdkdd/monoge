@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: atl-performance
+Bundle-SymbolicName: atl-performance
+Bundle-Version: 1.0.0.qualifier
+Require-Bundle: org.eclipse.m2m.atl.emftvm,
+ org.eclipse.emf.ecore,
+ org.objectweb.asm;bundle-version="5.2.0",
+ fr.inria.atlanmod.emfviews.mel,
+ fr.inria.atlanmod.emfviews.virtuallinks

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="mel" nsURI="http://www.inria.fr/atlanmod/emfviews/mel" nsPrefix="mel">
+  <eClassifiers xsi:type="ecore:EClass" name="Model">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="imports" upperBound="-1"
+        eType="#//Metamodel" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="extensionName" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="metamodels" unique="false"
+        upperBound="-1" eType="#//Metamodel"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="extensions" upperBound="-1"
+        eType="#//Extension" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Metamodel">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nsURI" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Extension"/>
+  <eClassifiers xsi:type="ecore:EClass" name="AddClass" eSuperTypes="#//Extension">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parents" upperBound="-1"
+        eType="#//TargetClass" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="children" upperBound="-1"
+        eType="#//TargetClass" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="TargetClass"/>
+  <eClassifiers xsi:type="ecore:EClass" name="ConcreteClass" eSuperTypes="#//TargetClass">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="metamodel" eType="#//Metamodel"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="class" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EClass"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="VirtualClass" eSuperTypes="#//TargetClass">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="class" eType="#//AddClass"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ModifyVirtualClass" eSuperTypes="#//Extension">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="class" eType="#//VirtualClass"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="operators" upperBound="-1"
+        eType="#//ModifyVirtualClassOperator" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ModifyClass" eSuperTypes="#//Extension">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="class" eType="#//ConcreteClass"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="operators" upperBound="-1"
+        eType="#//ModifyConcreteClassOperator" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ModifyVirtualClassOperator"/>
+  <eClassifiers xsi:type="ecore:EClass" name="ModifyConcreteClassOperator"/>
+  <eClassifiers xsi:type="ecore:EClass" name="AddAttribute" eSuperTypes="#//ModifyVirtualClassOperator #//ModifyConcreteClassOperator">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="type" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EDataType"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cardinality" eType="#//AttributeCardinality"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AddReference" eSuperTypes="#//ModifyVirtualClassOperator #//ModifyConcreteClassOperator">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="relationType" eType="#//RelationType"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="type" eType="#//TargetClass"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="cardinality" eType="#//ReferenceCardinality"
+        containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ModifyAttribute" eSuperTypes="#//ModifyConcreteClassOperator">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="property" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EAttribute"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="newName" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="type" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EDataType"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cardinality" eType="#//AttributeCardinality"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ModifyReference" eSuperTypes="#//ModifyConcreteClassOperator">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="property" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EReference"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="newName" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="type" eType="#//TargetClass"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="cardinality" eType="#//ReferenceCardinality"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="relationType" eType="#//RelationType"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="FilterProperty" eSuperTypes="#//ModifyConcreteClassOperator">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="property" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EStructuralFeature"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="FilterClass" eSuperTypes="#//Extension">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="class" eType="#//ConcreteClass"
+        containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AddConstraint" eSuperTypes="#//ModifyVirtualClassOperator #//ModifyConcreteClassOperator">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="constraint" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="FilterConstraint" eSuperTypes="#//ModifyConcreteClassOperator">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="constraint" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="AttributeCardinality">
+    <eLiterals name="MANDATORY" literal="1"/>
+    <eLiterals name="OPTIONAL" value="1" literal="0"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ReferenceCardinality">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="lowerBound" eType="#//CardinalityBound"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="upperBound" eType="#//CardinalityBound"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="CardinalityBound">
+    <eLiterals name="ZERO" literal="0"/>
+    <eLiterals name="ONE" value="1" literal="1"/>
+    <eLiterals name="STAR" value="2" literal="*"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="RelationType">
+    <eLiterals name="composition" literal="composition"/>
+    <eLiterals name="association" value="1" literal="association"/>
+  </eClassifiers>
+</ecore:EPackage>

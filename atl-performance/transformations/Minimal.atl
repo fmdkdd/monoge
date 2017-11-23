@@ -1,0 +1,12 @@
+-- @atlcompiler emftvm
+-- @path MEL=/fr.inria.atlanmod.emfviews.mel/model/generated/Mel.ecore
+-- @path VirtualLinks=/fr.inria.atlanmod.emfviews.virtuallinks/resource/VirtualLinks.ecore
+-- @nsURI ECORE=http://www.eclipse.org/emf/2002/Ecore
+
+module Minimal;
+create OUT : VirtualLinks from IN : MEL;
+
+rule Metamodel {
+    from s : MEL!Metamodel
+    to   t : VirtualLinks!ContributingModel
+}

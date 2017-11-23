@@ -8448,3 +8448,169 @@ hand...)
 One observation: from the look of it, I'm not really sure why we need the
 metamodels in the header.  We can certainly pass them to the ECL delegate, so
 they really don't need to appear here.
+
+* [2017-11-23 jeu.]
+** Comparison of ATL VM performance                                     :atl:
+Specifically, if there is a significant speedup when running a transformation
+written in Java, versus running a transformation using the ATL VM or EMFTVM.  If
+the speedup is significant, then it could valuable to compile ATL
+transformations directly to Java code (and rather interesting to boot).
+
+So, premilimary results on a really dumb transformation:
+
+#+BEGIN_SRC atl
+rule Metamodel {
+    from s : MEL!Metamodel
+    to   t : VirtualLinks!ContributingModel
+}
+#+END_SRC
+
+The source model has 1000 Metamodel elements.  Using EMFTVM: 65.79ms to load the
+bytecode, 57.45ms to execute the transformation, 123.24ms total.
+
+Using Java to populate the resource: 7.32ms.  Not bad.
+
+Let's get some more numbers (time in milliseconds):
+
+| EMFTVM (load) | EMFTVM (run) | EMFTVM (total) | Java |
+|---------------+--------------+----------------+------|
+|         63.67 |        56.09 |         119.76 | 7.27 |
+|         70.92 |         76.5 |         147.42 | 5.69 |
+|         69.96 |        66.06 |         136.02 | 7.27 |
+|         59.77 |        56.11 |         115.88 | 9.88 |
+|         62.34 |        55.92 |         118.26 | 7.47 |
+|         67.10 |        64.89 |         131.99 | 7.20 |
+|         70.77 |        60.79 |         131.56 | 7.80 |
+|         63.31 |        58.04 |         121.35 | 7.66 |
+|         65.82 |        59.61 |         125.43 | 7.33 |
+|         65.99 |        74.26 |         140.25 | 5.99 |
+|---------------+--------------+----------------+------|
+|         65.97 |        62.83 |         128.79 | 7.36 |
+|          3.78 |         7.51 |          10.40 | 1.12 |
+#+TBLFM: $2@=$3-$1::@12=vmean(@I..II);%.2f::@13=vsdev(@I..II);%.2f
+
+So the average speedup of the Java transformation is:
+
+: 128.79 / 7.36 = ~17.5
+
+That's one order of magnitude and more.  Pretty good.  Even if you only count
+the transformation time, it's still a 8.54 speedup.
+
+Now another question is: how does the performance scale with the number of
+elements model size?
+
+Time still in milliseconds:
+
+| Nb of elements | EMFTVM (total) |    Java |
+|----------------+----------------+---------|
+| 1k             |         128.79 |    7.36 |
+| 10k            |         229.62 |   21.16 |
+| 100k           |         778.40 |  118.61 |
+| 1000k          |        4968.08 |  330.65 |
+| 10000k         |              - | 2833.60 |
+
+EMFTVM crashed with OutOfMemoryError after a few minutes of burning all my CPU
+cores.  The performance dip at 1 million elements is also strange; it seems to
+exhibit non-linear behavior here.  Maybe most of the time is spent in GC; I
+would need to profile to see what's happening exactly.
+
+The numbers are also a bit raw.  Getting more samples:
+
+|        | EMFTVM (total) |    Java |
+|--------+----------------+---------|
+| 10k    |         229.62 |   21.16 |
+|        |         247.58 |   18.31 |
+|        |         256.83 |   19.78 |
+|        |         241.50 |   19.24 |
+|        |         287.65 |   14.61 |
+|        |         255.47 |   15.12 |
+|        |         229.89 |   16.11 |
+|        |         262.84 |   16.30 |
+|        |         228.45 |   15.80 |
+|        |         253.97 |   14.91 |
+|--------+----------------+---------|
+| Mean   |         249.38 |   17.13 |
+| Stdev  |          18.36 |    2.31 |
+|--------+----------------+---------|
+| 100k   |         778.40 |  118.61 |
+|        |         654.89 |  129.84 |
+|        |         662.66 |  112.93 |
+|        |         703.02 |  116.72 |
+|        |         661.14 |  130.02 |
+|        |         654.88 |   98.90 |
+|        |         672.87 |   69.80 |
+|        |         686.44 |   90.11 |
+|        |         732.92 |   89.95 |
+|        |         676.96 |  100.69 |
+|--------+----------------+---------|
+| Mean   |         688.42 |  105.76 |
+| Stdev  |          39.89 |   19.34 |
+|--------+----------------+---------|
+| 1000k  |        4968.08 |  330.65 |
+|        |        4328.87 |  308.59 |
+|        |        4413.08 |  325.68 |
+|        |        4395.61 |  312.63 |
+|        |        4754.49 |  321.02 |
+|        |        4729.85 |  316.54 |
+|        |        4439.81 |  355.46 |
+|        |        4213.97 |  327.41 |
+|        |        4391.01 |  333.40 |
+|        |        4377.02 |  326.70 |
+|--------+----------------+---------|
+| Mean   |        4501.18 |  325.81 |
+| Stdev  |         234.96 |   13.09 |
+|--------+----------------+---------|
+| 10000k |                | 2833.60 |
+|        |                | 4371.31 |
+|        |                | 5404.33 |
+|        |                | 4417.67 |
+|        |                | 4577.32 |
+|--------+----------------+---------|
+| Mean   |           0.00 | 4320.85 |
+| Stdev  |           0.00 |  930.53 |
+#+TBLFM: @12$2..@12$3=vmean(@I..II);%.2f::@13$2..@13$3=vsdev(@I..II);%.2f
+#+TBLFM: @24$2..@24$3=vmean(@14..@23);%.2f::@25$2..@25$3=vsdev(@14..@23);%.2f
+#+TBLFM: @36$2..@36$3=vmean(@26..@35);%.2f::@37$2..@37$3=vsdev(@26..@35);%.2f
+#+TBLFM: @43$2..@43$3=vmean(@38..@42);%.2f::@44$2..@44$3=vsdev(@38..@42);%.2f
+
+So, to recap:
+
+#+tblname: recap
+| Nb of elements (k) | EMFTVM (total) |    Java | Speedup |
+|--------------------+----------------+---------+---------|
+|                  1 |         128.79 |    7.36 |   17.50 |
+|                 10 |         249.38 |   17.13 |   14.56 |
+|                100 |         688.42 |  105.76 |    6.51 |
+|               1000 |        4501.18 |  325.81 |   13.82 |
+|              10000 |              - | 4320.85 |         |
+#+TBLFM: $4=$2/$3;%.2f
+
+#+begin_src gnuplot :var data=recap :file doc/atl-bench.png
+reset
+set logscale x
+
+set xlabel 'model size (k)'
+set ylabel 'time to transform (ms)'
+
+plot data u 1:2 w lp title 'EMFTVM', \
+     data u 1:3 w lp title 'Java'
+#+end_src
+
+#+RESULTS:
+[[file:doc/atl-bench.png]]
+
+So, both curves seem to have the same profile, although Java is clearly faster
+all along.  The spikes at the end may come from the GC dominating, but I haven't
+profiled yet.
+
+This is with ~java -version~:
+
+: openjdk version "1.8.0_151"
+
+Anyway, interesting!  There is definitely something to be gained by translating
+transformations to Java from the look of it.
+
+I probably need more tests for less trivial transformations, and to profile
+both, in order to understand where the time is spent.
+
+Also, I could add the regular ATL VM to the mix.
