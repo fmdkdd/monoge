@@ -8616,7 +8616,6 @@ both, in order to understand where the time is spent.
 Also, I could add the regular ATL VM to the mix.
 
 ** Summarizing what's left for EMFViews when I come back           :emfviews:
-
 *** EMFViews
 - Resolve filtering interference with inheritance, references, etc.
   Interference with metamodel coherence.
@@ -8644,3 +8643,159 @@ Also, I could add the regular ATL VM to the mix.
 - Add tutorial for setting up
 - Repopulate website
 - [X] Cleanup wiki
+
+* [2017-11-24 ven.]
+** Screen backlight on Latitude 7480                                   :dell:
+For the brightness key to work, it seems I need to use the intel graphics driver
+after all.  No kernel option needed after that.
+
+* [2017-12-01 ven.]
+** The search for a new wiki                             :wiki:
+I've narrowed down the list to:
+
+- Gollum (the thing Github uses).  Ruby.
+- Gitit.  Haskell.
+- ikwiki.  ??
+
+All of these support multiple editing formats, web-based editing as well as
+direct file editing, use Git to store revisions, and can be self-hosted.
+
+Gollum is not free software though.
+
+ikwiki looked rather minimal, even though a handful of plugins seem provided
+with the base install.
+
+I opted to try Gitit first since there's a Github OAuth example on the README,
+which is already promising.
+
+Trying to install with cabal...
+
+: pacman -S ghc cabal-install
+: cabal update
+: cabal install gitit
+
+warns me about dependencies that would break existing installs, notably of ghc.
+Hmm, let's try stack then.  It's a folder-local install, so it should be more
+robust?
+
+: pacman -S stack
+: git clone https://github.com/jgm/gitit.git
+: cd gitit
+: stack install
+
+I didn't checkout any tag; building straight from master.  Looks like stack is
+installing GHC 9.3 or something?
+
+Fails with:
+
+#+BEGIN_EXAMPLE
+Progress: 13/133
+--  While building package digest-0.0.1.2 using:
+      /home/fmdkdd/.stack/setup-exe-cache/x86_64-linux-tinfo6-nopie/Cabal-simple_mPHDZzAJ_1.24.2.0_ghc-8.0.2 --builddir=.stack-work/dist/x86_64-linux-tinfo6-nopie/Cabal-1.24.2.0 build --ghc-options " -ddump-hi -ddump-to-file"
+    Process exited with code: ExitFailure 1
+    Logs have been written to: .stack-work/logs/digest-0.0.1.2.log
+
+    Configuring digest-0.0.1.2...
+    Building digest-0.0.1.2...
+    Preprocessing library digest-0.0.1.2...
+    /usr/bin/ld: .stack-work/dist/x86_64-linux-tinfo6-nopie/Cabal-1.24.2.0/build/Data/Digest/CRC32_hsc_make.o: relocation R_X86_64_32 against `.rodata' can not be used when making a shared object; recompile with -fPIC
+    /usr/bin/ld: final link failed: Nonrepresentable section on output
+    collect2: error: ld returned 1 exit status
+    linking .stack-work/dist/x86_64-linux-tinfo6-nopie/Cabal-1.24.2.0/build/Data/Digest/CRC32_hsc_make.o failed (exit code 1)
+#+END_EXAMPLE
+
+Trying with:
+
+: git checkout 0.12.2.1
+
+same thing.  Grmbl.
+
+I'll let cabal do its thing then.
+
+: cabal install --force-reinstalls gitit
+
+#+BEGIN_EXAMPLE
+cabal: Leaving directory '/tmp/cabal-tmp-14769/byteable-0.1.1'
+cabal: Error: some packages failed to install:
+Diff-0.3.4-9Jk7nn49ORI32Gqvs1rQQi failed during the building phase. The
+exception was:
+ExitFailure 1
+HStringTemplate-0.8.6-4urbpt7EoCN94ZLHEgcUuE depends on HStringTemplate-0.8.6
+which failed to install.
+SHA-1.6.4.2-BFIBO7i65E6HsO6Fy2Jbdf failed during the building phase. The
+exception was:
+ExitFailure 1
+...
+#+END_EXAMPLE
+
+Come on...
+
+There is a recipe in AUR.  I guess I'll try that.
+
+: pacaur -S gitit
+
+#+BEGIN_EXAMPLE
+AUR Packages  (2) ghc-pristine-8.2.1-4  gitit-0.12.2.1-3
+Repo Packages (3) ghc-8.2.1-3  ghc-libs-8.2.1-3  ghc-static-8.2.1-3
+
+Repo Download Size:     85.86 MiB
+Repo Installed Size:  1332.75 MiB
+#+END_EXAMPLE
+
+That's a lot of GHCs.
+
+#+BEGIN_EXAMPLE
+cabal: The following packages are likely to be broken by the reinstalls:
+process-1.6.1.0
+haskeline-0.7.4.0
+ghc-8.2.1
+Cabal-2.0.0.2
+ghci-8.2.1
+directory-1.3.0.2
+hpc-0.6.0.3
+ghc-boot-8.2.1
+Use --force-reinstalls if you want to install anyway.
+==> ERROR: A failure occurred in build().
+    Aborting...
+:: failed to build gitit package(s)
+#+END_EXAMPLE
+
+Oh well.
+
+But what's this ghc-static anyway?  Looking at the Archwiki on Haskell, it looks
+like the packaged GHC does not support dynamic linking.
+
+So, retrying:
+
+: pacaur -S ghc-pristine
+: pacman -S cabal-install
+
+But the wiki also says I also need ghc-static...
+
+: pacman -S ghc-static
+
+Cabal still bugs me about dependencies and --force-reinstalls... ok let's try
+it.
+
+Seems to go further in the build now.
+
+After a few minutes, the install fails because pandoc failed to build.
+
+The last resort is to install the Haskell platform, and retry the build from
+there (or from source).
+
+Hahahaha
+
+#+BEGIN_EXAMPLE
+# ./install-haskell-platform.sh
+Unpacking ./hp-usr-local.tar.gz to /...
+Running /usr/local/haskell/ghc-8.2.1-x86_64/bin/activate-hs ...
+#+END_EXAMPLE
+
+Returned with status 127.
+
+: ghc --version
+
+#+BEGIN_EXAMPLE
+/usr/local/haskell/ghc-8.2.1-x86_64/lib/ghc-8.2.1/bin/ghc: error while loading shared libraries: libtinfo.so.5: cannot open shared object file: No such file or directory
+#+END_EXAMPLE
