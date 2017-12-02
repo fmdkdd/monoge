@@ -8799,3 +8799,29 @@ Returned with status 127.
 #+BEGIN_EXAMPLE
 /usr/local/haskell/ghc-8.2.1-x86_64/lib/ghc-8.2.1/bin/ghc: error while loading shared libraries: libtinfo.so.5: cannot open shared object file: No such file or directory
 #+END_EXAMPLE
+
+* [2017-12-02 sam.]
+** Gitit: part 2                                                       :wiki:
+Okay, last chance.  It seems gitit is packaged in Debian, so it should be fine
+to run on the Atlanmod server.
+
+I see there are Docker recipes, so maybe I can try that?
+
+Trying this one: https://hub.docker.com/r/marcelhuberfoo/docker-gitit/
+
+: pacman -S docker
+: docker pull marcelhuberfoo/docker-gitit
+: sudo docker run -d --name gitit -e GIT_COMMITTER_NAME="Test User" \
+:                                 -e GIT_COMMITTER_EMAIL="test@domain.com" \
+:                 -p 60000:5001 marcelhuberfoo/docker-gitit
+
+Oh hey, look at that.  Browsing to localhost:60000, and it works!
+
+Now, it seems we still have a bunch of pages in the MediaWiki syntax, and Gitit
+doesn't support it apparently.  I misread: it supports /exporting/ to MediaWiki,
+which is decidedly not the same thing.
+
+Well, ultimately, I just want to make sure our mediaWiki won't get hacked.
+Maybe just using OAuth there would do?
+
+Seems [[https://www.mediawiki.org/wiki/Extension:OAuth][there is one]].  Not sure how it applies to us though.x
