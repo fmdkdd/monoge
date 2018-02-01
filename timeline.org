@@ -8825,3 +8825,18 @@ Well, ultimately, I just want to make sure our mediaWiki won't get hacked.
 Maybe just using OAuth there would do?
 
 Seems [[https://www.mediawiki.org/wiki/Extension:OAuth][there is one]].  Not sure how it applies to us though.x
+
+* [2018-02-01 jeu.]
+** Back in the saddle                                      :emfviews:eclipse:
+One of my first order of business would be to tackle some infrastructure.  I
+want to be able to ~make~ the project, distribute it, test it, all on the
+command-line so I can use Travis, and the build is reproducible.
+
+Eclipse launch configurations drive me mad with the amount of hand
+configuration.  You'd think it would be enough to add the plugins you want to
+run, and click "Add Required Plug-ins", but no!  You get a mystifying error:
+
+: Unresolved requirement: Require-Capability: osgi.extender; filter:="(&(osgi.extender=osgi.component)(version>=1.2)(!(version>=2.0)))"
+
+[[https://bugs.eclipse.org/bugs/show_bug.cgi?id=494913][The solution]] is to add the ~org.eclipse.equinox.ds~ plugin, and its required
+plug-ins again.
