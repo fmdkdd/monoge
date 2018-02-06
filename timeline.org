@@ -8840,3 +8840,59 @@ run, and click "Add Required Plug-ins", but no!  You get a mystifying error:
 
 [[https://bugs.eclipse.org/bugs/show_bug.cgi?id=494913][The solution]] is to add the ~org.eclipse.equinox.ds~ plugin, and its required
 plug-ins again.
+
+* [2018-02-05 lun.]
+** Cleaning up dependencies                                :eclipse:emfviews:
+Turns out we have dependencies in plugins that are not even used.  Eclipse
+helpfully provides a "Find unused dependencies" tool, but why is that not
+automatic?
+
+I've tried to use Import-Package instead of Require-Bundle.  You have to version
+packages independently, and for some reason EMF tends to break if we only import
+packages.  So, at least for EMF, it's better to include bundles.  Also, most
+Eclipse packages do not export package versions, so...
+
+** Fixing copyrights                                               :emfviews:
+We should upgrade to EPL-2.0, as it can be made compatible with GPL via the
+Secondary License clause.
+
+[[https://www.eclipse.org/legal/epl-2.0/faq.php#h.2487uaelxj1l][The FAQ]] is very helpful in answering tricky questions, and providing clear
+examples of how to do that.
+
+Here is the template I've settled onto:
+
+#+BEGIN_SRC java
+/*******************************************************************************
+ * Copyright (c) 2018 Armines
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * https://www.eclipse.org/legal/epl-2.0/
+ *
+ * This Source Code may also be made available under the following Secondary
+ * Licenses when the conditions for such availability set forth in the Eclipse
+ * Public License, v. 2.0 are satisfied: GNU General Public License, version 3
+ * which is available at https://www.gnu.org/licenses/gpl-3.0.txt
+ *
+ * Contributors:
+ *   fmdkdd - initial API and implementation
+ *******************************************************************************/
+#+END_SRC
+
+** Cool trick with dired                                              :emacs:
+To replace text in multiple files:
+
+- find-name-dired
+- Press 't' to select all files
+- dired-do-query-replace-regexp
+
+Interactive search/replace in all selected files!
+
+* [2018-02-06 mar.]
+** Tycho + Xtext                                       :maven:xtext:emfviews:
+Just copying the POM from [[https://github.com/xtext/maven-xtext-example][this example project]] works.  The [[https://www.eclipse.org/Xtext/documentation/350_continuous_integration.html][documentation]] is also
+helpful.
+
+There are still some rough edges: it's very slow (maven queries repositories
+every time...), and it regenerates the DSL plugins every time, but at least it's
+reproducible!
