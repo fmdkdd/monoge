@@ -8896,3 +8896,30 @@ helpful.
 There are still some rough edges: it's very slow (maven queries repositories
 every time...), and it regenerates the DSL plugins every time, but at least it's
 reproducible!
+
+* [2018-02-07 mer.]
+** Skipping DSL generation from grammar if the grammar hasn't changed :maven:xtext:
+Because currently, if I run `mvn integration-test`, it will regenerate all the
+DSL plugins...
+
+If I RTFM'd correctly, `mvn integration-test` will run all phases up to
+(including) `integration-test`, and that includes `generate-sources`, which is
+the phase where we declared that MWE2 generation should happen.  So, it makes
+sense that the MWE2 generation happens every time.
+
+Now, is there a way to conditionally exec this generation?
+
+It doesn't seem that like this is configurable.  And maven doesn't support
+arbitrary conditional execution either.
+
+I could write a script that would conditionnally execute the MWE2... but a
+simpler solution would be to /not/ bind that execution to the default life
+cycle.
+
+I've added a flag, so I can do:
+
+: mvn -o -Dmwe2-skip-generate=true verify
+
+and not regenerate the plugins from the grammar.  It's faster, but honestly, the
+only downside of regenerating aside from speed, is touching the dependencies in
+the manifest files.
