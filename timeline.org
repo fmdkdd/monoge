@@ -1885,12 +1885,12 @@ Copyright notice should be included in all packages.
 
 AtlanMod should be the provider of all packages.
 
-*** TODO Investigate dependencies
+*** Investigate dependencies
 Some EMF plugins depends on other EMF plugins, some depend on EMF packages
 directly.  The book I read on Eclipse plugin development recommended to depend
 on packages.
 
-*** TODO Change the logo background to be transparent
+*** Change the logo background to be transparent
 This is unnerving.
 
 * [2017-05-12 ven.]
@@ -3248,7 +3248,7 @@ He also suggested we pass URI to the EMFViews core instead of strings, so that
 we leave the problem of creating and resolving them to the client.  I agree, and
 would even go as far as passing resources directly.
 
-*** TODO Investigate duplication of model loading from XMI
+*** Investigate duplication of model loading from XMI
 Since in Viewpoint we pass around URI strings when we really want to deal with
 EPackages, there may be some duplication where we load a package from the XMI
 instead of getting an EPackage directly, or getting it from a registry.
