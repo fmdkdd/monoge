@@ -8923,3 +8923,76 @@ I've added a flag, so I can do:
 and not regenerate the plugins from the grammar.  It's faster, but honestly, the
 only downside of regenerating aside from speed, is touching the dependencies in
 the manifest files.
+
+* [2018-02-08 jeu.]
+** Running integration tests for DSLs on Travis          :emfviews:atl:maven:
+I've written the tests that use the generator.  They pass locally, but not on
+travis yet because we have not instructed the maven build to compile ATL files!
+
+I found [[https://wiki.eclipse.org/ATL/User_Guide_-_Building_ATL_With_ANT_And_Maven][this guide]] that use an ANT task.  However, the code is obsolete.
+
+Instead, I think it wouldn't be too hard to write a simple Maven plugin that
+discovers ATL files and does whatever the Eclipse ATL builder does.
+
+For inspiration: [[https://github.com/eclipse/xtext-xtend/blob/master/org.eclipse.xtend.maven.plugin/][Xtend maven plugin]], [[http://git.eclipse.org/c/mmt/org.eclipse.atl.git/tree/plugins/org.eclipse.m2m.atl.adt/src/org/eclipse/m2m/atl/adt/AtlBuildVisitor.java][ATL Eclipse builder]], [[http://git.eclipse.org/c/mmt/org.eclipse.atl.git/tree/plugins/org.eclipse.m2m.atl.engine/src/org/eclipse/m2m/atl/engine/compiler/AtlCompiler.java][ATL compiler]].
+
+Hmm, one issue is that AtlCompiler requires the eclipse.core plugins to run.
+Calling ~AtlCompiler.compile~ first fails because maven has to find the ATL
+dependency.
+
+I found [[https://repo.eclipse.org/content/groups/atl/org/eclipse/m2m/atl/org.eclipse.m2m.atl.engine/][this maven ATL repository]].  It only contains snapshot releases, but it's
+an official one.
+
+Adding that as a repository and declaring the dependency, I can't get the maven
+plugin to compile, because:
+
+: cannot access org.eclipse.core.resources.IFile
+: [ERROR]   class file for org.eclipse.core.resources.IFile not found
+
+So I should add org.eclipse.core.resources as dependency... but I don't have a
+Maven repository for that!  Oh wait, they are on maven central.  Strange that
+the ATL maven artifact does not declare them as dependencies...
+
+Adding ecore as dependency, which is also on central... Haha!  It compiles!
+
+But explodes when launching the plugin goal:
+
+: [ERROR] Failed to execute goal fr.atlanmod.atl:maven-plugin:0.1-SNAPSHOT:compile (default-cli) on project atl-maven-plugin: Execution default-cli of goal fr.atlanmod.atl:maven-plugin:0.1-SNAPSHOT:compile failed: A required class was missing while executing fr.atlanmod.atl:maven-plugin:0.1-SNAPSHOT:compile: org/eclipse/emf/common/notify/Notifier
+
+Can I add it to the runtime dependencies?  Yep.  Adding them one by one...
+
+Antlr dependencies is tricky, as 3.5 fails with a MethodNotFound.  Presumably
+some method was removed (breaking API, without increasing major version!).
+Testing with 3.4, 3.3... Ah 3.3 raises an exception.
+3.2, 3.1, same.  3.0... success!
+
+Now, unfortunately, that generated an ASM, because EMFTVM was not recognized.
+Can I make it work?
+
+Including emftvm.compiler as dependency is not enough.  Probably the detection
+that ATL does is not fooled so easily.
+
+It seems ATL uses the extension point to detect installed compilers...  but I'm
+not even running an Eclipse instance here.  Can I get the compiler directly?
+
+I can call AtlToEmftvmCompiler, but it ultimately fails with:
+
+: Failed ATL compilation: Error during module loading: Module ATLWFR not found
+
+Even though these transformations are included in the emftvm.compiler JAR, which
+is a runtime dependency.
+
+Argh, wait, I can't declare the dependency twice.  But how do I declare a
+dependency that's required at compile time /and/ runtime?
+
+Nevermind, it doesn't seem to make a difference.
+
+However, testing the code used by EMFTVM to load the resources in the plugin, I
+can see that it uses a "platform:" EMF URI, but I am not running Eclipse!  So we
+end up with:
+
+: Caused by: java.net.MalformedURLException: unknown protocol: platform
+
+Solutions?  Override the AtlEmftvmCompiler class to not use platform URIs?
+Otherwise, maybe use Tycho to build the maven plugin.. but I really don't see
+how that would work.
