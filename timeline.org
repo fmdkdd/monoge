@@ -9035,3 +9035,26 @@ informative if the build ever fails on Travis.
 That was... more work than I would've liked to build that on Travis.  And I
 still need to adapt the Xtend generator code to use the standard ATL VM rather
 than EMFTVM.
+
+* [2018-02-12 lun.]
+** Converting the Mediawiki into a Gitlab/Gollum wiki                  :wiki:
+Our mediawiki is a security liability.  We are moving all internal pages to a
+private gitlab repository instead.
+
+Using pandoc, we can convert pages to Markdown automatically:
+
+: pandoc --columns=80 -f mediawiki -t gfm file.mediawiki > file.md
+
+We also had a bunch of files uploaded to the mediawiki.  There is a list
+containing all files.  From that, I can get the URLs with this JS code in the
+console:
+
+: $$('table a').filter(a => a.text === 'file').map(a => a.href)
+
+In Firefox, right-click the result, "Copy object", and you've got a JSON array
+of URLs to fetch the files from.  Clean up the file to have one URL per line
+without quotes, and just invoke:
+
+: wget -i urlfile -P dir
+
+Done.
