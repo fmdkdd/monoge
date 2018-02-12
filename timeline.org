@@ -8996,3 +8996,42 @@ end up with:
 Solutions?  Override the AtlEmftvmCompiler class to not use platform URIs?
 Otherwise, maybe use Tycho to build the maven plugin.. but I really don't see
 how that would work.
+
+* [2018-02-09 ven.]
+** ATL Maven plugin                                      :atl:maven:emfviews:
+After tinkering with class.getResource() for over an hour, I can't get to the
+files inside the ~transformations~ folder, even though they are in the JAR.
+Presumably, they are not on the classpath.
+
+Other way: just grab these damn files and put them in the plugin.  Doesn't
+work.
+
+Maybe the issue is that the module resolver can't get files from inside a JAR?
+
+I give up.  I've tried building the plugin using Tycho... that fails when
+running the goal.  Tycho doesn't want to build the ~maven-plugin~ packaging
+anyway, so I tried to build using the ~eclipse-plugin~ packaging, then switching
+to ~maven-plugin~ for generating the descriptor and installing.  Or the other
+way around.
+
+Anyway, it doesn't work.
+
+I've gone back to cleaning up the POM and using the straight ~maven-plugin~
+approach, albeit with all the dependencies added because ATL dependencies are
+not transitive.
+
+I've added the logic to walk the project directory to find ATL files.  It was
+surprisingly painful.  Not because of Java: Java 8 has a nice ~Files.walk~ that
+outputs a stream, so it's rather easy to use.  Although, you can't put methods
+that can throw exception in a ~forEach~, so it's not as nice as it could be.
+But Maven was tricky to build with Java 8.
+
+The descriptor plugin failed with a mysterious error code when I built the
+plugin with the source set to 1.8.  Upgrading the descriptor plugin fixed it.
+
+And I added logic to display errors.  It's not very ergonomic, but at least it's
+informative if the build ever fails on Travis.
+
+That was... more work than I would've liked to build that on Travis.  And I
+still need to adapt the Xtend generator code to use the standard ATL VM rather
+than EMFTVM.
