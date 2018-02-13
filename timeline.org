@@ -9058,3 +9058,41 @@ without quotes, and just invoke:
 : wget -i urlfile -P dir
 
 Done.
+
+* [2018-02-13 mar.]
+** Running a second Eclipse instance                       :eclipse:emfviews:
+This has been broken ever since I got back it seems.
+
+I really don't want to re-install Eclipse or wipe my configuration, as there is
+no easy way to re-use an parts existing configuration, as far as I can tell...
+
+Anyway, loading all plugins in the runtime Eclipse works.  But of course I don't
+want to do that.
+
+Adding "required plugins" isn't enough: I need to /at least/ add ~equinox.ds~.
+But that triggers a runtime error saying that the ~ide.worbkench~ application
+cannot be found.  Adding that one still triggers the error.
+
+I went the other way around: add everything, remove features that are useless.
+Add "required plugins" just in case.  Good to go.
+
+** Improving DSL tests                                       :xtext:emfviews:
+I wanted to use the ValidationTestHelper to go further than just testing the
+parsing.  Even though we have no custom validation rules, we do have custom
+scoping rules, and I wanted to see if we could test that.
+
+Turns out, the ValidationTestHelper does not take scoping into account!
+Checking through the debugger, we never go through our custom scope provider.
+
+I don't think we need to turn that into an UI integration test.  Maybe we need
+to call the scope provider explicitly.
+
+Anyway, I found out that our tests were also a bit fishy: not checking for
+correct parsing before running the generator was a bad idea.
+
+After struggling with obscure ATL errors, it turned out that I was not loading
+the UML2 plugin.  Added that as dependency, and all is fine.  That's why I
+always use the "required plugins" button: it catches that stuff before the CI!
+
+Strangely though, our MEL tests also use the UML2 metamodel.  But they seem to
+run fine without it being loaded at runtime?
