@@ -9096,3 +9096,59 @@ always use the "required plugins" button: it catches that stuff before the CI!
 
 Strangely though, our MEL tests also use the UML2 metamodel.  But they seem to
 run fine without it being loaded at runtime?
+
+* [2018-02-14 mer.]
+** Thinking about a S-expr syntax for writing tests on EMF models :emfviews:emf:
+For the MEL generator test for instance, it makes no sense to test against the
+resulting XMI.  It's not readable.
+
+Creating an expected WeavingModel using the EMF-generated factories is even more
+verbose.
+
+I think something like this would work:
+
+#+BEGIN_SRC elisp
+(WeavingModel
+ :name "extension1"
+ :virtualLinks [(VirtualConcept :name "X" :superConcepts #1#)]
+ :contributingModels
+   [(ContributingModel
+     :uri "http://www.eclipse.org/uml2/5.0.0/UML"
+     :contreteElements [#1=(ConcreteConcept :path "Class")])])
+#+END_SRC
+
+Since we can have cycles, I've found this nifty ~#1#~ syntax on [[http://wiki.c2.com/?EssExpressions][the wiki]].
+
+I don't think we can easily translate to XMI, because there are tricks used in
+EMF at least to reuse tags when they contain a single child.  So the mapping is
+not 1-1.
+
+However, if we turn that into calls to the reflective EMF API (or even the
+generated one):
+
+#+BEGIN_SRC java
+val f = VirtualLinksFactory.eINSTANCE
+val wm0 = f.createWeavingModel()
+val vc0 = f.createVirtualConcept()
+val cm0 = f.createContributingModel()
+val cc0 = f.createConcreteConcept()
+
+wm0.setName("extension1")
+wm0.getVirtualLinks().add(vc0)
+wm0.getContributingModels().add(cm0)
+
+vc0.setName("X")
+vc0.getSuperConcepts().add(cc0)
+
+cm0.setURI("http://www.eclipse.org/uml2/5.0/UML")
+cm0.getConcreteElements().add(cc0)
+
+cc0.setPath("Class")
+#+END_SRC
+
+Create all objects first to account for eventual cycles.  Then just set
+properties.  We cannot set lists outright in EMF (maybe with the reflective
+API?), but since we know whether we have a list dynamically... there is no
+ambiguity.
+
+Now the question is: do I want to use Xtext for that...?  Probably not.
