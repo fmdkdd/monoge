@@ -9152,3 +9152,102 @@ API?), but since we know whether we have a list dynamically... there is no
 ambiguity.
 
 Now the question is: do I want to use Xtext for that...?  Probably not.
+
+* [2018-02-15 jeu.]
+** Adding example wizards                                  :eclipse:emfviews:
+I've looked at the ones that are in NeoEMF, ATL and Xtext.  They all create a
+projects in your workspace, fully set up.
+
+In NeoEMF, they provide the demo projects in the repo.  You can clone that and
+import the projects in your Eclipes, and you should have the exact same thing as
+what the wizards provide.
+
+The wizards actually contain these projects in zips, and simply inflate them in
+the workspace.
+
+So as a first step I can just clean up the examples folder, make sure they work,
+document them the best I can.
+
+Then I can create the wizards.  I don't like the zip duplication however.  I
+guess I could zip them when building the plugin only?
+
+** Revamping examples                                              :emfviews:
+There were simple examples using Books and Publications already to showcase
+creating a viewpoint and a view.
+
+It's not obvious what the are the benefits of the use case.  But it shows the
+mechanisms.
+
+** Move the matching model to view?                            :emfviews:ecl:
+It's only used by the view.  You could imagine different ways to populate the
+view using different matching models, but using the same viewpoint.
+
+In the book/publication example, the matching model has this constraint:
+
+: return ps.title = c.title and ps.nPages >20 and not ps.isTOC;
+
+If you wanted to create another view using a different predicate, you would have
+to create another viewpoint currently.  But if the matching model is part of the
+view, then you don't have to!
+
+** Cleanup up the ECL delegate                                 :emfviews:ecl:
+The ECL delegate does two things:
+
+1. execute the ECL matching model
+2. create a weaving model from the matches
+
+Here is an example ECL rule:
+
+#+BEGIN_SRC ecl
+rule ruleName
+match s : mm1!Feature
+with  t : mm2!Feature
+#+END_SRC
+
+In order to do #1, we have to know:
+
+1. where the ECL file is
+2. what are the input models
+3. what are the metamodels
+4. which metamodels ~mm1~/~mm2~ refers to
+5. where to write the weaving model
+
+#1, #2 and #5 are directly provided to the delegate.  #3 can be figured out by
+#looking in the models.
+
+But #4 is tricky, because that information is nowhere else.  We don't need to
+names the metamodels in the viewpoint.  Arguably, metamodels don't even need
+names because they already have namespace URIs which uniquely identify them.
+
+However, it's cumbersome to use the URI to refer to them multiple times in the
+same ECL file.  In ATL, you use an alias (in the comments, for some reason).
+Here we also use an alias.  But that's a duplication of information, right?  We
+have already specified the metamodels in use in the viewpoint.
+
+I think it's reasonable in this case, since it makes the ECL autonomous.
+
+One downside of the current implementation is that you refer to metamodels only
+using namespace URIs.  But they might not be loaded in the global registry.  ECL
+allows you to specify Ecore files instead.  Let's try to add that.
+
+Okay so the problem with that idea, is that we need the namespace URI to match
+the input models with their metamodels.  The syntax would become quite
+cumbersome if we had to specify the namespace URI /and/ the path to an eventual
+Ecore.
+
+Hmm, but we could do the same thing the Viewpoint does: load the metamodel from
+that alias.  Then use that namespace URI.
+
+Okay that works.  But it's a little dumb?  Let's see:
+
+- If given an Ecore file, the viewpoint creates a resource and resource set in
+  order to load the EPackage into a private list.
+- If given an Ecore file, the ECL delegate does the same thing, but throws away
+  the EPackage since it only needs the namespace URI /and/ the location of the
+  Ecore to give to EclModule
+- EclModule then creates a resource/resourceSet to load the Ecore file again.
+  Although they seem to have a pool in EmfUtil.register to avoid loading
+  packages twice from the same Ecore file.
+
+It seems that putting the EPackage in the global registry would not be a bad
+idea after all.
