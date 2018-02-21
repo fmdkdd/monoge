@@ -34,10 +34,10 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.junit.Before;
 import org.junit.Test;
 
-import fr.inria.atlanmod.emfviews.virtuallinks.ConcreteElement;
-import fr.inria.atlanmod.emfviews.virtuallinks.ContributingModel;
-import fr.inria.atlanmod.emfviews.virtuallinks.VirtualLinksFactory;
-import fr.inria.atlanmod.emfviews.virtuallinks.WeavingModel;
+import org.atlanmod.emfviews.virtuallinks.ConcreteElement;
+import org.atlanmod.emfviews.virtuallinks.ContributingModel;
+import org.atlanmod.emfviews.virtuallinks.VirtualLinksFactory;
+import org.atlanmod.emfviews.virtuallinks.WeavingModel;
 
 public class PackageComposition {
   EcoreFactory f = EcoreFactory.eINSTANCE;
