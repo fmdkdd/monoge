@@ -9251,3 +9251,21 @@ Okay that works.  But it's a little dumb?  Let's see:
 
 It seems that putting the EPackage in the global registry would not be a bad
 idea after all.
+
+* [2018-02-22 jeu.]
+** Extending the test suite for DSLs                           :efmviews:mel:
+I found a strange bug, which I attributed to the lazy rule having funky
+behavior.  Turns out, lazy rules do not worm the same with EMFTVM and the
+regular ATL VM.  As [[https://wiki.eclipse.org/ATL/EMFTVM#Lazy_rules][the documentation states]], in EMFTVM lazy rules are matched
+against the arguments, and I can see that with the regular VM, the unique lazy
+rule seems to ignore further arguments.
+
+The [[https://wiki.eclipse.org/ATL/User_Guide_-_The_ATL_Language#Unique_Lazy_Rules][ATL reference]] is not explicit on this, only stating:
+
+#+BEGIN_QUOTE
+When a unique lazy rule is executed, it always returns the same target element
+for a given source element.
+#+END_QUOTE
+
+I guess it's back to EMFTVM... but I will need to find a way to build it using
+Maven.
