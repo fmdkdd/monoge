@@ -9269,3 +9269,16 @@ for a given source element.
 
 I guess it's back to EMFTVM... but I will need to find a way to build it using
 Maven.
+
+* [2018-02-26 lun.]
+** Prototyping new NaoMod website                                    :naomod:
+Simple, but effective.
+
+I had to resort to JS for fetching things publications from HAL.  It's either
+that or generating them statically... which requires some intervention on our
+part at some point.
+
+At least with JS, they are always up to date!
+
+For reference, since I had to track this down, here is [[https://api.archives-ouvertes.fr/docs/search/schema/fields/#fields][the list of fields]] we can
+query and fetch from HAL entries.
