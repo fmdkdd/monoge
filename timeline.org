@@ -7344,7 +7344,7 @@ eAdapters().add(new ReflectiveItemProvider(null) {
 this forces the ReflectiveItemProvider to be used in lieu of the Bmpn2 adapter.
 That way I can load the BPMN model elements just fine.
 
-This is not the proper way to fix out however, because forcing an adapter for
+This is not the proper way to fix this however, because forcing an adapter for
 the Ecore editor has nothing to do in the core of EMFViews.
 
 It seems we have to define our own editor for views, which could just use the
@@ -9282,3 +9282,69 @@ At least with JS, they are always up to date!
 
 For reference, since I had to track this down, here is [[https://api.archives-ouvertes.fr/docs/search/schema/fields/#fields][the list of fields]] we can
 query and fetch from HAL entries.
+
+* [2018-03-02 ven.]
+** Adding wildcards to VPDL                                   :emfviews:vpdl:
+For attributes, when you want to select all of them, it's cumbersome having to
+write them all out by hand.
+
+So instead of writing
+
+: select a[b,c,d,e,f,g]
+
+You want to just write:
+
+: select a.*
+
+To implement that, I extended the VPDL grammar.  At first, I wanted to do a
+syntactic sugar pass, or handle the extension of wildcards in the ATL
+transformation, but that is not possible.  The ATL transformation would need to
+load the metamodel in order to know what features to include.
+
+It could be doable as syntactic sugar, but I haven't found how to do that with
+Xtext.
+
+So I just output an 'a.*' path in the weaving model, and modified emfviews
+to handle that case.
+
+There's a tricky bit because of the way blacklisting and whitelisting are
+implemented in EMF Views at the moment.  The filters path are used differently
+in each case.
+
+** Building an example from design to runtime models               :emfviews:
+For the project, we want to showcase an example including four models:
+
+- A requirements model (ReqIF metamodel)
+- A component diagram (UML metamodel)
+- A Modisco model of Java source (Modisco/Java metamodel)
+- A model of runtime trace (custom metamodel)
+
+I built very simple models for each.  One pain point is I forgot to add the
+~viewpoint=~ line in the eview file, and got an NPE.
+
+Of course, EMF silently collects exceptions when loading a resource, so the
+resource still loads.  Then when EMF tries to populate the editor, the View
+fails because it has uninitialized fields.
+
+Adding custom exception when parsing View does not help: they are captured by
+EMF.  Don't know where or when they are supposed to appear though.
+
+When loading the view with the Sample Ecore Editor, there are two issues:
+
+1. The UML model raises an error when clicking on any component.
+
+   : EObjectContainmentElist$Resolving cannot be cast to EObject
+
+2. The reqif model cannot be browsed.  There's only a VirtualEObject top-level
+   element:
+
+   [[file:doc/reqif-fail.png]]
+
+When loading the view with the Modisco Model Browser, I get another error:
+
+: ECollections$UnmodifiableElist cannot be cast to InternalEList
+
+and the editor does not allow me to browse the model.
+
+When loading the view in the EView editor, everything is fine: the reqif can be
+browsed, and there are no errors.
