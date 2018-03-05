@@ -9350,3 +9350,163 @@ and the editor does not allow me to browse the model.
 
 When loading the view in the EView editor, everything is fine: the reqif can be
 browsed, and there are no errors.
+
+* [2018-03-05 lun.]
+** Fixing views with Modisco                                       :emfviews:
+So the problem is a cast from UnmodifiableElist to InternalElist.
+
+Is there an unmodifiable list that implements this interface, or do we have to
+define one?
+
+Yes, there is one: EcoreElist.UnmodifiableEList.  Using that, the view can be
+browsed using Modisco.
+
+There are still a bunch of exception in the console:
+
+#+BEGIN_EXAMPLE
+java.lang.UnsupportedOperationException
+	at org.atlanmod.emfviews.elements.VirtualEPackage.getEFactoryInstance(VirtualEPackage.java:153)
+	at org.eclipse.gmt.modisco.infra.browser.editors.MetaclassViewer$MetaclassLabelProvider.getImage(MetaclassViewer.java:378)
+	at org.eclipse.jface.viewers.WrappedViewerLabelProvider.getImage(WrappedViewerLabelProvider.java:101)
+	at org.eclipse.jface.viewers.WrappedViewerLabelProvider.update(WrappedViewerLabelProvider.java:146)
+        ...
+#+END_EXAMPLE
+
+We do not provide an EFactory instance.  We could provide a dumb one that throws
+UnsupportedOp for each method.  Although why is modisco asking for one?  For
+images?
+
+Here is MetaclassViewer.java:378:
+
+#+BEGIN_SRC java
+// instantiate an element in order to be able to use the image provider
+final EObject dummyInstance = eClass.getEPackage().getEFactoryInstance()
+  .create(eClass);
+#+END_SRC
+
+A dummy instance indeed.
+
+So providing an EFactory instance would not solve the issue.
+
+Looking at the rest of the code:
+
+#+BEGIN_SRC java
+// instantiate an element in order to be able to use the image provider
+final EObject dummyInstance = eClass.getEPackage().getEFactoryInstance()
+  .create(eClass);
+
+// icon provided by an extension
+final IconProvidersRegistry iconProvidersRegistry = IconProvidersRegistry
+  .getInstance();
+final Image icon = iconProvidersRegistry.getIcon(dummyInstance);
+if (icon != null) {
+  return icon;
+}
+
+// icon provided by an adapter from the registry
+final IItemLabelProvider itemLabelProvider =
+  (IItemLabelProvider) MetaclassViewer.this.browserConfiguration
+  .getAppearanceConfiguration().getAdapterFactory()
+  .adapt(dummyInstance, IItemLabelProvider.class);
+
+if (itemLabelProvider != null) {
+  return ExtendedImageRegistry.getInstance()
+    .getImage(itemLabelProvider.getImage(dummyInstance));
+}
+#+END_SRC
+
+It appears we would need to provide at least a class instance in order for this
+mechanism to work.
+
+In this case, we could probably delegate to the concrete EFactory, and the
+proper icons would be found.  However, it doesn't seem like the proper solution,
+because the EFactory could be used for other purposes as well...  and the
+returned object would not actually reflect that they are part of a view.
+
+Maybe the proper solution is to augment these image registries / label providers
+with knowledge of the virtual objects?  Go through them, and if we find an
+object that has been virtualized, also associate the virtual object to the same
+images/labels?
+
+Another issue with Modisco, at least for the UML model, is that I get many
+duplicated attributes:
+
+[[file:/home/fmdkdd/proj/monoge/doc/modisco-duplicates.png]]
+
+Also in the properties view:
+
+[[file:/home/fmdkdd/proj/monoge/doc/modisco-duplicate-properties.png]]
+
+This duplication also happens with the EView editor.
+
+** Fixing the test view in the Sample ECore Editor                 :emfviews:
+For the exception thrown for the UML model, here is the incriminating cast:
+
+: EObject otherEObject = (EObject)((EObject)value).eGet(eOtherEnd);
+
+At runtime, ~value~ is an instance of TemplateSignatureImpl (from the UML2
+package), and ~eOtherEnd~ is a VirtualEReference for the 'template' feature of
+the TemplateSignature eClass.
+
+The eGet returns an (empty) EObjectContainmentElist$Resolving, which cannot be
+cast into EObject.
+
+Interestingly, opening the UML model directly with the same editor, it seem sthe
+~eGet~ calls returns ~null~ instead of this resolving elist.
+
+But I don't have control over what TemplateSignatureImpl is doing.
+
+However, I don't know /why/ the editor ended up with TemplateSignatureImpl
+instance and not a virtual object.
+
+After debugging for a while, I'm lost in a sea of
+CreateChildCommand.createCommand thingies.  It looks like these UML2 objects are
+coming from inside CommandParameters, but I don't see when these are created.
+
+Breaking on constructors for CommandParameter, I see that ultimately these
+objects come from EcoreUtil.create.
+
+So delegating to the EFactory fixes icons in Modisco, but triggers an error in
+Sample ECore Editor.
+
+But wait, I had the exception before I made the changes?
+
+Ahah, still the same error.
+
+The raw eClass comes from the StereotypeApplicationItemProvider of UML2.  How
+does it extract it?
+
+It builds a list of all runtime EPackages and EClasses.  So the raw UML2 package
+is there, as are all its classes.
+
+In ReflectiveItemProvider.getAllConcreteSubclasses, it iterates over all known
+classes to find the subclasses of a given class (here, a VirtualEClass).  Since
+VirtualEClass correctly handles the isSuperTypeOf call, the item provider
+gathers the raw subclass and runs with it.
+
+Yet another pain created by item providers.
+
+Can we override them?  That's what the EView editor does, but is there a way to
+override such a provider in other editors?
+
+In [[*Constructing%20a%20VPDL%20for%20a%20coherent%20model][a previous episode]], I found a trick for displaying BPMN correctly.  It still
+works for BPMN, but does not solve the UML issue.
+
+That's because the adapter factory for the item provider is ultimately chosen by
+ComposedAdapterFactory.getFactoryForTypes, which, at a glance, does:
+
+1. find a factory that has isFactoryForType true for each type
+2. if it's not a catch-all EObject/Object factory, return it
+3. if there is an adapter factory registered from the extension point, return it
+4. otherwise return the catch-all factory
+
+So the factory from the extension point (UMLItemProvider) overrides the
+ReflectiveItemProvider adapter factory.
+
+I tried to define an extension point, but it asks for an URI, and in the code it
+matches against the VirtualEPackage instance!  It's not the only case in the
+registry: I spotted a BPMN (or ReqIF?) instance as a key in there as well.
+
+And there doesn't seem to be a way to add in the registry by using code.
+
+I think I would be better off just polishing up the EView editor for now.
