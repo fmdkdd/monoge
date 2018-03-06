@@ -9510,3 +9510,24 @@ registry: I spotted a BPMN (or ReqIF?) instance as a key in there as well.
 And there doesn't seem to be a way to add in the registry by using code.
 
 I think I would be better off just polishing up the EView editor for now.
+
+* [2018-03-06 mar.]
+** Fixing duplication of features                                  :emfviews:
+This only happens with the UML model apparently.
+
+One culprit is VirtualEClass.getAllFeatures method that returns duplicate
+features.  Seems wrong to me.  It's an easy fix: just use a Set and return a
+list from that.
+
+I don't know why exactly this only happens with UML though.
+
+I probably want to extend the Set fix to other methods in there as well:
+superTypes, etc.
+
+Yep, super types also had duplicates in a situation of diamond inheritance.
+Turns out, using a set for features started to break tests, because HashSet has
+an unspecified order of iteration.  I could fix the tests to not care about the
+order... but some internal parts of EMF (e.g. DynamicEObjectImpl) assign numbers
+to features, so it's better to keep the order of features as stable as possible.
+
+Using a LinkedHashSet gives us the insertion order, which is what we want here.
