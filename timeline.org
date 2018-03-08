@@ -9531,3 +9531,119 @@ order... but some internal parts of EMF (e.g. DynamicEObjectImpl) assign numbers
 to features, so it's better to keep the order of features as stable as possible.
 
 Using a LinkedHashSet gives us the insertion order, which is what we want here.
+
+* [2018-03-08 jeu.]
+** Creating HTML from a view                               :emfviews:eclipse:
+Tried with Acceleo.  Looks bloated.
+
+Found some ~.egl~ files in the old examples.  That's from the Epsilon project.
+
+Trying that instead.  I need to install the Epsilon DevTools in order to have
+the EGL launch configuration.
+
+But I don't see any model I can load in there.  Installing the Epsilon EMF
+DevTools.
+
+This provides the elusive "Register EPackage" on right-click on ECore file!  It
+wasn't in Modisco after all.
+
+Adding all plugins in the examples configurations did the trick.  Don't know
+which is used by Epsilon though!
+
+Trying to generate a template from a view...
+
+Using the 'EMF Model' type, I can give the Eview file and its metamodels.  EGL
+barks when I'm using an unwknown class, like this:
+
+: [% for (b in Banana.allInstances()) { %]
+
+so when I'm using ~TimedAction~, it does not error, indicating that it's able to
+load classes from the viewpoint at least.
+
+But the loop does not create anything!  If I try with the Trace model directly,
+it works.
+
+Debugging...
+
+Ah!  In AbstractEmfModel.getAllOfKindFromModel:
+
+#+BEGIN_SRC java
+final EClass eClass = classForName(kind);
+final List<EObject> allOfKind = new ArrayList<EObject>();
+
+for (EObject eObject : (Collection<EObject>)allContents()) {
+	if (eClass.isInstance(eObject)){
+		allOfKind.add(eObject);
+	}
+}
+#+END_SRC
+
+It's using isInstance, which returns false, since all the Eobjects here are
+virtual, and the eClass comes from the concrete metamodel.
+
+Changing to use the Eviewpoint file as metamodel.
+
+But isInstance still fails!  I have implemented it wrong:
+
+#+BEGIN_SRC java
+public boolean isInstance(Object object) {
+  return concreteEClass.isInstance(object);
+}
+#+END_SRC
+
+It only works if the given object is concrete.
+
+Hmm, trying the following:
+
+#+BEGIN_SRC java
+if (object instanceof VirtualEObject) {
+  return isSuperTypeOf(((VirtualEObject) object).eClass());
+} else {
+  return concreteEClass.isInstance(object);
+}
+#+END_SRC
+
+Doesn't work because we have /different instances/ of the same EClass
+ExecutedAction at runtime.
+
+What I think is happening is that the EView is creating one Viewpoint, which in
+turn loads the metamodel from file and instantiate it.  But since we also give
+the EViewpoint to EGL, there's another Viewpoint instance, which does the same
+thing.
+
+So, does this happen with metamodels not loaded from file?  No.
+
+Well, we do have duplicated virtual EClasses instances.  But the concrete
+eClasses are the same, so we can match on that.
+
+Now...
+
+: Property 'name' not found in object Component [name=Component1, ...
+
+Well, looks like the property is there!  What are you doing EGL?
+
+#+BEGIN_SRC java
+// Look for a getX() method
+ObjectMethod om = registry.findContributedMethodForEvaluatedParameters(object, "get" + property, new Object[]{}, context);
+if (om != null) return om;
+
+// Look for an X() method
+om = registry.findContributedMethodForEvaluatedParameters(object, property, new Object[]{}, context);
+if (om != null) return om;
+
+// Look for an isX() method
+om = registry.findContributedMethodForEvaluatedParameters(object, "is" + property, new Object[]{}, context);
+if (om != null) return om;
+#+END_SRC
+
+Okay.  So you are looking for a Java method ~getname~ on my ... DynamicEObject.
+Of course that cannot work.  Why don't you use eGet?
+
+When creating a template for the Trace model, which has no generated code, there
+are no issues.
+
+There, it looks up the structural features of the EClass.  If the feature is
+found by name, it uses an EmfPropertyGetter to look up the properties.
+
+Hmm, that's puzzling.  In debugging, I can see that it's actually finding the
+property without issues.  But at some point it can't?
