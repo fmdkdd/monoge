@@ -9647,3 +9647,34 @@ found by name, it uses an EmfPropertyGetter to look up the properties.
 
 Hmm, that's puzzling.  In debugging, I can see that it's actually finding the
 property without issues.  But at some point it can't?
+
+* [2018-03-09 ven.]
+** Human-readable models                                       :emfviews:emf:
+When I did sexp2emf, I didn't find any alternatives.
+
+Since then, I stumbled upon the [[https://www.omg.org/spec/HUTN][HUTN OMG specification]].  It looks like this:
+
+#+BEGIN_EXAMPLE
+Family “The McDonalds” {
+  address: “7 Main Street”
+  migrants
+  familyFriends: “The Smiths”
+  petFish: female Fish “Wanda”;
+  petDog: “Spike”
+  CarOwnership: “755-BDL” {
+    state: QLD
+    make: “Mitsubishi Magna”
+    year: 1992
+  }
+}
+nuclear Family “The Smiths” {
+  ...
+#+END_EXAMPLE
+
+The important part being that references are made with string identifiers.  Here
+"The Smiths" is the alias given to the second Family object, so it can be
+referred to under familyFriends.
+
+I'll admit the reference syntax is more readable than what I came up with.
+Using names instead of numbers would go a long way to making mine more readable.
+I wonder if there's a good way to tone down the sigils as well.
