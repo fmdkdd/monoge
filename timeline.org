@@ -9678,3 +9678,84 @@ referred to under familyFriends.
 I'll admit the reference syntax is more readable than what I came up with.
 Using names instead of numbers would go a long way to making mine more readable.
 I wonder if there's a good way to tone down the sigils as well.
+
+* [2018-03-13 mar.]
+** Hackathon                                                       :megamart:
+*** Use cases
+**** CSY - Coppilot
+State machines for M1 processor (transition table).  M2 has sensors that can
+fail.  Excel file contains an example of inputs/outputs for these sensors.
+
+**** UCataloña + Thales
+Goal: single-source embedded system design; use-case: IoT.  Based on UML +
+MARTE.
+
+Thales has a flight system that's 1M LoC in Ada.  Provides a C version that has
+80k LoC for the hackathon.
+
+**** Bombardier
+Train control system.  V model of design/development.
+
+Challenge is in variability: create variants by mixing and matching requirements
+models.
+
+**** Camea
+Traffic monitoring.  Parts of C, parts FPGA.
+
+**** Volvo
+Focus on diesel engine.  Constraints of emission standards.
+
+Same base engine is used for different machines.
+
+Links are not obvious between engines, variations of machines, and end machines.
+
+Need: an overloaded model combining SysML models.  But also some feature model
+for
+
+*** Tools
+Andrei demos [[https://but4reuse.github.io/#documentation][BUT4reuse]], a tool for feature detection in variability modeling.
+
+Talk about [[http://pure-variants.de/downloads-6.html][pure variants]] for variability at the code level, and co-evolution of
+the artefacts with the design model.
+
+*** Post-mortem
+We started to draw some requirements, to add to the SysML models that VLV
+already had.
+
+They were interested by variability, so Andrei suggested we use FeatureIDE for
+making a feature model.
+
+Our intention was to be able to, in the end, generate different products (SysML
+models) using that feature model, combined with the SysML as inputs.
+
+We didn't find how to do that.
+
+However, we could make a configuration model using FeatureIDE, and managed to
+export that to XMI (thanks to Gwendal).  So we were able to build a view
+combining a product configuration with an "overloaded" model of SysML (combining
+all the variants).
+
+Now, what to make of this view?  To achieve the original goal, we should use the
+configuration model to /filter/ elements from the overloaded model.
+
+I don't know if we can do that using an ECL matching model.  I think ECL only
+applies to virtual associations.
+
+We'll have to do it directly using filters in the weaving model.
+
+But in the process, I have showcased EMF Views with the runtime-to-design demo.
+At least couple of people appeared to be interested.
+
+It allowed me to highlight some areas to work on for EMF Views:
+
+1. We are lacking an editor for even creating a viewpoint or view.  Just a
+   wizard, where you select contributing metamodels would go a long way to ease
+   users in the process.
+
+2. EMF Views should integrate with model editors.  If you have a view that
+   contains an UML model, then you want to see that UML model using your usual
+   editor.  Same for SysML.  Otherwise, EMF Views is of dubious value.
+
+3. We should be able to serialize a view.  Not the weaving model, but the
+   full constructed view.  That way, we could maybe export part of it and open
+   that back into model editors.
