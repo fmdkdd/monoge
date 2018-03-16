@@ -9533,7 +9533,7 @@ to features, so it's better to keep the order of features as stable as possible.
 Using a LinkedHashSet gives us the insertion order, which is what we want here.
 
 * [2018-03-08 jeu.]
-** Creating HTML from a view                               :emfviews:eclipse:
+** Creating HTML from a view                           :emfviews:eclipse:egl:
 Tried with Acceleo.  Looks bloated.
 
 Found some ~.egl~ files in the old examples.  That's from the Epsilon project.
@@ -9828,3 +9828,81 @@ It seems the correct procedure was:
   from the XMI exporter and retry.
 
 But it worked!  We had a view with a model loaded from NeoEMF.
+
+* [2018-03-16 ven.]
+** Fixing EGL templates with EMF Views                         :emfviews:egl:
+First issue was duplication of Viewpoints.  I'm using a ViewpointRegistry to
+ensure that loading from the same resource will give the same Viewpoint
+instance.
+
+This allows EGL to populate its getAllKindOf correctly.
+
+However, it still fails at IntrospectionManager.getModelThatKnowsAboutProperty,
+falls back on Java property getter and fails, because EmfModel.owns fails:
+
+#+BEGIN_SRC java
+if (instance instanceof EObject) {
+  EObject eObject = (EObject) instance;
+  Resource eObjectResource = eObject.eResource();
+
+  if (eObjectResource == null) return false;
+
+  if (expand) {
+    return modelImpl.getResourceSet() == eObjectResource.getResourceSet();
+  }
+  else {
+    return modelImpl == eObjectResource;
+  }
+}
+
+return  false;
+#+END_SRC
+
+eObject is a VirtualEObject here, and eResource returns null.  What happens on a
+regular object?
+
+On a DynamicEObjectImpl, eResource returns the XMI resource that contains it.
+
+eResource is computed by looking up the eContainer chain in BasicEObjectImpl.
+Overriding eContainer in VirtualEObject makes sense, but is not enough, because
+BasicEObjectImpl actually uses internalEContainer.
+
+If I return the Virtualizer, which I know is a View here, in eResource, then the
+template works!
+
+I don't think it's correct though.  The eResource should be set as a side effect
+of a VirtualEObject being added to some container.  But the problem here is that
+I have concrete objects, which are part of concrete resources.  How do I link
+them to the EView resource?
+
+On the other hand, in the current implementation, Virtualizers will always be
+resources, and a VirtualEObject will always be part of some View.  So...
+
+** Trouble with virtualizer signature            :emfviews:
+Namely:
+
+:  E getVirtual(E)
+
+While convenient, that contract is actually not respected by Viewpoint or View.
+In View, we always return a VirtualEObject instance, so if we pass an
+EAttribute, we would expect an EAttribute back.  That is not the case.
+
+This leads to unexpected cast errors.  This is wrong.
+
+However, switching to:
+
+: EObject getVirtual(EObject)
+
+leads to sprinkling casts everywhere in the code...
+
+A third option is to define an EcoreVirtualizer, which has methods:
+
+: EPackage getVirtual(EPackage)
+: EClass   getVirtual(EClass)
+
+etc.  More verbose, and leads to code duplication in the interface
+implementation.
+
+It also requires me implementind VirtualEClassifier.
+
+Large refactoring ahead...
