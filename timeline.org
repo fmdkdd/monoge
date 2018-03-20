@@ -9903,6 +9903,54 @@ A third option is to define an EcoreVirtualizer, which has methods:
 etc.  More verbose, and leads to code duplication in the interface
 implementation.
 
-It also requires me implementind VirtualEClassifier.
+It also requires me to implement VirtualEClassifier.
 
 Large refactoring ahead...
+
+* [2018-03-20 mar.]
+** Creating views with large models                         :emfviews:neoemf:
+I created phony trace models of different sizes by duplicating their contents.
+Now to convert them to Neo4j resources, and see how EMF Views handles them.
+
+| Model size | Time to convert (s) | Time to load (s) |
+|------------+---------------------+------------------|
+| 1.6K       |                   1 | < 1              |
+| 1M (978K)  |                  21 | ~1               |
+| 10M (9.6M) |                1644 | ~10              |
+| 100M (97M) |    not gonna happen |                  |
+
+Time to load is eyeballed taken from right-click->NeoEMF->Open Model Database.
+
+First thing to note is that the XMI -> Neo4J importer seems to be a very
+inefficient way to create a model, and the complexity looks concerning.
+
+Opening a view with the small model works.  Only once.  I should get to closing
+the resource.
+
+Okay so that works.  Had to modify my custom EView editor to call
+~resource.unload~, since the Sample Ecore Editor does not call that.
+
+Loading the 1M resource: Loading the view is instantaneous.  Clicking on the
+twisty takes a few seconds before we can see the contributing models.  Clicking
+on the Trace model takes another few seconds before we see all the Log
+instances.
+
+There is significant wait when closing the view as well.  Probably the ~clear()~
+call of unloading the contents.  Not sure why that is necessary actually.
+
+Where is that time spent?
+
+Using VisualVM and JProfiler.  VisualVM is very capable when using sampling;
+profiling hangs the Eclipse instance however.
+
+At first glance from the profiler, it looks like enumerating all contents like
+we do in the editor takes its toll on Neo4j.  Also EViewEditor.hasChildren has
+to first create an eContents list, just to dump it afterwards...
+
+On the other hand, the NeoEMF viewer has no trouble opening the 1M resource.
+They are using some lazy content provider of TreeViewer.
+
+Maybe it's worth using that as well.  Or maybe it's more interesting to do
+queries on the view (rather than enumerating its contents).
+
+The code (for the fork I'm using) is [[https://github.com/SOM-Research/NeoEMF/blob/master/plugins/eclipse/ui/src/main/java/fr/inria/atlanmod/neoemf/eclipse/ui/editor/NeoEditor.java][here]].  Looks simple enough to adapt.
