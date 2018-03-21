@@ -9954,3 +9954,39 @@ Maybe it's worth using that as well.  Or maybe it's more interesting to do
 queries on the view (rather than enumerating its contents).
 
 The code (for the fork I'm using) is [[https://github.com/SOM-Research/NeoEMF/blob/master/plugins/eclipse/ui/src/main/java/fr/inria/atlanmod/neoemf/eclipse/ui/editor/NeoEditor.java][here]].  Looks simple enough to adapt.
+
+* [2018-03-21 mer.]
+** Adapting the EView editor                                :emfviews:neoemf:
+For using a LazyTreeContentProvider.
+
+Performance is even worse now.  Eclipse is hanging on the 1M model.  Good job!
+
+I don't even know how a LazyTreeContentProvider does less work than a regular
+content provider.  I mean, we still need to go through the contents in order to
+populate the list.  What /could/ be done is to only create tree items for the
+/visible portion/ of the viewer.  From the doc, it looks like this is the case.
+
+I should also test if the latency comes from the EMF Views or from the viewer
+itself.
+
+It takes 12s to walk through getAllContents of the 1M model.  That is for a view
+which is a simple a wrapper around this model.
+
+Enumerating the contents of the NeoEMF directly (without a view) takes... 12s!
+
+No significant CPU overhead for virtualization.
+
+One significant difference between the two is when just querying the contents
+size (of the Trace element, which contains thousands of Log instances):
+
+: r.getContents().get(0).eContents().size()
+
+This takes 11s in the view, but 0s in NeoEMF.
+
+That's because we iterate over the contents in order to virtualize them in
+VirtualEObject.  Even though they might not be used yet!  We can defer the
+virtualization by returning an InternalEList rather than building the list ahead
+of time.
+
+By doing so, getting the size is instantaneous.  This should help when building
+the view in the editor.
