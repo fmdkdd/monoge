@@ -9990,3 +9990,57 @@ of time.
 
 By doing so, getting the size is instantaneous.  This should help when building
 the view in the editor.
+
+* [2018-03-22 jeu.]
+** Lazy contents list                                       :emfviews:neoemf:
+So, instead of iterating through all the contents and virtualizing them
+outright, we now return an EList that will try to ~get~ (and virtualize) only
+the element requested:
+
+#+BEGIN_SRC java
+public EObject get(int index) {
+  for (EReference ref : eClass().getEAllContainments()) {
+    if (ref.isMany()) {
+      List<EObject> list = (List<EObject>) eGet(ref);
+      int s = list.size();
+      if (index < s) {
+        return virtualizer.getVirtual(list.get(index));
+      } else {
+        index -= s;
+      }
+    } else {
+      if (index == 0) {
+        return virtualizer.getVirtual((EObject) eGet(ref));
+      } else {
+        --index;
+      }
+    }
+  }
+
+  throw new IndexOutOfBoundsException("" + index);
+}
+#+END_SRC
+
+That brings us on par with the NeoEMF viewer for navigating the 1M model in the
+view.
+
+But we can do probably do better with caching, by relying on the fact that
+~get(i)~ will probably be followed by ~get(i+1)~, etc.  So instead of looping
+every containment reference each time, we could go to the correct bucket
+directly based on the given index, and return the virtualized object in there.
+
+Another layer of caching would be to memoize the ~get(i)~ results directly.
+This would avoid accesses to the database, if no caching is done in lower
+layers.
+
+Ah!  In fact we don't need to virtualize anything in ~eContents~, since we call
+~eGet~, which will already take care of virtualizing the objects through
+VirtualEList.
+
+I implemented LazyEContentsList.  Now it takes 12s to enumerate the contents of
+the 1M model in a view, 11s in NeoEMF.  But since contents and sizes are lazily
+computed, the EView editor is on par with the NeoEMF editor.
+
+We could do consider doing caching of the elements, but we have to think about
+eviction strategies.  We certainly don't want to keep them all in the cache, as
+the whole purpose of NeoEMF is handling models that are too big to fit in RAM.
