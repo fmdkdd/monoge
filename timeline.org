@@ -10044,3 +10044,37 @@ computed, the EView editor is on par with the NeoEMF editor.
 We could do consider doing caching of the elements, but we have to think about
 eviction strategies.  We certainly don't want to keep them all in the cache, as
 the whole purpose of NeoEMF is handling models that are too big to fit in RAM.
+
+* [2018-03-23 ven.]
+** Viewpoint registry may not be a good solution                   :emfviews:
+Saving Viewpoint instances in a registry means that the same eviewpoint file
+will map to the same Viewpoint instance.  Good.
+
+One issue is that ~Viewpoint.load~ may be called multiple times, and in the
+process adding virtual features multiple times as well.
+
+This can be fixed by adding a flag in Viewpoint to not redo the initialization
+on ~load~.
+
+But then, it means that changes to the underlying eviewpoint file will not take
+effect until we empty the registry.  This is bad.  We could add a way to empty
+the registry... but this feels wrong.  Maybe adding the registry in the first
+place was not the best way to handle the situation.
+
+The issue was with EGL launchers needing a view and a viewpoint specified as
+files, and the view having its own instance of viewpoint which did not match the
+other instance loaded from the file.
+
+In fact, the way it's currently set up, the view may not conform to one
+eviewpoint, but only to it's own instance of Viewpoint loaded from the
+eviewpoint file.
+
+Is it the case that loading a metamodel twice from the same Ecore file leads to
+duplicated metamodels?  I don't think so.
+
+Ah, what do you know.  Just tested it, and loading the same Ecore file in two
+different resource sets leads to two separate, incompatible instances of the
+same metamodel.  Notably, instances of one metamodel are not instances of the
+other metamodel.
+
+So solving the issue with a registry was in fact wrong.

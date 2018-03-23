@@ -1,7 +1,9 @@
 package emfviews.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -310,5 +312,46 @@ public class PackageComposition {
 
     assertEquals(A.eClass(), A.eGet(A.eClass().getEStructuralFeature("eClass")));
     // There's no feature "eClass" on A's metaclass, so eClass is only an operation (in accordance with the diagrams)
+  }
+
+  @Test
+  public void duplicatedMetamodels() throws IOException {
+    // What happens when loading a metamodel in two different resources?
+
+    Resource r1 = new ResourceSetImpl()
+        .getResource(URI.createURI("resources/metamodels/minimalA.ecore", true), true);
+    r1.load(null);
+
+    Resource r2 = new ResourceSetImpl()
+        .getResource(URI.createURI("resources/metamodels/minimalA.ecore", true), true);
+    r2.load(null);
+
+    // The resources are not equal
+    assertNotEquals(r1, r2);
+
+    EPackage P1 = (EPackage) r1.getContents().get(0);
+    EPackage P2 = (EPackage) r2.getContents().get(0);
+
+    // The package they contain are not equal
+    assertNotEquals(P1, P2);
+
+    EClass A1 = (EClass) P1.getEClassifier("A");
+    EClass A2 = (EClass) P2.getEClassifier("A");
+
+    // The classifiers are not equal
+    assertNotEquals(A1, A2);
+
+    EObject a1 = EcoreUtil.create(A1);
+    EObject a2 = EcoreUtil.create(A2);
+
+    assertTrue(A1.isInstance(a1));
+    assertTrue(A2.isInstance(a2));
+
+    // Instances of one metamodel are not instances of the other
+    assertFalse(A1.isInstance(a2));
+    assertFalse(A2.isInstance(a1));
+
+    // Conclusion: the same Ecore file leads to two separate, incompatible instances of
+    // the same metamodel.
   }
 }
