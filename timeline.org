@@ -10078,3 +10078,67 @@ same metamodel.  Notably, instances of one metamodel are not instances of the
 other metamodel.
 
 So solving the issue with a registry was in fact wrong.
+
+* [2018-03-26 lun.]
+** Profiling opening up the EView editor on a NeoEMF model  :emfviews:neoemf:
+First loading takes several seconds.  Why?  There shouldn't be much to do when
+just opening the resource.
+
+Here is the relevant portion of the profile:
+
+[[file:/home/fmdkdd/proj/monoge/doc/open-eview-editor-profile.png]]
+
+So, 1430ms for loading 3 XMI files, and 750ms for loading a Neo4j DB.
+
+Maybe we can speed up the XMI loading with options to ~Resource.load~.
+
+Using the recommended XML Resource Options from the EMF manual has no effect at
+all.  Exact same time to load the 3 XMI files.  All the time is spent in SAX.
+
+So I guess the only alternative would be to defer loading the View in a
+background thread, to avoid clogging up the UI thread.
+
+But it's not crucial for now.
+
+** Large models with NeoEMF                                 :emfviews:neoemf:
+Testing out a trace with 100k elements, amounting to a 256MB GraphDB folder.
+
+Opening up the model itself in NeoEMF takes more than 10 seconds.  Clicking on
+the twistie is another 10 seconds wait (just to reveal the only child ~Trace~,
+but I guess it's spending time counting the child elements).
+
+Hmm, it's weird.  It seems all the time is spent in GTKTree and not anything
+related to NeoEMF itself?
+
+Okay so when opening the View in the EView Editor, we only need to know whether
+a node has children in order to display the twistie.  We don't need to compute
+the actual size or the exact number of children at this point.  So we can
+just use ~eContents().isEmpty()~, and use an early-exit if we detect that we
+have at least one element in LazyEContentsList.
+
+That makes the 10M model load nearly instantaneously (much faster than NeoEMF!).
+However, when we click to expand the children of the ~Trace~ node, we are back
+to waiting tens of seconds.  All this time is spent in GTK Tree, so I'm guessing
+that even though the content provider is lazy, and only fetching the values of
+the 20 nodes that are on the screen, it's still allocating for 100k node items
+internally?  And the underlying library has bad asymptotic performance?
+
+So at this point there is not much that can be done, aside from rewriting
+a lazier TreeViewer.
+
+** ECL and NeoEMF resource                                  :emfviews:neoemf:
+We need ECL to populate the view.  Unfortunately, ECL doesn't know how to load a
+NeoEMF resource: we need to pass specific options to ~Resource.load~ otherwise
+NeoEMF fails.  Why NeoEMF does not pass these default options directly is beyond
+me.  It would definitely make our lives simpler in this case, as ECL does not
+allow us to pass options to the ~load~ call.  And it insists of loading the
+resource itself.
+
+I found a workaround, by setting ReadOnLoad to false, the ~EmfModel.load~ call
+only creates the Resource from the URI, but does not load it.  Then we can
+override the resource with the one we have already loaded ourselves in
+EclDelegate with ~EmfModel.setModelImpl~.  It's hackish, and fails one test in
+EMF Views.  But it does work in the Eclipse instance.
+
+Now, loading the small model with ECL is fine.  Loading the 1M model has been
+running for 10 minutes, without any end in sight.  There's room for improvement.
