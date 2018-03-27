@@ -10142,3 +10142,80 @@ EMF Views.  But it does work in the Eclipse instance.
 
 Now, loading the small model with ECL is fine.  Loading the 1M model has been
 running for 10 minutes, without any end in sight.  There's room for improvement.
+
+* [2018-03-27 mar.]
+** A faster way to populate a view                          :emfviews:neoemf:
+Okay so the problem I'm hitting here is that populating a view with ECL is slow.
+Even for a model with 9000 elements.
+
+First question: is that an issue with ECL or NeoEMF?  What happens if try the
+same thing with an in-memory model?  Same thing.  So ECL is the bottleneck here.
+
+[[file:/home/fmdkdd/proj/monoge/doc/ecl-large-model-profile.png]]
+
+Now, how can we make that faster?  If we wrote some Java code that created a
+WeavingModel using the same rules provided to ECL, how would it look like, and
+how fast could it be?
+
+For instance, this rule:
+#+BEGIN_EXAMPLE
+rule javaClass
+match l : trace!Log
+with  c : java!ClassDeclaration
+{
+  compare
+  {
+    return l.source.split("\\.")[0] = c.name;
+  }
+}
+#+END_EXAMPLE
+
+How fast can this be computed, in theory?  The naive but correct algorithm would
+be to take all instances of Log, all instances of ClassDeclaration, make a
+cartesian product, and keep the couples that match the predicate.
+
+So, O(n*m), assuming the predicate is constant (n is the number of instances of
+Log, m the number of instances of ClassDeclaration).
+
+Were I to do that in Java, I would probably do some pre-processing and put the
+ClassDeclaration instances in a HashMap, using ~c.name~ as key.  Then, I could
+iterate on Log instances, just looking in the HashMap to find matches.  Should
+be O(m+n).
+
+I don't think the complexity can go any lower, since we have to look at all the
+elements of each set at least once.  The only way to skip elements would be to
+have some meta-information about elements of a set, like "Log instances all have
+a null ~source~ property".
+
+Wrote a proof of concept in Java.  This can create a weaving model for the 1M
+model in under 1 second.  For the 10M model, it takes 5s.  We can then open the
+view using the weaving model directly, which is infinitely faster (since it
+loads successfully!).
+
+Now this is all good and well, but that approach does not scale.  I don't think
+we want to write a custom Java class for each rule.  The HashMap trick should
+work for all rules which use comparison, but here is one rule that would not
+fit:
+
+#+BEGIN_EXAMPLE
+rule requirements
+match c : uml!Component
+with  r : reqif!SpecObject
+{
+  compare
+  {
+    return c.name.toLowerCase().isSubstringOf(r.values[0].theValue.toLowerCase());
+  }
+}
+#+END_EXAMPLE
+
+In this case, the ~isSubstringOf~ prevents us from using a hashtable for O(1)
+lookup.  We need a fancier data structure.  A Trie or Aho-Corasick would be good
+candidates.
+
+(But note that the models in my example case are very small, so we could get by
+with a naive approach).
+
+Coming up with data structures for each predicate also does not scale.  Unless
+we can circumscribe the different data structures to use for all the possible
+predicates available in ECL.  If that latter set is finite.
