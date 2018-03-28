@@ -10219,3 +10219,58 @@ with a naive approach).
 Coming up with data structures for each predicate also does not scale.  Unless
 we can circumscribe the different data structures to use for all the possible
 predicates available in ECL.  If that latter set is finite.
+
+* [2018-03-28 mer.]
+** Building a weaving model from NeoEMF resources           :emfviews:neoemf:
+It takes 16s to build the weaving model for the 1M case, whereas it took under 1
+second for the same model loaded in memory.
+
+We decided with H. to delay finding a solution to efficiently populating a view.
+We can assume for now that the view weaving model is created by some other
+means.
+
+While not uninteresting, it does not tie directly to the NeoEMF integration.
+
+** Writing an ATL transformation on a view                         :emfviews:
+Before testing a transformation on a view backed by NeoEMF, better test if it
+works on any view at all!
+
+And it works!  The hardest part was getting all the pieces necessary to load the
+models.
+
+Since I wrote a Java application that runs the transformation using EMFTVM, I
+needed to load the EPackages for the contributing models:
+
+#+BEGIN_SRC java
+ReqIF10Package.eINSTANCE.eClass();
+UMLPackage.eINSTANCE.eClass();
+JavaPackage.eINSTANCE.eClass();
+TracePackage.eINSTANCE.eClass();
+VirtualLinksPackage.eINSTANCE.eClass();
+#+END_SRC
+
+I also needed to include the required packages as plugin dependencies.  And I
+needed to register the resource factories in EMF:
+
+#+BEGIN_SRC java
+Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap()
+.put("eviewpoint", new EmfViewsFactory());
+Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap()
+.put("eview", new EmfViewsFactory());
+Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap()
+.put("xmi", new XMIResourceFactoryImpl());
+Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap()
+.put("ecore", new EcoreResourceFactoryImpl());
+Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap()
+.put("reqif", new ReqIF10ResourceFactoryImpl());
+Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap()
+.put("uml", new UMLResourceFactoryImpl());
+Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap()
+.put("emftvm", new EMFTVMResourceFactoryImpl());
+#+END_SRC
+
+The troublesome one was Reqif10, since the resource factory was not part of the
+reqif10 plugin, but in reqif10.serialization.  So I couldn't find the resource
+factory, tried to use the XMI one, failed.  Ultimately I hooked up the debugger
+to an Eclipse instance, looked at what resource factory was loaded when I opened
+the XMI resource, and found the correct plugin.
