@@ -10274,3 +10274,35 @@ reqif10 plugin, but in reqif10.serialization.  So I couldn't find the resource
 factory, tried to use the XMI one, failed.  Ultimately I hooked up the debugger
 to an Eclipse instance, looked at what resource factory was loaded when I opened
 the XMI resource, and found the correct plugin.
+
+* [2018-03-29 jeu.]
+** Cleaning up technical debt                               :emfviews:neoemf:
+Moved files around.  Cleanly separated tests made with the Java Trace metamodel
+and the NeoEMF Trace one.
+
+Had to touch a few of the helper files.
+
+Also, wanted to expand on that ATL transformation to navigate all the virtual
+links.  Trickier than expected.
+
+The weaving model I built using Java code was not complete: it executed only the
+first rule linking the Trace to the Java model.  Since I could not use the
+hashtable trick to execute all the rules, I had to invoke ECL from that Java
+code.
+
+ECL was annoying to run outside Eclipse for technical, boring reasons.
+
+I ran into an interesting issue in expanding the ATL transformation however.  We
+have no provisions for duplicated classifiers in the resulting viewpoint.  So,
+writing the following helper:
+
+: helper context Viewpoint!Package def : ...
+
+ATL complains about duplicate ~Package~ classifiers (there is one in UML and one
+in MoDisco).  It seems Epsilon has a way to differentiate classifiers using the
+~::~ operator.  I don't know if ATL has anything similar.
+
+But it might be an issue down the road.
+
+Tomorrow I should be able to test a transformation on a view backed by a NeoEMF
+resource, and run some benchmarks for both cases.
