@@ -6,3 +6,10 @@
 .metadata/
 .settings/
 bin/
+
+# ATL
+*.asm
+*.emftvm
+
+# NeoEMF
+*.graphdb
