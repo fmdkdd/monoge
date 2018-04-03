@@ -9431,11 +9431,11 @@ images/labels?
 Another issue with Modisco, at least for the UML model, is that I get many
 duplicated attributes:
 
-[[file:/home/fmdkdd/proj/monoge/doc/modisco-duplicates.png]]
+[[file:doc/modisco-duplicates.png]]
 
 Also in the properties view:
 
-[[file:/home/fmdkdd/proj/monoge/doc/modisco-duplicate-properties.png]]
+[[file:doc/modisco-duplicate-properties.png]]
 
 This duplication also happens with the EView editor.
 
@@ -10086,7 +10086,7 @@ just opening the resource.
 
 Here is the relevant portion of the profile:
 
-[[file:/home/fmdkdd/proj/monoge/doc/open-eview-editor-profile.png]]
+[[file:doc/open-eview-editor-profile.png]]
 
 So, 1430ms for loading 3 XMI files, and 750ms for loading a Neo4j DB.
 
@@ -10151,7 +10151,7 @@ Even for a model with 9000 elements.
 First question: is that an issue with ECL or NeoEMF?  What happens if try the
 same thing with an in-memory model?  Same thing.  So ECL is the bottleneck here.
 
-[[file:/home/fmdkdd/proj/monoge/doc/ecl-large-model-profile.png]]
+[[file:doc/ecl-large-model-profile.png]]
 
 Now, how can we make that faster?  If we wrote some Java code that created a
 WeavingModel using the same rules provided to ECL, how would it look like, and
