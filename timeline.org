@@ -10430,3 +10430,29 @@ Using the NeoEMF trace metamodel:
 Okay so far the results are not encouraging.  But I should probably reproduce
 that using JMH in order to get more runs, do averages, do some warm-up etc. for
 more stable results.
+
+* [2018-04-03 mar.]
+** Trying to run JMH for benchmarks                         :neoemf:emfviews:
+So, [[http://openjdk.java.net/projects/code-tools/jmh/][JMH]] is apparently the recommended option for doing benchmarking of Java
+programs.  Other than cutting the boilerplate, it also does warm-up, multiple
+iterations and averages results automatically.
+
+That's what [[https://github.com/atlanmod/NeoEMF/tree/master/benchmarks][NeoEMF uses]].
+
+I wanted to port the code I have in Eclipse that runs an ATL transformation to
+JMH, in order to get a stabler picture of the results.  But the recommended way
+to use JMH is to use maven.
+
+Problem: I have several dependencies that are not in maven central.  For my own
+code, I could add ~pom~ files to allow them to be built and added as maven
+dependencies.  I would need to ~mvn install~ each of them before running
+benchmarks though, so it would be cumbersome, but it would work.  For other
+projects however (MoDisco, ReqIF), they are not in mvn central or have a maven
+build (unlike ATL, which has a well-hidden maven repository).
+
+I tried to find some info about adding Eclipse dependencies to a maven project,
+but no dice.  The only relevant thing I could find was [[http://www.eclipse.org/articles/Article-Eclipse-and-Maven2/index.html][this old]] article, with
+dead links to the code.  It was not really off-the-shelf either.
+
+Soooo it leaves me with [[http://labs.carrotsearch.com/junit-benchmarks-tutorial.html][JUnit Benchmarks]], which has been deprecated (in favor of
+JMH) 3 years ago.  Or rolling my own.
