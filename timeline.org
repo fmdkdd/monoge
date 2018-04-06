@@ -10598,6 +10598,8 @@ plot data u 1:2 w lp title 'javaClass', \
 #+RESULTS:
 [[file:neoemf-integration/bench-weaving-model-java.png]]
 
+* [2018-04-05 jeu.]
+** More benchmarks                                          :neoemf:emfviews:
 *** Creating the models
 Went to 10^6.  Results for the Java Trace:
 
@@ -10852,3 +10854,80 @@ plot data u 1:2 w lp title 'Load', \
 
 #+RESULTS:
 [[file:neoemf-integration/bench-run-atl-java-with-using.png]]
+
+** Saving a weaving model as a NeoEMF resource              :neoemf:emfviews:
+In order to do that, I need to generate the NeoEMF code for the WeavingModel.
+That leads to a lot of duplication in the benchmark code.
+
+Also, while the XMI had no issues with duplicate containers in XMI, NeoEMF
+complains.  So I have to merge the contributing models and their contents when
+building the weaving model.
+
+Hitting a bug.. but the code is a mess.  It seems even with caching the
+ConcreteConcepts that I build and re-using the map in ECLDelegateMut, I'm still
+hitting duplicates when serializing?  Looking at the cache of concrete concepts,
+I don't see duplicates.
+
+I should try to use the same logic for XMI and look at the resulting XMI
+directly to see if I've indeed solved the issue.
+
+* [2018-04-06 ven.]
+** Saving the 10^6 NeoEMF model crashed again                        :neoemf:
+Even after using ~-Xmx20g~ to increase the available memory.  It crashed in a
+different place however:
+
+#+BEGIN_EXAMPLE
+Exception in thread "main" Exception in thread "GC-Monitor" java.lang.OutOfMemoryError: Java heap space
+	at org.neo4j.kernel.impl.util.RelIdArray$LowIdBlock.<init>(RelIdArray.java:418)
+	at org.neo4j.kernel.impl.util.RelIdArray$LowIdBlock.<init>(RelIdArray.java:415)
+	at org.neo4j.kernel.impl.util.RelIdArray.add(RelIdArray.java:141)
+	at org.neo4j.kernel.impl.core.NodeManager.createRelationship(NodeManager.java:261)
+	at org.neo4j.kernel.impl.core.NodeImpl.createRelationshipTo(NodeImpl.java:628)
+	at org.neo4j.kernel.impl.core.NodeProxy.createRelationshipTo(NodeProxy.java:207)
+	at com.tinkerpop.blueprints.impls.neo4j.Neo4jGraph.addEdge(Neo4jGraph.java:488)
+	at com.tinkerpop.blueprints.util.wrappers.id.IdGraph.addEdge(IdGraph.java:201)
+	at fr.inria.atlanmod.neoemf.data.blueprints.BlueprintsPersistenceBackend$AutoCleanerIdGraph.addEdge(BlueprintsPersistenceBackend.java:514)
+	at com.tinkerpop.blueprints.util.GraphHelper.copyGraph(GraphHelper.java:68)
+	at fr.inria.atlanmod.neoemf.data.blueprints.BlueprintsPersistenceBackend.copyTo(BlueprintsPersistenceBackend.java:414)
+	at fr.inria.atlanmod.neoemf.data.blueprints.BlueprintsPersistenceBackendFactory.copyBackend(BlueprintsPersistenceBackendFactory.java:205)
+	at fr.inria.atlanmod.neoemf.resource.DefaultPersistentResource.save(DefaultPersistentResource.java:162)
+	at Creator.lambda$3(Creator.java:281)
+	at Creator$$Lambda$2/693632176.apply(Unknown Source)
+	at Util.time(Util.java:32)
+	at Creator.main(Creator.java:278)
+java.lang.OutOfMemoryError: Java heap space
+	at sun.util.locale.BaseLocale.getInstance(BaseLocale.java:86)
+	at java.util.Locale.getInstance(Locale.java:741)
+	at java.util.ResourceBundle$Control$CandidateListCache.getDefaultList(ResourceBundle.java:2474)
+	at java.util.ResourceBundle$Control$CandidateListCache.createObject(ResourceBundle.java:2451)
+	at java.util.ResourceBundle$Control$CandidateListCache.createObject(ResourceBundle.java:2381)
+	at sun.util.locale.LocaleObjectCache.get(LocaleObjectCache.java:60)
+	at java.util.ResourceBundle$Control.getCandidateLocales(ResourceBundle.java:2376)
+	at sun.util.resources.LocaleData$LocaleDataResourceBundleControl.getCandidateLocales(LocaleData.java:209)
+	at java.util.ResourceBundle.getBundleImpl(ResourceBundle.java:1365)
+	at java.util.ResourceBundle.getBundle(ResourceBundle.java:899)
+	at sun.util.resources.LocaleData$1.run(LocaleData.java:167)
+	at sun.util.resources.LocaleData$1.run(LocaleData.java:163)
+	at java.security.AccessController.doPrivileged(Native Method)
+	at sun.util.resources.LocaleData.getBundle(LocaleData.java:163)
+	at sun.util.resources.LocaleData.getDateFormatData(LocaleData.java:127)
+[INFO]  05:11:27,420 - PersistenceBackend closed: neo-blueprints:/home/fmdkdd/proj/monoge/neoemf-integration/neoemf-importer/models/neoemf-trace/1000000.graphdb
+	at java.text.DateFormatSymbols.initializeData(DateFormatSymbols.java:710)
+#+END_EXAMPLE
+
+I double-checked that the VM had indeed access to 20GB with
+~runtime.getMaxMemory()~:
+
+: 19088801792
+
+Well, I don't know how they do their calculations, but in my book 20GB stands
+for GigaByte, which is 10^9 bytes, which is exactly 20*10^9. The 'g' in '20g'
+might stand for GiB (GibiByte), which is 1024^3, but then it would amount to
+20 * 1024^3 which is even larger:
+
+: 20 GiB = 21474836480 B
+
+(calc was missing these crucial unit prefixes, but that is now solved)
+
+Anyway, I don't see where they get that amount, but if 19GB is not enough for
+serializing the model... this is an issue.
