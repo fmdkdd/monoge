@@ -10931,3 +10931,38 @@ might stand for GiB (GibiByte), which is 1024^3, but then it would amount to
 
 Anyway, I don't see where they get that amount, but if 19GB is not enough for
 serializing the model... this is an issue.
+
+G. to the rescue.  We are likely committing a transaction with 1M elements,
+which is too big for Neo4j to handle.  The way to do it is [[https://github.com/SOM-Research/NeoEMF/blob/master/examples/fr.inria.atlanmod.neoemf.demo/src/fr/inria/atlanmod/neoemf/demo/importer/BlueprintsImporter.java][here]].  We should use
+the ~autoCommit~ option when saving the resource to ensure smaller transactions.
+
+Also, we need to save the resource once with the options *before* adding
+elements to it, otherwise the autoCommit won't be applied.
+
+** Saving the weaving model in NeoEMF                       :neoemf:emfviews:
+Testing on the XMI instead... there is indeed only one instance of the MoDisco
+contributing model.  There is one concept with a funky path however:
+
+: <concreteElements xsi:type="virtualLinks:ConcreteConcept" path="/-1"/>
+
+Ah, it was a silly copy/paste mistake.  That's what you get duplicating code!
+
+Hmm, still this error!
+
+: Exception in thread "main" java.lang.IllegalArgumentException: vertex with given id already exists: 'ConcreteConcept@http://www.atlanmod.org/emfviews/virtuallinks-neoemf/0.3.0'
+
+I could try importing an XMI weaving model.
+
+Ah wait, silly me.  G. comes to the rescue again.  It's because the previous
+GraphDB weaving model was half-written to disk, so the creation of a new
+resource picked that up and tried to add contents to it.
+
+I should clean up the target before saving.  I don't know why it works for the
+XMI, but I could clean that up as well, just to be safe.
+
+** Solving the duplicate implementations of WeavingModel    :emfviews:neoemf:
+Since NeoEMF generates its own implementation of Ecore models, if you want to
+keep the Java implementation around, then you need to either:
+
+- Duplicate fully the two packages
+- Tweak the implementation to use a common interface
