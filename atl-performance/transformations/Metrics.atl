@@ -1,0 +1,113 @@
+--query Q = 
+--    let all : OclAny = Modisco!ClassDeclaration.allInstances() in
+--    let proxyTrue : OclAny = all->select(e | e.proxy = true).asSet() in
+--    let noCompilationUnit : OclAny = all->select(e | 
+--        e.originalCompilationUnit.oclIsUndefined()).asSet() in
+--	  proxyTrue->symetricDifference(noCompilationUnit)->debug();
+
+--query Q = Modisco!MethodDeclaration.allInstances()->select(e | e.isStatic)
+
+--query Q = Modisco!MethodDeclaration.allInstances()
+--->select(e | e.isInPackage)
+--->select(e | not e.isStatic)
+--->size().debug();
+
+--query MeanMethodsPerClass = 
+--    let classes : OclAny = Modisco!ClassDeclaration.allInstances()->select(e | e.isInPackage) in
+--    let anonymous : OclAny = Modisco!AnonymousClassDeclaration.allInstances()->select(e | e.isInPackage) in
+--    let methods : OclAny = Modisco!MethodDeclaration.allInstances()->select(e | e.isInPackage and e.isInClass) in
+--    let mean : OclAny = methods->size() / (classes->size() + anonymous.size()) in
+--    mean.debug()
+--;
+
+--query Q = 
+--    let methods : OclAny = Modisco!MethodDeclaration.allInstances()
+--    	->select(e | e.isInPackage 
+--    	    and e.isInClass)
+--	in methods->size().debug()
+--;
+    
+--query Q =
+--    Modisco!MethodDeclaration.allInstances()->select(e | e.modifier.oclIsUndefined())->at(3).debug();
+
+--query Q = 
+--    Modisco!ClassDeclaration.allInstances()
+--    ->select(e | thisModule.isInner(e))
+--    ->size().debug();
+--
+
+--query MeanFieldsPerClass =
+--    let fields : OclAny = Modisco!FieldDeclaration.allInstances()->select(e | e.isInPackage) in
+--    let classes : OclAny = Modisco!ClassDeclaration.allInstances()->select(e | e.isInPackage) in
+--    let anonymous : OclAny = Modisco!AnonymousClassDeclaration.allInstances()->select(e | e.isInPackage) in    
+--    let mean : OclAny = fields->size()/ (classes->size() + anonymous->size()) in
+--    mean.debug();
+
+--query Singletons =
+--	let classes : OclAny = Modisco!ClassDeclaration.allInstances()->select(e | e.isInPackage) in
+--	let singletons : OclAny = classes
+--	->select(c | c.constructors->size() > 0 and c.constructors->forAll(e | e.isPrivate))
+--	->select(c | c.methods->exists(e | e.modifier.static = true
+--	                                   and e.returnType.type = c)
+--              or c.fields->exists(e | e.modifier.static = true
+--                   					   and e.type.type = c))
+--    in singletons->debug();
+
+--query MeanParamsPerMethod =
+--  	let methods : OclAny = Modisco!MethodDeclaration.allInstances()->select(e | e.isInPackage and e.isInClass) in
+--  	let parameters : OclAny = methods->collect(e | e.parameters)->flatten() in
+--  	(parameters->size().debug() / methods->size().debug()).debug()
+--;
+  	
+query MeanStatementsPerMethod =
+  	let methods : OclAny = Modisco!MethodDeclaration.allInstances()->select(e | e.isInPackage and e.isInClass and not e.isAbstract) in
+  	let statements : OclAny = methods->collect(e | e.body.statements)->flatten() in
+  	(statements->size().debug() / methods->size().debug()).debug()
+;
+
+helper def : isInner(o : ECORE!EObject) : Boolean =
+    if o.refImmediateComposite().oclIsUndefined() then false
+    else if o.refImmediateComposite().oclIsKindOf(Modisco!ClassDeclaration) then true
+         else thisModule.isInner(o.refImmediateComposite())
+         endif
+    endif
+;
+
+helper context Modisco!MethodDeclaration def : isStatic : Boolean =
+    if self.modifier.oclIsUndefined() then false
+    else self.modifier.static
+    endif
+;
+
+helper context Modisco!ASTNode def : isInPackage : Boolean =
+    not self.originalCompilationUnit.oclIsUndefined()
+;
+
+helper context Modisco!MethodDeclaration def : isInClass : Boolean =
+    self.abstractTypeDeclaration.oclIsTypeOf(Modisco!ClassDeclaration)
+    or not self.anonymousClassDeclarationOwner.oclIsUndefined()
+;
+
+helper context Modisco!ClassDeclaration def : constructors : OclAny =
+    self.bodyDeclarations->select(e | e.oclIsTypeOf(Modisco!ConstructorDeclaration))
+;
+
+helper context Modisco!ClassDeclaration def : fields : OclAny =
+    self.bodyDeclarations->select(e | e.oclIsTypeOf(Modisco!FieldDeclaration))
+;
+
+helper context Modisco!ClassDeclaration def : methods : OclAny =
+    self.bodyDeclarations->select(e | e.oclIsTypeOf(Modisco!MethodDeclaration))
+;
+
+helper context Modisco!ConstructorDeclaration def : isPrivate : Boolean =
+	if self.modifier.oclIsUndefined() then false
+	else self.modifier.visibility = #private
+	endif
+;
+
+helper context Modisco!MethodDeclaration def : isAbstract : Boolean =
+    if self.modifier.oclIsUndefined() then false
+    else self.modifier.inheritance = #"abstract"
+    endif
+;
