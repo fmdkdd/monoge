@@ -10997,3 +10997,91 @@ plot data u 1:2 w lp title 'Populate', \
 
 #+RESULTS:
 [[file:neoemf-integration/bench-create-neoemf-trace-autocommit.png]]
+
+** Merging NeoEMF and standard EMF generated EPackages           :neoemf:emf:
+What happens if I just re-use the interfaces of the EMF-generated EPackage in
+the NeoEMF generated EPackage?  Does it allow me to use the same interface to
+interact with the two packages?  It should, but are there gotchas?
+
+Removing the interfaces at the root of the NeoEMF EPackage, and doing the
+associated renaming works fine.  The default factory assumes there's only one
+implementation however:
+
+: TraceneoemfFactory eINSTANCE = traceneoemf.impl.TraceneoemfFactoryImpl.init();
+
+So we need to create a common supertype to both factories interfaces.  All in
+all, a few changes that /could/ be automated if we wanted to.
+
+Once that is done, it seems to work for my purposes.  In effect, we have two
+registered EPackages, but they share the same interface.
+
+Okay!  That cut down a lot of the crappy dupe code I had.  Now I can build
+weaving models backed by NeoEMF.  Next step is to use them when building a view.
+
+** Saving weaving models to NeoEMF                          :neoemf:emfviews:
+Here are the numbers.  NeoEMF saving options are the same used for creating
+NeoEMF models (Neo4j/autocommit).
+
+First table is for creating a NeoEMF weaving model backed by a Java trace model.
+
+- load :: How long to load the Trace resource
+- GraphDB :: Size of the weaving model GraphDB folder on disk
+
+#+NAME: neoemf-weaving-model-java-trace
+| Size | load | javaClass | ECL |  save |   full | GraphDB |
+|------+------+-----------+-----+-------+--------+---------|
+|    1 |    4 |       158 | 324 |  1390 |   1886 | 484KB   |
+|    2 |   14 |        72 |  82 |   737 |    908 | 967KB   |
+|    3 |   52 |       195 |  81 |  1136 |   1466 | 6M      |
+|    4 |  138 |      1484 |  72 |  4294 |   5991 | 57M     |
+|    5 |  256 |    217313 | 351 | 28999 | 246919 | 624M    |
+|    6 |      |           |     |       |        |         |
+
+#+begin_src gnuplot :var data=neoemf-weaving-model-java-trace :file neoemf-integration/bench-neoemf-weaving-model-java-trace.png
+set title Create NeoEMF weaving model (Java Trace)'
+set key outside
+
+set xlabel 'model size (10^n)'
+set logscale y
+set ylabel 'time (ms)'
+
+plot data u 1:2 w lp title 'load', \
+     data u 1:3 w lp title 'javaClass', \
+     data u 1:4 w lp title 'ECL', \
+     data u 1:5 w lp title 'Save', \
+     data u 1:6 w lp title 'Full'
+#+end_src
+
+#+RESULTS:
+[[file:neoemf-integration/bench-neoemf-weaving-model-java-trace.png]]
+
+Second table is for creating a NeoEMF weaving model backed by a NeoEMF trace
+model.
+
+#+NAME: neoemf-weaving-model-neoemf-trace
+| Size | load | javaClass | ECL | save |  full | GraphDB |
+|------+------+-----------+-----+------+-------+---------|
+|    1 |   62 |        52 |  46 |  569 |   810 | 484K    |
+|    2 |   25 |        61 |  61 |  675 |   900 | 980K    |
+|    3 |   33 |       314 |  30 |  887 |  1347 | 6M      |
+|    4 |   47 |     26422 |  47 | 2386 | 28988 | 57M     |
+|    5 |   31 |           |     |      |       |         |
+|    6 |      |           |     |      |       |         |
+
+#+begin_src gnuplot :var data=neoemf-weaving-model-neoemf-trace :file neoemf-integration/bench-neoemf-weaving-model-neoemf-trace.png
+set title Create NeoEMF weaving model (NeoEMF Trace)'
+set key outside
+
+set xlabel 'model size (10^n)'
+set logscale y
+set ylabel 'time (ms)'
+
+plot data u 1:2 w lp title 'load', \
+     data u 1:3 w lp title 'javaClass', \
+     data u 1:4 w lp title 'ECL', \
+     data u 1:5 w lp title 'Save', \
+     data u 1:6 w lp title 'Full'
+#+end_src
+
+#+RESULTS:
+[[file:neoemf-integration/bench-neoemf-weaving-model-neoemf-trace.png]]
