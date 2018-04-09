@@ -10962,7 +10962,38 @@ XMI, but I could clean that up as well, just to be safe.
 
 ** Solving the duplicate implementations of WeavingModel    :emfviews:neoemf:
 Since NeoEMF generates its own implementation of Ecore models, if you want to
-keep the Java implementation around, then you need to either:
+keep the Java implementation around, then you need to either: fully duplicate
+the two packages (leading to code duplication everywhere we want to use both
+implementations), or tweak the generated code to use a common interface.
+Generate both implementations, then change one to use the interfaces of the
+other.
 
-- Duplicate fully the two packages
-- Tweak the implementation to use a common interface
+* [2018-04-09 lun.]
+** Creating the NeoEMF trace model                          :neoemf:emfviews:
+Up to 10^6 this time, using the autoCommit option with a default value of
+100000.  It worked.  Took 4 hours for the largest model though.
+
+#+NAME: create-neoemf-trace-autocommit
+| Size | Populate |     Full | GraphDB |
+|------+----------+----------+---------|
+|    1 |      198 |     1584 | 332KB   |
+|    2 |      178 |      808 | 584KB   |
+|    3 |      444 |     1151 | 3.3MB   |
+|    4 |     2826 |     4222 | 31MB    |
+|    5 |   152875 |   154747 | 341MB   |
+|    6 | 14408336 | 14408919 | 3.4GB   |
+
+#+begin_src gnuplot :var data=create-neoemf-trace-autocommit :file neoemf-integration/bench-create-neoemf-trace-autocommit.png
+set title 'Create NeoEMF Trace model'
+set key outside
+
+set xlabel 'model size (10^n)'
+set logscale y
+set ylabel 'time (ms)'
+
+plot data u 1:2 w lp title 'Populate', \
+     data u 1:3 w lp title 'Full'
+#+end_src
+
+#+RESULTS:
+[[file:neoemf-integration/bench-create-neoemf-trace-autocommit.png]]
