@@ -11085,3 +11085,91 @@ plot data u 1:2 w lp title 'load', \
 
 #+RESULTS:
 [[file:neoemf-integration/bench-neoemf-weaving-model-neoemf-trace.png]]
+
+* [2018-04-10 mar.]
+** Ran the (XMI) weaving model creation overnight           :neoemf:emfviews:
+10^6 for NeoeMF trace never finished.  Sigh.
+
+*** Creating an XMI weaving model with Java trace
+#+NAME: xmi-weaving-model-java-trace
+| Size | load | javaClass | ECL |   save |   full | XMI  |
+|------+------+-----------+-----+--------+--------+------|
+|    1 |    3 |        24 | 299 |     18 |    351 | 11K  |
+|    2 |    3 |        22 | 118 |     11 |    156 | 36K  |
+|    3 |   16 |        49 | 100 |     51 |    217 | 285K |
+|    4 |   96 |       486 |  95 |    423 |   1100 | 2.8M |
+|    5 |  524 |      2482 |  92 |   2167 |   5266 | 28M  |
+|    6 | 1557 |    155217 |  52 | 154123 | 310950 | 277M |
+
+#+begin_src gnuplot :var data=xmi-weaving-model-java-trace :file neoemf-integration/bench-xmi-weaving-model-java-trace.png
+set title Create XMI weaving model (Java Trace)'
+set key outside
+
+set xlabel 'model size (10^n)'
+set logscale y
+set ylabel 'time (ms)'
+
+plot data u 1:2 w lp title 'load', \
+     data u 1:3 w lp title 'javaClass', \
+     data u 1:4 w lp title 'ECL', \
+     data u 1:5 w lp title 'Save', \
+     data u 1:6 w lp title 'Full'
+#+end_src
+
+#+RESULTS:
+[[file:neoemf-integration/bench-xmi-weaving-model-java-trace.png]]
+
+*** Creating an XMI weaving model with a NeoEMF trace
+#+NAME: xmi-weaving-model-neoemf-trace
+| Size | load | javaClass | ECL | save |    full | XMI |
+|------+------+-----------+-----+------+---------+-----|
+|    1 | 1277 |      1119 |  66 |    2 |    2543 |     |
+|    2 |   79 |       234 |  71 |    2 |     471 |     |
+|    3 |   47 |      1065 |  33 |    6 |    1245 |     |
+|    4 |   25 |     20680 |  40 |   74 |   20901 |     |
+|    5 |  205 |   2123328 |  38 | 1905 | 2125560 |     |
+|    6 |   37 |       n/a | n/a |  n/a |     n/a | n/a |
+
+#+begin_src gnuplot :var data=xmi-weaving-model-neoemf-trace :file neoemf-integration/bench-xmi-weaving-model-neoemf-trace.png
+set title Create XMI weaving model (NeoEMF Trace)'
+set key outside
+
+set xlabel 'model size (10^n)'
+set logscale y
+set ylabel 'time (ms)'
+
+plot data u 1:2 w lp title 'load', \
+     data u 1:3 w lp title 'javaClass', \
+     data u 1:4 w lp title 'ECL', \
+     data u 1:5 w lp title 'Save', \
+     data u 1:6 w lp title 'Full'
+#+end_src
+
+#+RESULTS:
+[[file:neoemf-integration/bench-xmi-weaving-model-neoemf-trace.png]]
+
+** Creating a view from a NeoEMF weaving mdoel              :neoemf:emfviews:
+Just tweaking the loading of the resource seems to be enough.
+
+But it looks like my GraphDB weaving model has no virtual associations!  Opening
+the weaving model... they have the same content as the XMIs.  What's going on
+here?
+
+Ahhh I get it.  I generated the model code for the NeoEMF weaving model, but I
+forgot to implement the derived links!
+
+That's better.
+
+Now I get an NPE.  ConcreteConcept.getModel is null.  It is unset in the GraphDB
+resource.  Wait no, that's weird.  First time I look it up, it's empty, second
+time, it has the correct value!  I can see that behavior using the NeoEMF
+browser.
+
+Calling ~getModel~ multiple times in code always returns null apparently.  So
+does a loop.
+
+Maybe bidirectional containment references have issues?  Bah, I can just use
+~eContainer~ on the object instead of ~getModel~ then.
+
+And it works!  The transformation is run on the view, the weaving model and the
+trace model are NeoEMF resources.
