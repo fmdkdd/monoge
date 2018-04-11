@@ -11059,14 +11059,14 @@ Second table is for creating a NeoEMF weaving model backed by a NeoEMF trace
 model.
 
 #+NAME: neoemf-weaving-model-neoemf-trace
-| Size | load | javaClass | ECL | save |  full | GraphDB |
-|------+------+-----------+-----+------+-------+---------|
-|    1 |   62 |        52 |  46 |  569 |   810 | 484K    |
-|    2 |   25 |        61 |  61 |  675 |   900 | 980K    |
-|    3 |   33 |       314 |  30 |  887 |  1347 | 6M      |
-|    4 |   47 |     26422 |  47 | 2386 | 28988 | 57M     |
-|    5 |   31 |           |     |      |       |         |
-|    6 |      |           |     |      |       |         |
+| Size | load | javaClass | ECL |  save |    full | GraphDB |
+|------+------+-----------+-----+-------+---------+---------|
+|    1 |   62 |        52 |  46 |   569 |     810 | 484K    |
+|    2 |   25 |        61 |  61 |   675 |     900 | 980K    |
+|    3 |   33 |       314 |  30 |   887 |    1347 | 6M      |
+|    4 |   47 |     26422 |  47 |  2386 |   28988 | 57M     |
+|    5 |   31 |   3049003 | 113 | 26780 | 3076031 | 626M    |
+|    6 |      |           |     |       |         |         |
 
 #+begin_src gnuplot :var data=neoemf-weaving-model-neoemf-trace :file neoemf-integration/bench-neoemf-weaving-model-neoemf-trace.png
 set title Create NeoEMF weaving model (NeoEMF Trace)'
@@ -11121,14 +11121,14 @@ plot data u 1:2 w lp title 'load', \
 
 *** Creating an XMI weaving model with a NeoEMF trace
 #+NAME: xmi-weaving-model-neoemf-trace
-| Size | load | javaClass | ECL | save |    full | XMI |
-|------+------+-----------+-----+------+---------+-----|
-|    1 | 1277 |      1119 |  66 |    2 |    2543 |     |
-|    2 |   79 |       234 |  71 |    2 |     471 |     |
-|    3 |   47 |      1065 |  33 |    6 |    1245 |     |
-|    4 |   25 |     20680 |  40 |   74 |   20901 |     |
-|    5 |  205 |   2123328 |  38 | 1905 | 2125560 |     |
-|    6 |   37 |       n/a | n/a |  n/a |     n/a | n/a |
+| Size | load | javaClass | ECL | save |    full | XMI  |
+|------+------+-----------+-----+------+---------+------|
+|    1 | 1277 |      1119 |  66 |    2 |    2543 | 11K  |
+|    2 |   79 |       234 |  71 |    2 |     471 | 37K  |
+|    3 |   47 |      1065 |  33 |    6 |    1245 | 297K |
+|    4 |   25 |     20680 |  40 |   74 |   20901 | 2.9M |
+|    5 |  205 |   2123328 |  38 | 1905 | 2125560 | 29M  |
+|    6 |   37 |       n/a | n/a |  n/a |     n/a | n/a  |
 
 #+begin_src gnuplot :var data=xmi-weaving-model-neoemf-trace :file neoemf-integration/bench-xmi-weaving-model-neoemf-trace.png
 set title Create XMI weaving model (NeoEMF Trace)'
@@ -11173,3 +11173,39 @@ Maybe bidirectional containment references have issues?  Bah, I can just use
 
 And it works!  The transformation is run on the view, the weaving model and the
 trace model are NeoEMF resources.
+
+* [2018-04-11 mer.]
+** Running transformations too large for XMI                :neoemf:emfviews:
+The 10^6 model is the first to OOM on the 512MiB JVM.  Maybe more interesting is
+to look at the memory usage over time for the 10^6 XMI (so we know the max
+memory it uses).
+
+Looks like the max size of the used heap is around 3.5GB.
+
+Profiling the run for 30min, and it seems most of the time is taken by EMFTVM
+executing the transformation.
+
+[[file:neoemf-integration/profile-atl-transfo.png]]
+
+Now, the issue is that I can't even run the transformation with a NeoEMF weaving
+model for the 10^6 model, since I don't have it.  I'm not confident it will even
+finish in a night, since creating the XMI weaving model with a NeoEMF trace for
+10^6 did not finish in over 15 hours.
+
+Maybe profiling the creation of the weaving model might give insight as to why
+this is taking so long.
+
+** Importing the XMI weaving model into GraphDB             :neoemf:emfviews:
+Since building the NeoEMF weaving model takes a long time, maybe importing from
+the XMI is faster?
+
+I tried to use the example importer code [[https://github.com/SOM-Research/NeoEMF/blob/master/examples/fr.inria.atlanmod.neoemf.demo/src/fr/inria/atlanmod/neoemf/demo/importer/EfficientBlueprintsImporter.java][here]], but am running into exceptions.
+It looks like only the original WeavingModel implementation is used.  For
+loading the XMI, it makes sense.  But for saving the NeoEMF resource, it should
+use the NeoEMF implementation.  Ah, but here's the issue!  When moving the
+contents from one resource to another, we should switch implementations!
+
+I have no idea how this is supposed to work.  In fact, I don't even know how it
+worked in the first place when we built a Trace NeoEMF resource from an XMI one.
+Other than we generated an implementation with the exact same namespace URI, so
+maybe there's some magic trick going on behind the scenes?
