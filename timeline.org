@@ -11209,3 +11209,34 @@ I have no idea how this is supposed to work.  In fact, I don't even know how it
 worked in the first place when we built a Trace NeoEMF resource from an XMI one.
 Other than we generated an implementation with the exact same namespace URI, so
 maybe there's some magic trick going on behind the scenes?
+
+* [2018-04-12 jeu.]
+** Let constructing the NeoEMF weaving model run overnight  :neoemf:emfviews:
+Still no dice.  The 10^6 does not look like it will terminate in due time.
+
+One thing I notice in the memory monitoring is that even though the max heap
+space is indeed 20GiB, the maximum size the heap will use is still 8GiB.  And we
+can see that the JVM will never go above.  Maybe ~-Xmx~ is not the right flag?
+
+Passing ~-Xms20g~ as well makes sure that the heap uses its max allocated space
+right from the start.  The program may not use all of it however.
+
+One more interesting setting is to change the GC, as used by NeoEMF benchmarks:
+
+: -XX:+UseConcMarkSweepGC
+
+The GC will run in another thread and collect garbage.  The difference in memory
+usage is staggering.  Here is the default GC:
+
+[[file:neoemf-integration/default-gc-neoemf-weaving-model.png]]
+
+The shark fins go up to 6GiB here.  Many objects are created and collected.  We
+can clearly see the GC pauses.
+
+Here is the same program (creating NeoEMF weaving models) with the concurrent
+mark and sweep:
+
+[[file:neoemf-integration/conc-gc-neoemf-weaving-model.png]]
+
+Maximum heap used is around 300MiB.  But the CPU usage has bumped by 20%, and
+we can see the GC is continuously being run.  Trade-offs.
