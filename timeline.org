@@ -1,5 +1,5 @@
 # -*- eval: (add-hook (quote org-babel-after-execute-hook) (function org-redisplay-inline-images)); -*-
-#+STARTUP: inlineimages
+#+STARTUP: inlineimages entitiespretty
 
 * [2017-04-03 lun.]
 ** Notes on setting up for the MoNoGe project              :eclipse:emfviews:
@@ -11240,3 +11240,38 @@ mark and sweep:
 
 Maximum heap used is around 300MiB.  But the CPU usage has bumped by 20%, and
 we can see the GC is continuously being run.  Trade-offs.
+
+** Importing XMI weaving models into GraphDB                :neoemf:emfviews:
+Okay so the missing bit of information from yesterday was that when importing
+XMI into GraphDB, we are using only one EPackage: the NeoEMF one.  So you have
+to tweak the XMI to change the namespace URI in there.
+
+But, it doesn't help me much actually, because I /don't have/ a weaving model
+for the 10^6 NeoEMF trace model either.  It took too long.
+
+** Running ATL transfo on 10^5 NeoEMF weaving model          :neoemf:emfviews:
+Looks like it could take a while.  I'll run it overnight.
+
+I profiled a few minutes to see where it spent time.  Same thing as creating the
+weaving model: we spend all our time in iterating over the contents of the
+resource.
+
+I tried with the concurrent mark and sweep GC.  The profiling result is slightly
+different.  Here is with the default GC:
+
+[[file:neoemf-integration/profile-atl-transfo-neoemf-weaving-model-default-gc.png]]
+
+Here is with ConcMarkSweepGC:
+
+[[file:neoemf-integration/profile-atl-transfo-neoemf-weaving-model-conc-gc.png]]
+
+- ~RelationshipImpl.hasProperty~ jumps to 53% of total time, from 17%.
+- ~lookupRelationship~ was dominated by self time, but is now dominated by
+  getRelationshipForProxy.
+
+The WeakLruCache here might be a clue: maybe the concurrent GC collects objects
+too often, and the cost here is that the implementation is constantly adding
+things back to an internal cache.
+
+So, probably the time of execution is increased by a good amount by using the
+concurrent GC.
