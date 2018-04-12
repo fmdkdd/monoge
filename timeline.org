@@ -11275,3 +11275,17 @@ things back to an internal cache.
 
 So, probably the time of execution is increased by a good amount by using the
 concurrent GC.
+
+Anyway, all of this is done in View.doLoad, because we eagerly populate the view
+using the weaving model links.  We could defer that, but it's going to be
+tricky.
+
+In this specific case, we could defer this computation until either end of the
+virtual feature is hit (until its size or its contents are requested).  We can
+probably generalize that to any virtual association.  But we would still have to
+go through /each/ virtual association in order to create reminders for deferring
+the computation.  Since iterating on the weaving model is the bottleneck right
+now, such deferring would not improve anything.
+
+The least we could safely do would be to defer looking into the weaving model
+until we create the view contents.
