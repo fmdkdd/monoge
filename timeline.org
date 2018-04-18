@@ -11349,7 +11349,7 @@ plot data u 1:2 w lp title 'Load', \
 ** Running with softCache                                   :neoemf:emfviews:
 When building the NeoEMF weaving model with a NeoEMF trace.
 
-Here where the numbers with weakCache, for the 10^5 trace model:
+Here where the numbers with weakCache/softCache, for the 10^5 trace model:
 
 | Cache | javaClass |    Full |
 |-------+-----------+---------|
