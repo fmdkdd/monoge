@@ -11357,3 +11357,98 @@ Here where the numbers with weakCache/softCache, for the 10^5 trace model:
 | soft  |   1661562 | 1698940 |
 
 Nice improvement.  Still slow though.
+
+* [2018-04-17 mar.]
+** Trying out NeoEMF master                                 :neoemf:emfviews:
+(i.e., atlanmod/NeoEMF)
+
+To see if the API is that different for our purposes, and to see if there are
+performance improvements.
+
+Just cloning and building from master is enough to install it.  It appears I
+don't need to register the BlueprintsURI.SCHEME anymore, which is good.
+
+It appears I don't need to regenerate model code, as it looks the same (at least
+for the trace model).
+
+However, the databases are incompatible between versions.  Need to regenerate
+them all.
+
+Ah, it looks like creating the trace resource takes much longer than NeoEMF
+1.0.2.  36s for 10^4 elements, against 4s.
+
+Need to test building the weaving model and running the transfo as well.
+
+Here are the full numbers:
+
+| Size |    Full | GraphDB size |
+|------+---------+--------------|
+|    1 |    6677 | 416KB        |
+|    2 |    1497 | 548KB        |
+|    3 |    2415 | 2MB          |
+|    4 |   35925 | 16MB         |
+|    5 | 3190291 | 168MB        |
+
+So it takes twice as long, and take twice as less on disk.
+
+* [2018-04-18 mer.]
+** NeoEMF master weaving model benchmarks                   :neoemf:emfviews:
+*** XMI weaving model with NeoEMF trace
+
+| Size | load | populate | save |   full |
+|------+------+----------+------+--------|
+|    1 | 1149 |      166 |   18 |   4658 |
+|    2 |  151 |      123 |   10 |    481 |
+|    3 |  124 |      506 |   41 |    866 |
+|    4 |   96 |    11181 |  134 |  11593 |
+|    5 |  113 |   945415 | 2422 | 948163 |
+
+*** NeoEMF weaving model with NeoEMF trace
+
+| Size | load | populate |    save |     full |
+|------+------+----------+---------+----------|
+|    1 |  101 |      149 |    1082 |     1632 |
+|    2 |   95 |      228 |    1198 |     1722 |
+|    3 |  148 |     2106 |    2277 |     4718 |
+|    4 |   98 |   102354 |   43393 |   146230 |
+|    5 |  179 | 10056899 | 3853064 | 13912304 |
+
+*** Conclusion
+Takes much longer than SOM NeoEMF.  There might be magical options that behave
+nicely for this example but... I'm skeptical.
+
+** NeoEMF master ATL transfo benchmarks                     :neoemf:emfviews:
+*** With XMI weaving model
+
+| Size | load | transform |    full |
+|------+------+-----------+---------|
+|    1 | 4294 |      1664 |    6727 |
+|    2 |  472 |       795 |    1621 |
+|    3 |  388 |      1998 |    2711 |
+|    4 |  448 |     36373 |   37096 |
+|    5 | 1069 |   3334126 | 3335569 |
+
+*** With NeoEMF weaving model
+
+| Size | load | transform |    full |
+|------+------+-----------+---------|
+|    1 |  522 |       515 |    1296 |
+|    2 |  515 |       468 |    1252 |
+|    3 |  291 |      1551 |    2093 |
+|    4 |  298 |     45316 |   45879 |
+|    5 |  323 |   4069452 | 4070129 |
+
+** NeoEMF master is a mixed bag                             :neoemf:emfviews:
+It's slower to create models, slower to create the DB weaving model, but faster
+for the XMI weaving model.  And it's also faster when running the
+transformation.
+
+Overall though, there are no order-of-magnitudes improvements.  It's still in
+the same ballpark as SOM-NeoEMF.
+
+So, for the paper, it does not matter if we stick to NeoEMF 1.0.2: everything is
+valid for NeoEMF master.
+
+For implementing with EMF Views on the long run, of course we need to use NeoEMF
+master.  The good thing is that we don't need as much ceremony to setup NeoEMF
+master, so the integration with EMF Views is less intrusive.
