@@ -11452,3 +11452,78 @@ valid for NeoEMF master.
 For implementing with EMF Views on the long run, of course we need to use NeoEMF
 master.  The good thing is that we don't need as much ceremony to setup NeoEMF
 master, so the integration with EMF Views is less intrusive.
+
+* [2018-04-19 jeu.]
+** Mirror dropbox into git                                      :git:dropbox:
+I don't trust dropbox conflict handling (or rather, I find it inferior to git
+merging).  Also, it's easier to check a git diff than using whatever Dropbox
+has.
+
+Luckily, I can just create a git repository inside the shared dropbox folder to
+save changes.  Then, for syncing I use a script that calls ~rclone~ like so:
+
+#+BEGIN_SRC sh
+case $1 in
+    pull)
+        SRC=dropbox:$DIR
+        DST=$DIR
+        ;;
+    push)
+        DST=$DIR
+        SRC=dropbox:$DIR
+        ;;
+    *)
+        echo './drop.sh pull|push'
+        exit 0
+        ;;
+esac
+
+rclone --exclude-from $DIR/.gitignore --exclude '.git/' --exclude '.gitignore'\
+       copy $SRC $DST
+#+END_SRC
+
+Locally I work with a git, and remotely the files are pushed to dropbox.  I can
+also add a proper git remote for additional safekeeping for instance.
+
+** Doing interesting things with calc                                 :emacs:
+I wanted to convert a column in LaTeX from milliseconds to minutes.  Well,
+there's an Emacs command for that.
+
+First, select the region using rectangle mark mode ~C-x SPC~, then ~C-x * r~ to
+paste that as a matrix into calc.
+
+#+BEGIN_EXAMPLE
+      1632
+      1722
+      4718
+    146230
+  13912304
+#+END_EXAMPLE
+
+In calc you get:
+
+#+BEGIN_EXAMPLE
+1:  [ [   1632   ]
+      [   1722   ]
+      [   4718   ]
+      [  146230  ]
+      [ 13912304 ] ]
+#+END_EXAMPLE
+
+Then ~u c ms min~ to convert the whole matrix (here I'm using fixed floating
+point format with ~d f 3~):
+
+#+BEGIN_EXAMPLE
+1:  [ [  0.027  ]
+      [  0.029  ]
+      [  0.079  ]
+      [  2.437  ]
+      [ 231.872 ] ]
+#+END_EXAMPLE
+
+From there you can grab the column in the matrix using ~C-x SPC~ again, (or ~C-x
+r M-w~), then replace the original column using classic rectangle commands.
+
+Also, I obtained the LaTeX tables from org using ~org-latex-export-as-latex~
+with the table as region, which generated a standalone LaTeX file in a temp
+buffer, and I extracted the table from that.
