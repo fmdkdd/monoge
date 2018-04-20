@@ -8963,10 +8963,9 @@ But explodes when launching the plugin goal:
 
 Can I add it to the runtime dependencies?  Yep.  Adding them one by one...
 
-Antlr dependencies is tricky, as 3.5 fails with a MethodNotFound.  Presumably
-some method was removed (breaking API, without increasing major version!).
-Testing with 3.4, 3.3... Ah 3.3 raises an exception.
-3.2, 3.1, same.  3.0... success!
+Antlr dependency is tricky, as 3.5 fails with a MethodNotFound.  Presumably some
+method was removed (breaking API, without increasing major version!).  Testing
+with 3.4, 3.3... Ah 3.3 raises an exception.  3.2, 3.1, same.  3.0... success!
 
 Now, unfortunately, that generated an ASM, because EMFTVM was not recognized.
 Can I make it work?
@@ -9257,7 +9256,7 @@ idea after all.
 * [2018-02-22 jeu.]
 ** Extending the test suite for DSLs                           :efmviews:mel:
 I found a strange bug, which I attributed to the lazy rule having funky
-behavior.  Turns out, lazy rules do not worm the same with EMFTVM and the
+behavior.  Turns out, lazy rules do not work the same with EMFTVM and the
 regular ATL VM.  As [[https://wiki.eclipse.org/ATL/EMFTVM#Lazy_rules][the documentation states]], in EMFTVM lazy rules are matched
 against the arguments, and I can see that with the regular VM, the unique lazy
 rule seems to ignore further arguments.
@@ -11527,3 +11526,56 @@ r M-w~), then replace the original column using classic rectangle commands.
 Also, I obtained the LaTeX tables from org using ~org-latex-export-as-latex~
 with the table as region, which generated a standalone LaTeX file in a temp
 buffer, and I extracted the table from that.
+
+* [2018-04-20 ven.]
+** Meeting with G. and H.                                   :neoemf:emfviews:
+A language for access to distant resources.  Do we need one?  What is that?  Can
+we access an EMF resource that is on another machine using EMF Views?  What is
+the point of [[https://som-research.uoc.edu/tools/emf-rest/][EMF REST]]?  We do not know.
+
+A more interesting pursuit is specializing OCL requests depending on the backend
+managing the resource.  Here are some leads:
+
+- Modify the OCL interpreter by extending classes that implement each operation,
+  in order to specialize them depending on the resource.
+
+- Capture and specialize the calls to part of the EMF API on EMF Views directly.
+  E.g., identifying an allInstances call and forwarding that to
+  PersistentResource.getAllInstances
+
+- Look at Hawk's EOL interpreter for inspiration
+
+- Use Mogwai to convert an OCL request into Gremlin, and implement
+  [[https://github.com/atlanmod/Mogwai/blob/master/fr.inria.atlanmod.mogwai.datastore/src/fr/inria/atlanmod/mogwai/datastore/ModelDatastore.java][ModelDataStore]] to target different backends.
+
+Ideally, we want to run an optimally efficient OCL query by taking advantages of
+backend-specific APIs.  That might not be feasible for all OCL, but it would be
+interesting to determine how much we can optimize, and how much we cannot.
+
+A couple of examples to get started:
+- Type.allInstances().  This is very slow when using a NeoEMF resource via the
+  EMF API.  It can be much faster when using PersistentResource.allInstances.
+
+- select->collect->select.  Naive OCL interpretation will apply the collect
+  function on every element of the first select, even though some of them might
+  be filtered out by the second select.  In other words, we want collections to
+  lazily create a request plan for databases.
+
+One potentially tricky part is handling OCL queries that touch multiple
+backends:
+- following a virtual reference from a NeoEMF model to an XMI one.
+- loading multiple resources of the same metamodel.  Log in XMI and Log in
+  NeoEMF for instances.  Log.allInstances() should then collect from both
+  resources, but using different backends.
+
+Another point of discussion is how further lazyfication of EMF Views.  We
+currently iterate through the whole weaving model when the contents are
+requested.  I'm pretty sure that delaying that further will break some EMF
+invariants if we are not careful.
+
+** Running an allInstances OCL query                    :neoemf:emfviews:ocl:
+[[file:neoemf-integration/benchmarks.org::*Running%20a%20simple%20OCL%20query][Results]].  Unloading an XMI resource is insanely slow.  Running that query on the
+XMI does not even sweat OCL at 10^6: 500ms.
+
+Now the NeoEMF resource.  Hmm, for some reason the models fail to load now?
+Have I done something?  I seem to need to recreate them.  /sigh/.
