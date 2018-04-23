@@ -11579,3 +11579,11 @@ XMI does not even sweat OCL at 10^6: 500ms.
 
 Now the NeoEMF resource.  Hmm, for some reason the models fail to load now?
 Have I done something?  I seem to need to recreate them.  /sigh/.
+
+* [2018-04-23 lun.]
+** I don't need unload                                      :neoemf:emfviews:
+NeoEMF resources need to be closed, not unloaded.  According to the doc, unload
+turns all references in the resource into proxy.  It's useful if one wants to
+reload the resource from the underlying file.  But it's so slow, I don't know
+why one would ever want to do an unload() -> load() instead of loading the
+resource anew and drop the previous one.
