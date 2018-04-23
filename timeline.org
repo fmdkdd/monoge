@@ -11587,3 +11587,104 @@ turns all references in the resource into proxy.  It's useful if one wants to
 reload the resource from the underlying file.  But it's so slow, I don't know
 why one would ever want to do an unload() -> load() instead of loading the
 resource anew and drop the previous one.
+
+** Benching OCL queries                                 :neoemf:emfviews:ocl:
+Reading the documentation of OCL, I see that there are two implementations: a
+"classic" one that was hacked to work with UML, and a "modern" one (called
+Pivot) which is supposedly an improvement on the former.  The Pivot has been the
+preferred API since Eclipse Mars.
+
+The API I'm calling right now is the classic one.  I ought to try the Pivot to
+see if there are any differences.
+
+Created a view that wraps only the NeoEMF trace resource.  OCL fails to find any
+instance with a view, and returns an OCLStandardLib instead of a HashSet.
+Debugging...
+
+So allInstances has its own special case in
+EvaluationVisitor.visitOperationCallExp, which uses the extent map:
+
+: return getExtentMap().get(sourceVal);
+
+An "extent" is a instance of a class in OCL parlance, so the extent map keeps
+track of all instances of a classifier in a model.  When the extent map does not
+have an entry for a classifier, it looks in the whole resource to find them:
+
+#+BEGIN_SRC java
+for (Iterator<Notifier> iter = EcoreUtil.getAllContents(roots); iter.hasNext();) {
+  @SuppressWarnings("unchecked")
+  E next = (E) iter.next();
+
+  if (isInstance(cls, next)) {
+   result.add(next);
+  }
+}
+#+END_SRC
+
+Ok this fails in ~iter.next()~ because of LazyEContentsList that throws
+UnsupportedOp.  I'll never understand why people hide original exceptions and
+throw another one instead.  Anyway.
+
+Returning iterator() does the trick.
+
+Now it fails because it calls isInstance, and has an EClassifier from the
+concrete package, not the viewpoint.  It's surely the context of the OCL query
+that determines this, and we need to give it classifiers from the viewpoint.
+Doing that:
+
+:  oclHelper.setContext(resource.getContents().get(0).eClass());
+
+and OCL correctly associates the ~Log~ part of the query to the VirtualEClass
+Log.
+
+Trying to change the extent map to use the getAllInstances method of
+PersistentResource to see the performance benefit.  You cannot just change the
+extent map of the /query/, as it has wildcard captures, and I can't find a way
+to type it.  But I can use ocl.setExtentMap, before creating the query.
+
+Hmm but the problem here is that when I run the OCL query on a view, I have no
+way of knowing that the view is using NeoEMF resources behind the scenes.  So I
+can't optimize the getAllInstances call on the client side.
+
+Conversely, EMF Views does not know whether a basicIterator call is used to
+effectively answer to an ~allInstances~ from OCL.  In fact, EMF Views does not
+even know OCL is trying to access it, so there's no opportunity for
+optimization.  There's an API mismatch.
+
+Trying out the getAllInstances on NeoEMF directly, it's ~400ms instead of
+~17000ms, so totally worth it.  But populating the extent map feels like
+cheating...
+
+In this case it's bad, because my OCL query is simply:
+
+: Log.allInstances
+
+So calling that on the resource gives me the answer.  But what if we need to
+iterate on instances of different classes?  Populating the extent map
+eagerly by looking at the OCL AST is not a great solution either.
+
+*** Using Pivot OCL
+Let's try the Pivot OCL.  The API is a bit nicer for my purposes.  For the
+NeoEMF trace, it's still ~16s, so no improvement on that front.  Doesn't work
+out of the box with views however.
+
+:  org.eclipse.ocl.pivot.utilities.SemanticException: The '<unknown>::<unknown>' constraint is invalid: 'Log.allInstances()->size()'
+
+Looks like it cannot find the Log class this time?
+
+The sources to Pivot are not included in the OCL SDK.  Gotta fetch the git and
+checkout a revision from around my version:
+
+: git checkout (git rev-list -n 1 --before="2017-06-07" master)
+
+Ok now it works.  I had to implement VirtualEClass.eResource and
+VirtualEPackage.getEAnnotations.
+
+I see that for class extents they delegate to a ModelManager, maybe there's a
+way to configurate that for views?  Hmm it's trickier than expected, because I
+cannot simply fallback on the PivotModelManager unless I create one
+myself... and I need to understand what to pass it.
+
+However, I could use the same strategy as the ModelManager in the classic OCL
+implementation: just provide an extent map that specializes the call for
+persistent resources.
