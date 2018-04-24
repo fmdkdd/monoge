@@ -11688,3 +11688,33 @@ myself... and I need to understand what to pass it.
 However, I could use the same strategy as the ModelManager in the classic OCL
 implementation: just provide an extent map that specializes the call for
 persistent resources.
+
+* [2018-04-24 mar.]
+** Overriding the extent map for classic OCL            :neoemf:emfviews:ocl:
+#+BEGIN_SRC java
+ocl.setExtentMap(new LazyExtentMap<EClass, EObject>(context) {
+  @Override
+  public Set<EObject> get(Object key) {
+    if (resource instanceof PersistentResource) {
+      return new HashSet(((PersistentResource) resource).getAllInstances((EClass) key));
+    } else {
+      return super.get(key);
+    }
+  }
+
+  @Override
+  protected boolean isInstance(EClass cls, EObject element) {
+    return cls.isInstance(element);
+  }
+});
+#+END_SRC
+
+This works nicely.  For the 10^6 NeoEMF resource, I can get the results in a
+reasonable 23s.
+
+To make that work on views however, I would need to extend the views API with a
+getAllInstances as PersistentResource does.  This is fine for allInstances, but
+what about other optimizations?  For instance, lazifying
+~select->collect->select~?  It seems there is no other course of action than
+modifying OCL or providing an alternative interpreter (like Mogwaï does the
+translation into Gremlin).
