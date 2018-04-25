@@ -11718,3 +11718,50 @@ what about other optimizations?  For instance, lazifying
 ~select->collect->select~?  It seems there is no other course of action than
 modifying OCL or providing an alternative interpreter (like Mogwaï does the
 translation into Gremlin).
+
+* [2018-04-25 mer.]
+** Specializing allInstances for views                  :emfviews:neoemf:ocl:
+This is possible by customizing the extent map, as I did for NeoEMF.
+
+For views however, we have to do slightly more work.  Take the request:
+
+: Classifier.allInstances()
+
+That will end in a ~getExtentMap().get(Classifier)~ call from OCL.  To provide
+all instances of that classifier, we need to know in which resource it is
+located.
+
+- If the classifier is filtered out at the viewpoint level, then it's an error
+
+- If it's a synthetic concept, the instances are in the view
+- Otherwise it comes from one or more resources
+  - Call allInstances for each resource (using optimized API if available)
+  - Union the results
+
+If instances are filtered at the model level, then we should apply filters here
+once again.  But we haven't implemented model filters yet.
+
+I've implemented that.  Now we can run the allInstances OCL query in 754ms for
+the 10^4 trace, instead of 21659ms previously, and we can run it on the 10^6 model
+in 16s.
+
+It's not all roses though.  Here we will build and load the result of the
+allInstances operation into memory, /even though/ we only care about its size in
+the OCL query.  So there's no need to actually load the whole thing in memory.
+
+As I understand it, Mogwaï does things differently.  It computes a request plan
+for the database and completely bypasses in-memory computation.  The whole OCL
+request is done on the DB, and its result can even be saved in DB as well.
+
+Doing that for heterogeneous views will be more involved.
+
+** Example of problematic OCL queries                   :emfviews:neoemf:ocl:
+- Log.allInstances()
+  When a view has multiple trace resources
+
+- Log.allInstances()->select(l | l.javaClass)
+  javaClass is a synthetic reference to an element from an XMI model
+
+- Log.allInstances()->select(l | Class.allInstances()->exists(c -> c =
+  l.javaClass))
+  Very slow if naively executed
