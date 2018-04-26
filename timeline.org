@@ -11765,3 +11765,32 @@ Doing that for heterogeneous views will be more involved.
 - Log.allInstances()->select(l | Class.allInstances()->exists(c -> c =
   l.javaClass))
   Very slow if naively executed
+
+* [2018-04-26 jeu.]
+** OCL on chained view is broken                               :emfviews:ocl:
+:(
+
+The ~Log.allInstances()~ query works on the view that wraps the trace model
+resource.  But for the view that aggregate multiple resources, it fails to
+find the classifier associated with ~Log~.
+
+Debugging...
+
+EcoreEnvironment.lookupClassifier([Log]) returns null
+
+For the single-resource view, it returns the correct VirtualEClass.
+
+Ah, it looks for classifiers in the context package, which is inferred from the
+context object.  For the single-resource view, there's only one package and it
+works.  For the many-resources view, the context package is the VirtualEPackage
+around ReqIF, since the context object is the first element that comes in the
+view.
+
+That's tricky to fix.  I could put all contributing packages in a view
+subpackage, but that will probably break other stuff.  The easiest fix is to
+pass a context object from the correct package in the view.
+
+Aaaah, but others problem appear down the road.  If I build a query that uses
+types from different packages in the view, then OCL is unable to locate one of
+them, regardless of the context object I pass.  This reliance on one package is
+a real blocker.
