@@ -11794,3 +11794,48 @@ Aaaah, but others problem appear down the road.  If I build a query that uses
 types from different packages in the view, then OCL is unable to locate one of
 them, regardless of the context object I pass.  This reliance on one package is
 a real blocker.
+
+* [2018-04-27 ven.]
+** OCL accepts namespaces                                      :emfviews:ocl:
+So I can write ~reqif10::SpecObject~ and ~java::ClassDeclaration~ in the same
+query, and it will pick up the correct classifiers.
+
+Ah, but for the java one, it picks up a regular EClass, not the virtual one.
+Since the context package is the reqif10 one, it does not find a match, and
+simply looks up packages in the registry.
+
+I can try creating a root virtual package.  But I have to make sure that
+hierarchy is correctly established (virtual packages have the root as
+superpackage, and vice-versa, and concrete packages are not affected).
+
+It seems to work!  Luckily, OCL does the right thing and goes back to
+sub-packages after going up the root to find classifiers.  So it works without
+being an ugly hack on our side.  It broke a few tests which relied on the
+previous viewpoint structure though.
+
+The other query doesn't work, mysteriously.  I get a parse error for the
+~package~ attribute.  Could it be... a reserved word?  Looks like ~zorglub~
+parses fine, even though it's /not/ an attribute from the metamodel.
+
+Yep, ~package~ is reserved in the Complete OCL language (which is not the one
+used for queries as I understand it).  We can quote feature names using:
+
+: _'package'
+
+Curious syntax, but it works.
+
+Now I have issues of non-deterministic results.  I'm picking the first Log, and
+looking its requirements.  But using:
+
+: trace::Log.allInstances()->asSequence()->first().message
+
+gives me different results for different models.  So I should pick one specific
+Log instance first.
+
+Okay doing that, I can finally run both queries.  Seems to work on the XMI and
+NeoEMF views.
+
+10^6 takes forever for NeoEMF though.  All CPUs at 100% while creating the view
+contents.  It's curious, as loading the view for the load view benchmark was not
+an issue.  Ah wait, I didn't have any numbers for loading the 10^6 NeoEMF view.
+Might want to run and profile that first.
