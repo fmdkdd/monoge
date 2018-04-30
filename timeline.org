@@ -11839,3 +11839,33 @@ NeoEMF views.
 contents.  It's curious, as loading the view for the load view benchmark was not
 an issue.  Ah wait, I didn't have any numbers for loading the 10^6 NeoEMF view.
 Might want to run and profile that first.
+
+* [2018-04-30 lun.]
+** Running views/OCL query benchmarks                   :emfviews:ocl:neoemf:
+7min for getting all elements in a DB view, against 33s for an XMI view.  Not
+great.
+
+40min for the ~allInstances~ OCL query on a DB view, not great either.
+
+I noticed we could use the ~getAllInstances~ of PersistentResource in
+View.getContents to speed that up a bit.  Down to 15min now.
+
+We are still spending time fetching referenced objects from virtual links.  Not
+sure how to speed up that, especially on short notice for the paper.
+
+Instead, I'd like to lazify most of this, looking at the viewpoint weaving model
+in order to know which features can potentially require looking in the view
+weaving model.  This in order to avoid paying the upfront costs of going through
+the whole view weaving model when loading the contents.
+
+Another surprise in the benchmark is that I'm already seeing a 100x slowdown
+from XMI to XMI view, while there is only a 10x slowdown going from NeoEMF to
+NeoeMF view.
+
+So I improved the view weaving model to lazily populate features the first time
+they are queried.  We go from the 15min above to 20s.  Exciting!
+
+Even the reqToTraces query takes /only/ 49s.
+
+This invalidates most of the benches involving views, but these are great
+numbers, at last.
