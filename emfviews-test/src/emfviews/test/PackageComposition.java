@@ -354,4 +354,10 @@ public class PackageComposition {
     // Conclusion: the same Ecore file leads to two separate, incompatible instances of
     // the same metamodel.
   }
+
+  @Test
+  public void instanceTypeName() {
+    EClass A = EcoreFactory.eINSTANCE.createEClass();
+    assertNull(A.getInstanceTypeName());
+  }
 }

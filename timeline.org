@@ -11869,3 +11869,179 @@ Even the reqToTraces query takes /only/ 49s.
 
 This invalidates most of the benches involving views, but these are great
 numbers, at last.
+
+* [2018-05-16 mer.]
+** Creating views without files                                    :emfviews:
+Currently, View and Viewpoint are resources.  Resource is part of the
+persistence API of EMF.  A resource is associated with a URI, and its more
+important methods are ~save~ and ~load~.
+
+But a View and a Viewpoint could be created directly from memory, without a
+backing eview/eviewpoint file.  The question is: do I extract a class and
+compose it in a ViewResource, or do I allow the View to be created without a
+backing file?
+
+The scenarios we should support are:
+
+1. Load view/viewpoint from a file, as before.  The use case is creating
+   views in Eclipse.
+2. Load view/viewpoint by providing the contributing metamodels, models, and
+   weaving models programmatically.  No files are involved.
+3. Load view/viewpoint from files, and the weaving model and virtual objects
+   should reside on file or in a database.  This is to support very large views
+   that would not fit in memory otherwise.
+
+I think 3. is overblown, but would be nice to have.  I think the idea is to
+retain as few things as possible in memory, but I'm afraid doing things in
+memory is too ingrained in the current code.  Besides, I'd rather focus on
+correctness right now than scalability.
+
+One advantage of decoupling the persistence from the view/viewpoint logic is to
+avoid dealing with URIs and loading the resource in our code.  Rather, we let
+clients of the API load the resources as they see fit.  This means that
+integrating with persistence frameworks like NeoEMF is a breeze.
+
+The open question is how do I reconcile 1. and 2.  Let's say I create a
+Viewpoint directly, without a backing resource.  What if I want to save that
+viewpoint?  Can I add it to any resource?  No, because it isn't an EObject.
+Could it be an EObject?  All virtual elements are EObjects after all.  At the
+Viewpoint level, I could see us creating an EPackage.  But the Viewpoint
+/creates/ another EPackage, and this one is dynamic.  Which one do we want to
+serialize when we add it to a resource?
+
+Serializing the virtual EPackage is of little interest, since virtual elements
+are immutable, all the information is already contained in the weaving model.
+
+One could argue that virtual elements are the /expanded form/ of the weaving
+model, and that future changes in the way views work might break this
+expansion.  For that reason, it /could/ be interesting to serialize expanded
+viewpoints directly.  But at this stage of development, it would mean additional
+maintenance burden to ensure backwards compatibility.  Not worth it.
+
+So the serializing story we have now is good enough.
+
+Still, if I want to save a Viewpoint created entirely in memory, isn't the
+simplest API to just do:
+
+: vp.setURI("foo.eviewpoint")
+: vp.save();
+
+Rather than creating a resource for it?  E.g.:
+
+: r = new ViewpointResource("foo.eviewpoint")
+: r.setViewpoint(vp)
+: r.save()
+
+Well, it's not much more complicated.  And it decouples the two neatly.  Let's
+do this.
+
+Okay, it works.  It's neat.  I took the opportunity to do error reporting using
+the resource diagnostics rather than exceptions.  The UX is better when loading
+viewpoints now, since you can have an invalid eviewpoint file that still allows
+you to create a viewpoint, and the error is visibly reported.
+
+Now I need to do the same thing for View.
+
+* [2018-05-28 lun.]
+** Various improvements                                            :emfviews:
+I did the same thing for views.  We can now create views without eview files.
+All in memory.  I added tests for that, etc.
+
+I also removed the idempotence of virtualizers.  Turns out it was the wrong way
+to solve the problem I had.  It allowed me to not care too much about
+virtualizing already virtual objects, but it also prevented the creation of
+viewpoints on viewpoints, and views on views...
+
+In fact, removing the idempotence and adding guards to check for double
+virtualizing helped me catch subtle bugs.
+
+Although, now that I've removed this safeguard, I'm worried we might too easily
+do double virtualizations again in the future.  The good thing is that it
+shouldn't be incorrect, just unnecessary and inefficient.
+
+I've added tests for views on views and viewpoints on viewpoints.  Sexp2EMF was
+helpful there.  All of this can work without touching the filesystem.
+
+Now, I'm trying to please the Ecore validator to ensure metamodel Ecore
+contraints are satisfied when creating viewpoints.  The idea is that a viewpoint
+/should/ validate these constraints.  Filters throw a wrench in that, and I'm
+not yet sure how if we should allow invalid viewpoints or not.  But at least,
+with the validation working I'll be able to tell how bad filters mess things up.
+
+** Pleasing the Ecore validator                                :emfviews:emf:
+There's not much.  Missing nsPrefix, and having containing features return
+EStructuralFeature.Setting instances.
+
+Virtual packages need an EFactory instance as well.  For now, I'm returning an
+instance that forbids creation of view objects.  It wouldn't be impossible to
+support that, but then if we allow creating view objects, we would have to think
+about serializing them, and /modifying/ them, as well as existing objects.  That
+might be tricky to get right with opposites, virtual opposites, etc.
+
+The only other thing I'm encountering for Ecore validation is that virtual
+classes do not have ePackage set properly.  That surprised me.
+
+Writing a test for that... it passes.  But wait, the Ecore validator is using
+the reflective API.  And yes, looking up the ~ePackage~ feature returns null.
+
+Why is that?  ~eGet(VirtualEClass, ePackage)~ will end up in
+EStructuralFeature$InternalSettingDelegateSingleContainerResolving.dynamicGet:
+
+#+BEGIN_SRC java
+return owner.eContainmentFeature() == inverseFeature ?
+   (isResolveProxies() && resolve ?
+     owner.eContainer()
+     : owner.eInternalContainer())
+   : null;
+#+END_SRC
+
+Where ~owner~ is the VirtualEClass, and inverseFeature is the ~eClassifiers~
+feature (inverse of of ePackage).  And here's the issue: eContainmentFeature is
+virtualized, and inverseFeature is not, even though they refer to the same
+feature.  So the result is null.
+
+It could be fixed by virtualizing the right-hand side, or not virtualizing the
+left.  I did not manage to hook into the creation of the InternalSettingThingy
+using the debugger, so I do not know exactly when that value is set, and whether
+it could be virtualized.
+
+But actually, it might make more sense to /not/ virtualize the left-hand side.
+The references are part of the Ecore metamodel proper, not a virtualization of
+it.  In fact, I'm wondering why we have to override the default implementation,
+which should look up the feature based on the internal container...
+
+Okay, the internalContainer is null.  That might be the reason.
+
+These were added by 20142606b75deb00c16eaeba1f4dfdeb5fd24b16, with message:
+
+: Fix NPE when browsing Viewpoint with the Sample Ecore Editor
+
+So, the Sample Ecore Editor needs that to return non-null.  But the
+implementation might not be correct.
+
+Not virtualizing the left-hand side seems correct to me.  There might be a
+deeper fix looking at why internalContainer is null, but unless that causes
+another issue, I'm happy to leave it at that.
+
+Now ~instanceTypeName is null~.  What should it be instead?
+
+#+BEGIN_QUOTE
+The instance type name may be null only for a class or an enum must be well
+formed when not null, and must not specify type arguments if the classifier
+specifies type parameters.
+#+END_QUOTE
+
+So.. if you've got a DataType that's /not/ an enum, then it should not be null?
+Hmm, adding a conditional breakpoint, this case never prevents itself.
+
+However!  We virtualize EEnums into VirtualEDataType, which is /not/ an instance
+of EEnum, so the validator believes we have plain EDataTypes.
+
+The solution is to create a VirtualEEnum class.
+
+Now I've got some diagnostic in the resource without a message...  Ok, that was
+caused by a Viewpoint throwing an exception.  Apparently, ~ex.getMessage()~ can
+be null.  Using ~ex.toString()~ is more reliable.
+
+Now it wants to cast VirtualEEnum into
+BasicExtendedMetaData$EClassifierExtendedMetaData$Holder.
