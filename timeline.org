@@ -12045,3 +12045,19 @@ be null.  Using ~ex.toString()~ is more reliable.
 
 Now it wants to cast VirtualEEnum into
 BasicExtendedMetaData$EClassifierExtendedMetaData$Holder.
+
+* [2018-05-30 mer.]
+** Extended metadata holders and other niceties                :emf:emfviews:
+This is required by the default value literal check.  It checks the default
+value of a feature against its type.
+
+I can easily delegate that to the concrete classifier, but now the validation is
+failing, claiming that all default value literals are of the wrong type.
+
+Ah!  That's because I half-implemented VirtualEClassifier.isInstance.  I did not
+handle primitive types.  Delegating to the concreteClassifier.isInstance calls
+is enough.
+
+Now only one test is failing.
+
+: The feature 'eClassifier' of 'EGenericTypeImpl@7afb1741' contains a dangling reference 'EClassImpl@47447ccf{#//C}''
