@@ -12061,3 +12061,53 @@ is enough.
 Now only one test is failing.
 
 : The feature 'eClassifier' of 'EGenericTypeImpl@7afb1741' contains a dangling reference 'EClassImpl@47447ccf{#//C}''
+
+* [2018-06-01 ven.]
+** Writing help for EMF Views                              :emfviews:eclipse:
+So I want to write a user/dev manual for EMF Views.  Ideally, this manual would
+be hosted on the website and available via the offline Eclipse help.  Since both
+use HTML, that's feasible.
+
+I would author the document using some markup (haven't settled yet), and
+generate HTML.  That would be enough for pushing to the website.  For the
+Eclipse help, there's additional ceremony (as always...): you need to produce a
+plugin with a toc.xml table of contents file.
+
+In theory, the TOC can be extracted from the HTML (or the authoring markup).  I
+found [[https://www.bsi-software.com/us-en/eclipse-scout-blog/article/generating-eclipse-help-from-existing-html-documentation.html][this]].  I probably don't want to do that with Java.  On the other hand, I
+probably want to build the documentation on Travis and deploy from there.
+
+One unknown is how to deploy on gh-pages from Travis.  There is [[https://docs.travis-ci.com/user/deployment/pages/][this]].  So Travis
+can make a commit with the built HTML pages, and push that to gh-pages.  This
+should work fine if Travis is the only one pushing to gh-pages.
+
+If, on the other hand, I'm also pushing to gh-pages since it will host pages
+other than the manual...
+
+Well, if the commit is made on HEAD, then it shouldn't be an issue.  It seems
+that using the ~keep-history~ setting should do that.  Too bad the official way
+of deploying requires the Github access token, which is probably too powerful
+(since there's no way to constrain it to a particular repo).  So I cannot use it
+directly, and must resort to a more [[https://gist.github.com/domenic/ec8b0fc8ab45f39403dd][manual]] deployment.
+
+*** Security concerns
+The Travis docs suggest generating a Github token and providing it to the Travis
+build (encrypted, of course).  [[https://gist.github.com/domenic/ec8b0fc8ab45f39403dd][Here]] it is recommended to generate a new SSH key
+when committing from Travis.  Here is why:
+
+#+BEGIN_QUOTE
+an earlier version of this guide recommended generating a GitHub personal access
+token and encrypting that. Although this is simpler, it is not a good idea in
+general, since it means any of your repository's collaborators would be able to
+edit the Travis build script to email them your access token, thus giving them
+access to all your repositories. The repository-specific deploy key approach is
+safer.
+#+END_QUOTE
+
+And now I'm thinking that the same issue affects our flycheck/docker-tools
+build.  I've put my credentials in there (not hub/flycheck, because there are
+none!), and anyone with push access can get the decrypted value by modifying the
+travis build script.
+
+The alternative seems to be to [[https://docs.docker.com/docker-hub/builds/#repository-links][let Docker Hub build]] the images itself, but then
+I have to link my Hub account with Github.  Who do I trust more?
