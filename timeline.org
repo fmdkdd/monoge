@@ -12111,3 +12111,17 @@ travis build script.
 
 The alternative seems to be to [[https://docs.docker.com/docker-hub/builds/#repository-links][let Docker Hub build]] the images itself, but then
 I have to link my Hub account with Github.  Who do I trust more?
+
+* [2018-06-04 lun.]
+** Writing help for EMF Views with org                             :emfviews:
+So, Org was among my top choices.   Markdown is too poor for writing decent
+help (not customizable links, no publish feature, etc.).
+
+Sphinx was a close second.  Mostly, I do not like its markup.  Otherwise, the
+tooling is good.  Potential customization.  Ability to build in batch.
+
+In fact, sphinx is probably simpler to build in batch and on CI than Org.  But
+I know elisp well enough to make that happen.
+
+Okay so org-publish works nicely for now.  Will test creating an eclipse help
+plugin from its contents tomorrow.
