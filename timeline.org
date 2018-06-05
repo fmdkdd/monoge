@@ -12125,3 +12125,13 @@ I know elisp well enough to make that happen.
 
 Okay so org-publish works nicely for now.  Will test creating an eclipse help
 plugin from its contents tomorrow.
+
+* [2018-06-05 mar.]
+** Writing Eclipse help with org                       :emfviews:eclipse:org:
+So yeah, it works.  Just ~org-publish~ into the ~html~ folder of a created
+Eclipse plugin.  I manually added a toc.xml file which points to the two manuals
+I'm writing.
+
+I tried to generate a full table of contents from the exported HTML but... org
+makes thatnot as easy as I'd hoped.  I looked at ~org-html-toc~, and it gets a
+list of headlines, but I need a tree.
