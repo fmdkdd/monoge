@@ -12135,3 +12135,65 @@ I'm writing.
 I tried to generate a full table of contents from the exported HTML but... org
 makes thatnot as easy as I'd hoped.  I looked at ~org-html-toc~, and it gets a
 list of headlines, but I need a tree.
+
+* [2018-06-12 mar.]
+** More writing of help                                :emfviews:eclipse:org:
+These things take time.
+
+Yesterday I toyed with the styling a bit.  Went back and forth on the styling of
+code snippets.  Using a box is tricky, because code can easily overflow it if a
+different font is used (and I don't want to set fonts using webfonts).  So I
+have to make sure that we are not near the max width of the box.
+
+Writting a VPDL snippet.  It occurs to me that I want syntax highlighting.  Org
+mode is nicely able to use whatever syntax highlighting Emacs has, and using the
+htmlize package, Org can just output spans with classes, without doing any
+styling.
+
+That's convenient, since I can then define my own style using these classes, if
+I want to.
+
+What's less convenient is having to install htmlize.  But, luckily, Cask has
+been made for this.  I can make a minimal Cask file:
+
+#+BEGIN_SRC Cask
+(source gnu)
+(source melpa)
+
+(development
+ (depends-on "htmlize"))
+#+END_SRC
+
+And after ~cask install~, ~cask exec emacs~ will have htmlize loaded.  This way,
+I make sure that I can build the doc on CI, since I know I can pull the
+flycheck/emacs-cask Docker image and get going.  ~cask exec emacs~ is slightly
+slower than ~emacs~ though, that's unfortunate.
+
+What's also not convenient is that I don't have syntax highlighting for VPDL!  I
+think I could hack it using org export filters, adding the classes directly to
+the produced HTML output.  The right solution of course is to write my own
+syntax highlighting for VPDL.  As much as I'd love to write more elisp, I
+actually enjoy writing this manual, so I'd rather keep pushing.
+
+I found a shortcut: the VPDL keywords I need are actually the same as SQL, so I
+can just use sql-mode for the syntax highlighting.
+
+Linking to an example block seems busted in the HTML export.  I've got a NAME
+tag, and it's used as the exported ~id~ attribute for the ~pre~ HTML element,
+but the link pointing to uses a funky generated id from org.  The link does work
+in the org mode buffer.  Seems like a bug.  I can see that there are have been a
+couple of minor versions released for Org 9.1 already, but I can't seem to get
+Cask to install it as a dependency.
+
+Linking to a SRC block works, so that's good enough for me.
+
+*** Testing out interactive OCL for the help section                    :ocl:
+Hey!  Turns out OCL has a great manual.  I will surely take it as an example to
+structure EMF Views (more modest) manual.
+
+In the manual, I found out about the interactive OCL console, which can be used
+on elements under selection in the Sample Ecore Editor or MoDisco Browser.
+Unfortunately it doesn't seem to work for views!  Even though running a query on
+views programmatically works fine.
+
+On concrete models it works, on views it doesn't.
