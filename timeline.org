@@ -12197,3 +12197,37 @@ Unfortunately it doesn't seem to work for views!  Even though running a query on
 views programmatically works fine.
 
 On concrete models it works, on views it doesn't.
+
+* [2018-06-13 mer.]
+** Trying to simplify the interface of views :emfviews:
+to be created with models given as ~List<EObject>~ instead of ~Resource~.
+
+It seemed to be the right thing, like Viewpoint only takes EPackage directly,
+and not metamodel resources.
+
+But, there's a snag: we rely on Resource.getEObject to locate objects in models.
+I naively thought that EcoreUtil.getEObject was the same... but no.
+
+It makes sense: I have noticed that BPMN has a funky ID scheme.  If they
+override getEObject in their own resource implementation, they are free to
+implement a custom scheme.
+
+There's another issue preventing me from ditching resources: ECL acts on
+resources as well, not just list of objects.  Although that one I can workaround
+by providing resources to ECL, and list of objects to View in ViewResource.
+
+But the first issue... I don't think I can fix easily.  In fact, it might be
+wrong to provide something else than resources.
+
+But I tried to do it anyway because I was having troubles creating a view on
+EcorePackage.  See, EcorePackage is circular, so that was convenient for writing
+the tutorial on creating views programmatically.  But turns out, I cannot add
+EcorePackage to a new resource, since adding something to a resource changes its
+container!
+
+Which means that I cannot in fact create a view on EcorePackage as a model!
+
+It's a weird corner case, but it's rubbing me in the wrong way.
+
+I'll do the sane thing then, and just be a bit more verbose in the tutorial and
+do a view on something else.
