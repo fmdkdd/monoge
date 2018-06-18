@@ -1,15 +1,22 @@
 package emfviews.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 
+import org.atlanmod.emfviews.core.View;
+import org.atlanmod.emfviews.core.Viewpoint;
+import org.atlanmod.emfviews.virtuallinks.ConcreteElement;
+import org.atlanmod.emfviews.virtuallinks.ContributingModel;
+import org.atlanmod.emfviews.virtuallinks.VirtualLinksFactory;
+import org.atlanmod.emfviews.virtuallinks.WeavingModel;
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.common.util.ECollections;
 import org.eclipse.emf.common.util.EList;
@@ -30,16 +37,15 @@ import org.eclipse.emf.ecore.impl.EStoreEObjectImpl;
 import org.eclipse.emf.ecore.impl.EStoreEObjectImpl.EStoreImpl;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.Diagnostician;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.uml2.uml.Component;
+import org.eclipse.uml2.uml.UMLFactory;
+import org.eclipse.uml2.uml.UMLPackage;
 import org.junit.Before;
 import org.junit.Test;
-
-import org.atlanmod.emfviews.virtuallinks.ConcreteElement;
-import org.atlanmod.emfviews.virtuallinks.ContributingModel;
-import org.atlanmod.emfviews.virtuallinks.VirtualLinksFactory;
-import org.atlanmod.emfviews.virtuallinks.WeavingModel;
 
 public class PackageComposition {
   EcoreFactory f = EcoreFactory.eINSTANCE;
@@ -359,5 +365,35 @@ public class PackageComposition {
   public void instanceTypeName() {
     EClass A = EcoreFactory.eINSTANCE.createEClass();
     assertNull(A.getInstanceTypeName());
+  }
+
+  @Test
+  public void createViewOnUML() {
+    // 1. Create viewpoint
+    Viewpoint viewpoint = new Viewpoint(Arrays.asList(UMLPackage.eINSTANCE));
+
+    // 2. Create model
+    UMLFactory f = UMLFactory.eINSTANCE;
+    Component C1 = f.createComponent();
+    C1.setName("Comp1");
+    Component C2 = f.createComponent();
+    C2.setName("Comp2");
+
+    Resource model = new ResourceImpl();
+    model.getContents().addAll(Arrays.asList(C1, C2));
+
+    // 3. Create view
+    View view = new View(viewpoint, Arrays.asList(model));
+
+    // 4. Navigate the view
+    EPackage VP = viewpoint.getRootPackage().getESubpackages().get(0);
+    EClassifier comp = VP.getEClassifier("Component");
+    assertEquals("uml", VP.getName());
+
+    for (EObject o : view.getVirtualContents()) {
+      if (comp.isInstance(o)) {
+        System.out.println(o.eGet(o.eClass().getEStructuralFeature("name")));
+      }
+    }
   }
 }
