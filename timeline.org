@@ -12199,7 +12199,7 @@ views programmatically works fine.
 On concrete models it works, on views it doesn't.
 
 * [2018-06-13 mer.]
-** Trying to simplify the interface of views :emfviews:
+** Trying to simplify the interface of views                       :emfviews:
 to be created with models given as ~List<EObject>~ instead of ~Resource~.
 
 It seemed to be the right thing, like Viewpoint only takes EPackage directly,
@@ -12231,3 +12231,53 @@ It's a weird corner case, but it's rubbing me in the wrong way.
 
 I'll do the sane thing then, and just be a bit more verbose in the tutorial and
 do a view on something else.
+
+* [2018-06-26 mar.]
+** Online deployment of manual: success!                :travis:emfviews:org:
+After a dozen or so retries of building, because YAML syntax is terribly
+confusing, I got it right.  [[https://gist.github.com/domenic/ec8b0fc8ab45f39403dd][This]] was a great help.
+
+Now I need to revamp the webpage, then I can finish the TODO bits of the manual.
+
+* [2018-06-27 mer.]
+** Tweaks to manual                                            :emfviews:css:
+Ugh, the org export was generating random identifiers for links, which meant
+that the nice build setup I had on Travis was /always pushing/.  Even when the
+manual source had not changed, the HTML output would be different because of
+these random identifiers.
+
+The best solution would be to get rid of them and use slugs, which are better
+for humans anyway.  But, a low-cost solution is to simply set the random seed to
+a constant value when publishing.  The doc says that random numbers might end up
+being different from machine to machine, but hopefully on Travis it will be
+stable enough.
+
+Ah, as a bonus, it appears the Eclipse help browser will in fact fetch the HTML
+pages of the help plugin from the disk without having to restart the runtime
+Eclipse or having to use a debugging instance.  But it does /not/ reload the
+toc.xml file.  With stable identifiers, I don't have to reload Eclipse when
+tweaking the manual unless I add new nodes and want the toc to reflect that.
+
+I managed to put the table of contents to the left of the text when the screen
+is wide enough.  That's easy enough with ~float: left~ in a media query.  The
+tricky part is that I wanted the toc to be fixed, since you can then more easily
+jump to/from contents, and don't have to scroll back to the top to get the
+contents.
+
+So using a ~position: fixed~ instead of the float works.  But the downside is
+that if the screen is too small, then you can scroll the main contents but not
+the toc!  I tried to make a scrollbar appear in this case, just for the toc
+block, but that's all kinds of broken, with the scrollbar not scrolling the full
+height of the contents...
+
+In the end I used media query for when the screen is too small, we revert to the
+floating behavior.  It's a hack, since the media query is dependent on the height
+of the toc block, so we should rather use JS for that to work in all
+cases...  But we can also set it to a safe value, and if the toc becomes too
+tall, I can just use float it all the time.
+
+Last thing is that the inline toc is redundant in the Eclipse help, since there
+is already a toc frame in the Eclipse help browser.  Alas, we cannot ~display:
+none~ the toc using CSS, because there's no way to detect that we are part of a
+frame using CSS only.  So we could use JS, or we could just not generate the TOC
+when exporting the Eclipse manual.
