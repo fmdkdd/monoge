@@ -12281,3 +12281,94 @@ is already a toc frame in the Eclipse help browser.  Alas, we cannot ~display:
 none~ the toc using CSS, because there's no way to detect that we are part of a
 frame using CSS only.  So we could use JS, or we could just not generate the TOC
 when exporting the Eclipse manual.
+
+* [2018-07-02 lun.]
+** Getting back on NeoEMF integration benchmarks            :neoemf:emfviews:
+Specifically, we want to know why loading a NeoEMF-backed view OOMs, because it
+shouldn't!
+
+Ran some tests with options:
+
+: -Xmx512m -XX:+UseConcMarkSweepGC
+
+- Loading the NeoEMF trace model does not OOM, neither does loading the XMI
+  trace model.
+- Loading the XMI view OOMs for 10^6.
+- Loading the NeoEMF view OOMs for 10^5:
+  #+BEGIN_EXAMPLE
+  Exception in thread "GC-Monitor" java.lang.OutOfMemoryError: Java heap space
+	at java.util.Arrays.copyOf(Arrays.java:3332)
+	at java.lang.AbstractStringBuilder.ensureCapacityInternal(AbstractStringBuilder.java:124)
+	at java.lang.AbstractStringBuilder.append(AbstractStringBuilder.java:700)
+	at java.lang.StringBuilder.append(StringBuilder.java:214)
+	at org.neo4j.kernel.impl.cache.MeasureDoNothing.run(MeasureDoNothing.java:84)
+  #+END_EXAMPLE
+
+Actually, the process keeps running after that.  I doubt it will finish though,
+as I get more and more OOM exceptions from other threads:
+
+#+BEGIN_EXAMPLE
+java.lang.OutOfMemoryError: Java heap space
+Exception in thread "ForkJoinPool.commonPool-worker-0" java.lang.OutOfMemoryError: Java heap space
+	at java.util.concurrent.ForkJoinPool$WorkQueue.growArray(ForkJoinPool.java:886)
+	at java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1687)
+	at java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:157)
+Exception in thread "ForkJoinPool.commonPool-worker-0" java.lang.OutOfMemoryError: Java heap space
+	at java.util.concurrent.ForkJoinPool$WorkQueue.growArray(ForkJoinPool.java:886)
+	at java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1687)
+	at java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:157)
+Exception in thread "ForkJoinPool.commonPool-worker-0" java.lang.OutOfMemoryError: Java heap space
+	at java.util.concurrent.ForkJoinPool$WorkQueue.growArray(ForkJoinPool.java:886)
+	at java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1687)
+	at java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:157)
+Exception in thread "ForkJoinPool.commonPool-worker-3" java.lang.OutOfMemoryError: Java heap space
+	at java.util.concurrent.ForkJoinPool$WorkQueue.growArray(ForkJoinPool.java:886)
+	at java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1687)
+	at java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:157)
+Exception in thread "ForkJoinPool.commonPool-worker-1" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "ForkJoinPool.commonPool-worker-2" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "RMI TCP Connection(idle)" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "RMI TCP Connection(idle)" Exception in thread "RMI TCP Connection(idle)" java.lang.OutOfMemoryError: Java heap space
+java.lang.OutOfMemoryError: Java heap space
+Exception in thread "RMI TCP Connection(idle)" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "RMI TCP Connection(idle)" java.lang.OutOfMemoryError: Java heap space
+
+Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler in thread "RMI TCP Connection(idle)"
+Exception in thread "RMI TCP Connection(idle)" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "RMI TCP Connection(idle)" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "RMI TCP Connection(idle)" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "GC-Monitor" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "GC-Monitor" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "RMI TCP Connection(idle)" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "RMI TCP Connection(idle)" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "RMI TCP Connection(idle)" Exception in thread "RMI TCP Connection(idle)" java.lang.OutOfMemoryError: Java heap space
+java.lang.OutOfMemoryError: Java heap space
+Exception in thread "RMI TCP Connection(idle)" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "RMI TCP Connection(idle)" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "RMI TCP Connection(idle)" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "RMI TCP Connection(idle)" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "RMI TCP Connection(idle)" java.lang.OutOfMemoryError: Java heap space
+#+END_EXAMPLE
+
+Running with VisualVM to get a heap dump:
+
+[[file:doc/neoemf-oom-heap-top.png]]
+
+Looks like there is some overlap, since this sums up to well over 512M.  The
+LockManager is contained by the WritableTransationState, and the first HashMap
+is part of the WritableTransactionState$PrimitiveElement.
+
+So, first question: I'm not sure what a writable transaction is in neo4j, but I
+am definitely only reading the DB in this test.
+
+Second thing is that View is hoarding references in the concreteToVirtual map.
+It's only 72M, but it surely doesn't help.  But can we do better?  This mapping
+is crucial.  I guess the only real alternative is to put all the dynamic
+information held by the view in a DB.
+
+Looking at the dump, I see that our caching in LazyEContentsList takes a lot of
+memory, and I never actually measured the impact on timing.
+
+Removing all of that, the View now takes only 36Mb, so a 50% reduction.  The
+bench still OOMs though, but it takes a bit longer before running out memory.
