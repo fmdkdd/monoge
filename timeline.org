@@ -12390,3 +12390,24 @@ build is failing due to [[https://github.com/eclipse/xtext/issues/1231][Xtext be
 release.
 
 Stuck there too I guess.
+
+* [2018-07-04 mer.]
+** Investigating the OOM further                            :neoemf:emfviews:
+Trying with autocommit(1) and weakcache, still OOM:
+
+[[file:doc/neoemf-oom-heap-top2.png]]
+
+Reading the [[https://neo4j.com/docs/operations-manual/current/performance/gc-tuning/][Neo4j manual]], they recommend at least 1GB most of the time, so maybe
+512MB is just too not enough?  Still, loading and navigating the NeoEMF trace
+model alone works with 512MB.
+
+(Also they recommend using the G1GC, not ConcurrentMarkSweep, so I switched to
+that but it made no difference.)
+
+So maybe navigating the whole resource is what is consuming memory.  And indeed,
+if I just look at the first element of the resource, I can load the NeoEMF view
+in 512MB, whereas the XMI view OOMs.
+
+However, I tried to run the simplest OCL query, and I the NeoEMF view still
+OOMs.  So, we can load the view in 512MB, but we cannot do anything useful with
+it?  That's not very satisfying.
