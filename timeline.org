@@ -12372,3 +12372,21 @@ memory, and I never actually measured the impact on timing.
 
 Removing all of that, the View now takes only 36Mb, so a 50% reduction.  The
 bench still OOMs though, but it takes a bit longer before running out memory.
+
+* [2018-07-03 mar.]
+** Trying to fix the OOM                                    :neoemf:emfviews:
+According to G., autocommit should help.  I've tried with the 100k (default),
+50k and 10k, and it doesn't seem to change: there's still a
+WritableTransationState object that retains ~160MB.
+
+A bit stuck there, since I really don't feel like codediving into neo4j.
+
+** Trying to run the EMFTVM Ant task on Travis                   :travis:atl:
+Now that ATL 4.0 has released, there is an Ant task for building EMFTVM.  This
+should let me get rid of the ad-hoc ATL maven plugin.
+
+Tried to use that, but unfortunately this is a very bad timing, since the mvn
+build is failing due to [[https://github.com/eclipse/xtext/issues/1231][Xtext being all kinds of broken]] after the Photon
+release.
+
+Stuck there too I guess.
