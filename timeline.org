@@ -12411,3 +12411,21 @@ in 512MB, whereas the XMI view OOMs.
 However, I tried to run the simplest OCL query, and I the NeoEMF view still
 OOMs.  So, we can load the view in 512MB, but we cannot do anything useful with
 it?  That's not very satisfying.
+
+** Pleasing the Ecore diagnostician for all tests            :emfviews:ecore:
+Only one test was still failing: a dangling reference eClassifier in the
+eGenericType of a virtual association.
+
+Looking at the Ecore class diagram, indeed EGenericType holds a reference to an
+EClassifier, and this should point to virtualized elements instead for
+coherency.
+
+So, adding a VirtualEGenericType class, and doing the usual dance of delegating
+to the concrete element, eventually virtualizing, and overriding
+dynamicGet... now all tests pass!
+
+I really wish I had some way of abstracting this pattern, since it would
+tremendously cut down on the noise.
+
+So now I can write more tests for filters, and see if the resulting viewpoints
+are still valid.
