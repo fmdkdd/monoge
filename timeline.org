@@ -12429,3 +12429,119 @@ tremendously cut down on the noise.
 
 So now I can write more tests for filters, and see if the resulting viewpoints
 are still valid.
+
+* [2018-07-06 ven.]
+** Deploying EMF Views to an update site                           :emfviews:
+To facilitate installation of EMF Views, I need an update site.
+
+Options:
+
+1. Push to gh-pages.  We don't want to do that because that would bloat the
+   repository.
+2. Push to Github releases.  Can host large files, but cannot host an update
+   site (JARs + HTML).  Besides, cannot work for snapshots, as we need a tag for
+   a release.
+3. Push to a virtual machine on atlanmodexp.  We need SSH (or ftp?) access to
+   push from Travis, and the VM needs to be (reliably) available from the
+   outside.  Also we need to make we have enough disk space.
+4. Push to OVH/S3.  Presumably reliable, but with running costs.
+
+I'll try to see if #3 can fit the bill.
+
+*** Struggling with Proxmox                                         :proxmox:
+The graphical interface for managing the VMs and containers is very laggy.  It
+seems to drop the connection a lot, wich doesn't help.
+
+Trying to create an OpenVZ container, the template dropdown menu is empty, even
+though there are templates on the machine (checked via the graphical interface
+and the console).
+
+Same thing for VMs: there are ISOs, but the template dropdown is busted.
+Doesn't work under Chromium either.
+
+I guess I can try creation in the console then.
+
+This is [[https://wiki.openvz.org/User_Guide/Operations_on_Containers][the doc]] on creating OpenVZ from the CLI.
+
+: vzctl create 109 --ostemplate debian-8.0-standard_8.0-1_amd64 --config 109
+
+After creating a /etc/vz/conf/ve-109.conf-sample file to serve as template.  The
+Debian template image was already present in /var/lib/vz/template/cache.
+
+It works!  Now to boot and log into that container.
+
+: vzctl set 109 --userpasswd ***:***
+
+Okay I'm in!  Now to setup a webserver to serve on 8800, and to bind that port
+to the outside.
+
+Or let's test with netcat.
+
+Ahaha.  I wanted to change the routing table to point the open 8800 port to my
+new container.  I restarted the network interface with ~ifdown eth0~ and... yep.
+Lost all contact with the machine.  Didn't think that through.
+
+Luckily, we have another management interface for the cluster, where I could
+reboot the machine.  Didn't have to ask for a physical access to the server
+room.
+
+After that,
+
+: ifdown eth0 && ifup eth0
+
+is better because it connects me back.
+
+Hmm I've been trying to forward the port from the container to the host
+machine... no dice.  The host can talk to the guest alright, but no access from
+the exterior.
+
+The Tomcat server on another container /did/ work on port 8800 though.  How did
+they manage that?  Especially as I changed the iptables redirection rules in
+/etc/network/interfaces.
+
+Let's reboot the host once more and see if that changes anything.
+
+No, same thing.  The Tomcat server can magically answer to 8800 but my container
+can't.  Let's dig into that.  I don't have an account on that container.  Let's
+change the root password.
+
+Doesn't look like they are doing anything fancy.
+
+R. came to help.  First thing to check is what rules are actually used by
+iptables:
+
+: iptables --list -t nat
+
+(using the nat table, since that's the one set by the commands in
+/etc/network/interfaces).  And it shows that 8800 is still redirecting to the
+Tomcat server.
+
+Okay nice.  So we can changes the rules manually, and I should be able to
+redirect to my container right?
+
+: iptables -t nat -A PREROUTING -p tcp -m tcp --dport 8800 -j DNAT --to-dest ...:8800
+
+But I still have the rule redirecting to the Tomcat server container in
+there... we can delete it using ~-D~ instead of ~-A~.  And after
+that... success!  I can connect to ~nc~ from the exterior.  I can also run an
+HTTP server.
+
+But will the iptables rules stick after a reboot?
+
+No, they are discarded after rebooting.  Grmbl.  What if I comment every iptable
+rule in there, do they magically re-appear after reboot?
+
+Yes they do.  Editing this file has basically no effect on the machine's
+configuration.
+
+The Proxmox doc mentions that changes to the interfaces file are not made
+directly by the GUI either, but are put into an interfaces.new file, which is
+then applied to the interfaces file.  Let's try that then.
+
+So this does indeed copy the interfaces.new to the interfaces file after
+reboot.  But the iptables content is still the same.
+
+Send a mail to someone who may have solutions to this problem.
+
+If not, the backup plan is to apply iptables rules somewhere else, in an init.d
+script or using iptables-persistent.
