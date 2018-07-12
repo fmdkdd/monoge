@@ -12541,7 +12541,129 @@ then applied to the interfaces file.  Let's try that then.
 So this does indeed copy the interfaces.new to the interfaces file after
 reboot.  But the iptables content is still the same.
 
-Send a mail to someone who may have solutions to this problem.
+Sent a mail to someone who may have solutions to this problem.
 
 If not, the backup plan is to apply iptables rules somewhere else, in an init.d
 script or using iptables-persistent.
+
+* [2018-07-09 lun.]
+** Preparing the MODELS camera-ready                        :emfviews:models:
+Review points to discuss:
+
+1. Hedging.
+
+   #+BEGIN_QUOTE
+   One issue is the extremely cautious and tentative tone of the document.  It
+   is hard to find a sentence without subjunctive phrasing (in particular \sect3.2
+   and 3.3).
+
+   [..]
+
+   I strongly suggest to rephrase the paper and aim for a more confident way of
+   formulating their statements.
+   #+END_QUOTE
+
+2. Weaving model is not explained well enough.
+
+   #+BEGIN_QUOTE
+   Unfortunately, the paper simply assumes the presence of a "weaving model"
+   that suddenly appears from out of nowhere.
+
+   If possible, please elaborate more on how the weaving model is created, what
+   the prerequisites in the individual models are and how the "join criteria"
+   are identified.
+   #+END_QUOTE
+
+3. Bold claim of transforming views.
+
+   #+BEGIN_QUOTE
+   In \sect4.1 you claim that the resulting model view can be "transformed". This is
+   a bold statement. Can I add a new model element into a view that is generated
+   from multiple sources?
+   #+END_QUOTE
+
+4. Benchmark makes the solution looks bad.
+
+   #+BEGIN_QUOTE
+   the provided benchmark makes your solution look a lot worse than
+   it actually is.
+
+   The text does not nearly stress [the fact that RAM will always be 10x times
+   faster] enough, leaving the reader with the impression that in-memory
+   operation is the way to go, rather than the elaborate solution provided in
+   the paper.
+   #+END_QUOTE
+
+5. Benchmark "winners" are hard to get at a glance.
+
+   #+BEGIN_QUOTE
+   The benchmark section would benefit from line graphs (or bar charts) instead
+   of plain tables.
+   #+END_QUOTE
+
+6. Relation to Data Warehouses
+
+   #+BEGIN_QUOTE
+   The requirements as well as the implementation techniques are very similar to
+   what Data Warehouses do in the generic database community.  I would expect at
+   least a short comparison what is present in that domain and how it relates to
+   the presented approach.
+   #+END_QUOTE
+
+7. Send to Artifact Evaluation?
+
+** Found where the iptables were coming from               :emfviews:proxmox:
+There was a rogue iptables-restore in /etc/rc.local...  That was not documented
+anywhere!  Bad form.  But now at least I can configure that directly, and update
+the procedure on the wiki.
+
+So it looks like we have only one public-facing port on that machine, so if I
+want to expose a web server and also be able to push files on it, I will need to
+handle the pushing through the web server.
+
+* [2018-07-10 mar.]
+** Making a Docker image for running benchmarks      :emfviews:neoemf:models:
+We'll try to push for the artifact evaluation.  Since to run the benchmarks you
+need a specific version of EMF Views, a specific version of NeoEMF, a specific
+version of CDO... I think making a Docker image is much simpler.
+
+I managed to make something a bit dirty, by fetching all JAR dependencies (from
+the list nicely given by Eclipse when it runs the process) and putting them in
+the Docker image.  And it works!  It's only around 77Mb of dependencies, and the
+image is around 200Mb with JDK8 and some of the models.
+
+Now I can run the different programs from inside Docker, without having to
+install any of the Eclipse stuff.  Neato.
+
+Currently running the Creator task with a mounted volume, so I don't have to run
+it everytime I want to re-run the benchmarks.
+
+I was surprised that without mounting volumes, the container was still able to
+write the models... /somewhere/.  It makes sense, that the process should be
+able to write to disk (for logging, etc.).  I have no idea where it is writing
+that, but I guess all is going away when we remove the container.
+
+Did some tests with J.  From what we gathered, a container will have all its
+filesystem mounted somewhere under /var/lib/docker/overlay2, to contain all the
+differences between its image and whatever happened at runtime.
+
+You can write to this location in the host, and the changes will be immediately
+visible in the container, and vice-versa.
+
+Additionally, if the container is stopped but not removed, you can start it
+again with ~docker start~.  Its filesystem state is still saved.  From what we
+can tell, when you remove the container with ~docker rm~ there's no way to start
+it again (through the Docker interface).  It's not clear whether the overlay
+filesystem lingers until you call ~docker prune~ or something.
+
+For my use case, it means I don't actually need to mount the local disk as a
+volume in Docker.  I could more simply let the container write its generated
+model in its filesystem, and one could still run the benchmarks without having
+to regenerate the models using ~docker exec~.
+
+But!  If I do that, I'm not sure /where/ exactly that overlay resides.  Could be
+on disk, but from the docs it looks like it will use tmpfs, which might be
+mounted in RAM instead.  So you would definitely /not/ be measuring the same
+thing.
+
+Best to stick with mounting volumes then.
