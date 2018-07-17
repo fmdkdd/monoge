@@ -12667,3 +12667,36 @@ mounted in RAM instead.  So you would definitely /not/ be measuring the same
 thing.
 
 Best to stick with mounting volumes then.
+
+[2018-07-17 mar.]
+** Cleaning up atlanmodexp with T.                              :atlanmodexp:
+Started doing backups of the containers, and sent emails to previous members who
+may have some data on this machine.
+
+We'll probably try to do a full upgrade of the server, which requires physical
+access.  We found where the server was hiding, but we'll need permission from
+the IT dep.
+
+** Fixing some oversight with the artifact evaluation                :models:
+The Git LFS thing failed to push the two Java models on the server.  Probably a
+misconfiguration of the hooks.  Anyway, the fix is to call ~git lfs push
+--object-id~, as pointed out [[https://stackoverflow.com/a/35266717][here]].
+
+Another reviewer got an OOM on our benchmarks.  Should have made the JVM args
+customizable from the start.  Fixed that, and upped the default limit to 8G.
+Should be enough?
+
+Also, it looks like running the benchmarks in Docker adds some overhead.
+
+** Looking up references for view maintenance                      :emfviews:
+Presented the [[https://cozy.uwplse.org/][Cozy]] paper this morning, and at the end of the related work, they
+talk about view maintenance.
+
+That's the term used in the DB community for updating views after their
+contributing tables are updated.
+
+Found one survey on view maintenance, but it's from 1998.  But it's the term to
+use in that community.
+
+I probably want to spell out our requirements in EMF Views and start
+experimenting to see where the naive approach breaks.
