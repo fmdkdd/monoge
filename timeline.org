@@ -12700,3 +12700,44 @@ use in that community.
 
 I probably want to spell out our requirements in EMF Views and start
 experimenting to see where the naive approach breaks.
+
+* [2018-07-18 mer.]
+** View maintenance in EMF Views                                   :emfviews:
+The way we rely on built weaving models to create views is incompatible with
+view maintenance.
+
+If we assume contributing models can be updated, then we the naive solution is
+to rebuild the full weaving model for each update.  That is certainly intractable
+for larger models.
+
+A more realistic solution would be to infer what parts of the weaving model need
+to be changed, and what part of the view needs to be altered.  I guess the
+approach comes at a larger complexity cost.
+
+The obviously correct solution is just to not build the weaving models in
+extension, but rather in intension.  Instead of spelling out all the elements
+that are part of a virtual association, we keep the weaving model contains only
+the intensional definition, and whenever the association is accessed, we rebuild
+its contents.
+
+That gives us a baseline.  From there, we can think about caching parts of the
+view, and do some more clever analysis of the intensional definitions in order
+to boost performance.
+
+** Filters and inheritance                                         :emfviews:
+So I finally finished writing that test.  It's the case where we have:
+
+: A <- B <- C
+
+(where ~<-~ is the "is supertype of" relation").  We filter B, leaving us with
+only A and C.  By transitivity of inheritance, we had A <- C, but in the
+viewpoint that's not the case.
+
+Note that the Ecore diagnostician has nothing to complain about, because as far
+as it is concerned, C has no relationship with A.
+
+The issue is that in the implementation, when looking up the super types, if any
+of them is filtered, we stop looking up.  And that's because we rely on
+getESuperTypes for getEAllSuperTypes.
+
+That's now fixed.
