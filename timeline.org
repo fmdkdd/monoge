@@ -12741,3 +12741,100 @@ of them is filtered, we stop looking up.  And that's because we rely on
 getESuperTypes for getEAllSuperTypes.
 
 That's now fixed.
+
+* [2018-07-24 mar.]
+** Making OCL interactive console work with EMF Views          :emfviews:ocl:
+On a concrete model, if I click on an object in the MoDisco browser, the OCL
+console says:
+
+: Xtext OCL for 'Publication ATL in Depth' : Publication
+
+If I do the same in a view:
+
+: Xtext OCL for 'Publication ATL in Depth' : OclInvalid
+
+Looks like OCL has troubles understanding the viewpoint.
+
+Grepping into the source trying to find where the incompatibility might come
+from.
+
+For some reason, Eclipse does not allow me to open classes of the OCL Pivot
+implementation, even though I have the source plugin installed.
+
+Have to clone OCL, load the plugins in Eclipse to override the installed one,
+then I can actually debug.
+
+Come to think of it, this issue stems from the fact that OCL will look at the
+currently selected object, and try to adapt it into an EObject.  Probably that's
+not implemented correctly for virtual objects.
+
+We have to register ourself into EMF adapters or something.
+
+Okay found something in:
+
+: org.eclipse.ocl.examples.xtext.console/src/org/eclipse/ocl/examples/xtext/console/OCLConsole.java
+
+The setSelection methods are where the "Xtext OCL for..." text is set.
+
+Looks like it's not necessary to be an IAdaptable of EObject, since the code
+looks for instances of EObject, and Virtual objects are fine in this respect.
+
+The code fails to find a metaclass.
+
+When looking at a concrete model, I get:
+
+- staticType = ClassImpl (Publication::Publication)
+- contextType = ClassImpl (Publication::Publication)
+
+For a model:
+
+- staticType = InvalidTypeImpl (OclInvalid)
+- contextType = InvalidTypeImpl (OclInvalid)
+
+staticType will end up in ECore2AS.getCreated, where this code:
+
+#+BEGIN_SRC java
+Element element = newCreateMap.get(eObject);
+if (element == null) {
+	return null;
+}
+#+END_SRC
+
+returns null for views, but a ClassImpl for concrete models.
+
+So now to find when this newCreateMap is populated.
+
+Looks like this happens in Ecore2AS.update, where this code behaves differently
+between the view and the concrete model:
+
+#+BEGIN_SRC java
+for (EObject eObject : ecoreContents) {
+  	EClass eClass = eObject.eClass();
+  	if (eClass.getEPackage() != EcorePackage.eINSTANCE) {
+  		error("Non Ecore " + eClass.getName() + " for Ecore2AS.update");
+  	}
+  	else {
+  		Object pivotElement = declarationPass.doInPackageSwitch(eObject);
+  		if (pivotElement instanceof org.eclipse.ocl.pivot.Package) {
+  			newPackages.add((org.eclipse.ocl.pivot.Package) pivotElement);
+  		}
+  		else {
+  			error("Bad ecore content");
+  		}
+  	}
+  }
+#+END_SRC
+
+ecoreContents is the content of the metamodel.  And the code explicitly checks
+that the eClass of the metamodel objects is part of the EcorePackage.
+
+In views, it's not the case: Ecore is virtualized, and the equality checks
+fails.
+
+I think I encountered the issue precedently with the meta-meta-level loop not
+working.  I did encounter the circularity [[*Trying to simplify the interface of views][previously]], but this case is slightly
+different.
+
+So it looks like the correct thing is to always have viewpoints point to the raw
+EcorePackage as metamodel.  And hopefully it's enough for the OCL console to
+work.
