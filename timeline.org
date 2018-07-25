@@ -12838,3 +12838,50 @@ different.
 So it looks like the correct thing is to always have viewpoints point to the raw
 EcorePackage as metamodel.  And hopefully it's enough for the OCL console to
 work.
+
+* [2018-07-25 mer.]
+** More OCL debugging                                          :emfviews:ocl:
+Okay, found the issue.  It was actually caused by eResource() returning null for
+a VirtualEClass.  This broke since the split of Viewpoint into
+ViewpointResource.
+
+So now we've got Viewpoint and ViewpointResource, and both are coupled because
+Viewpoint needs a ViewpointResource, and ViewpointResource needs a Viewpoint...
+Same thing for View and ViewResource.
+
+It's probably best to merge the two again.
+
+But!  OCL is still not working.  Now I do not get the OclInvalid type anymore in
+the console, and auto-completion works, but trying to get an attribute fails:
+
+#+BEGIN_EXAMPLE
+Failed to evaluate 'viewpoint::Publication::Publication::title' for 'org.atlanmod.emfviews.elements.VirtualEObject@6a5fc8b (eClass: VirtualEClass of org.eclipse.emf.ecore.impl.EClassImpl@7342a935 (name: Publication) (instanceClassName: null) (abstract: false, interface: false))' and 'self.title'
+java.lang.ClassCastException: java.lang.String cannot be cast to java.util.Collection
+	at org.eclipse.ocl.pivot.internal.library.executor.AbstractIdResolver.boxedValueOf(AbstractIdResolver.java:451)
+	at org.eclipse.ocl.pivot.internal.library.ExplicitNavigationProperty.evaluate(ExplicitNavigationProperty.java:60)
+	at org.eclipse.ocl.pivot.internal.evaluation.AbstractExecutor.internalExecuteNavigationCallExp(AbstractExecutor.java:358)
+	at org.eclipse.ocl.pivot.internal.evaluation.BasicEvaluationVisitor.visitPropertyCallExp(BasicEvaluationVisitor.java:666)
+	at org.eclipse.ocl.pivot.internal.PropertyCallExpImpl.accept(PropertyCallExpImpl.java:417)
+	at org.eclipse.ocl.pivot.internal.evaluation.BasicEvaluationVisitor.safeVisit(BasicEvaluationVisitor.java:148)
+	at org.eclipse.ocl.pivot.internal.evaluation.BasicEvaluationVisitor.visitExpressionInOCL(BasicEvaluationVisitor.java:302)
+	at org.eclipse.ocl.examples.xtext.console.OCLConsolePage$EvaluationRunnable.run(OCLConsolePage.java:226)
+	at org.eclipse.jface.operation.ModalContext$ModalContextThread.run(ModalContext.java:119)
+#+END_EXAMPLE
+
+Found the cause.  OCL had attributed an OclInvalid type again as return type for
+self.title.  That was because ~title~ has type String, which is a data type.
+OCL then has a map from Ecore primitive data types to OCL types, which is
+initialized as such:
+
+#+BEGIN_SRC java
+public void initializeEcore2ASMap() {
+	ecore2asMap.put(EcorePackage.Literals.EBOOLEAN, standardLibrary.getBooleanType());
+	ecore2asMap.put(EcorePackage.Literals.EBIG_INTEGER, standardLibrary.getIntegerType());
+	ecore2asMap.put(EcorePackage.Literals.EBIG_DECIMAL, standardLibrary.getRealType());
+	ecore2asMap.put(EcorePackage.Literals.ESTRING, standardLibrary.getStringType());
+}
+#+END_SRC
+
+It will only match raw EcorePackage literals, not virtualized ones.  But in
+VirtualEGenericType, we virtualized the classifiers, thus no corresponding data
+type could be found.
