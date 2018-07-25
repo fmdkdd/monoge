@@ -12885,3 +12885,14 @@ public void initializeEcore2ASMap() {
 It will only match raw EcorePackage literals, not virtualized ones.  But in
 VirtualEGenericType, we virtualized the classifiers, thus no corresponding data
 type could be found.
+
+** Running OCL programmatically                                :emfviews:ocl:
+While writing that section of the manual, I hit a pain point of EMF Views: the
+VirtualLinksDelegator can only work using Eclipse extension points.  But what if
+we are not running inside Eclipse, but as a plain Java program?
+
+It crashes with NullPointerException.
+
+It looks like it's not trivial to reuse the extension point registry outside of
+Eclipse... So instead, I added a way to register delegates directly in map, so
+clients can just use set that and not run inside Eclipse.
