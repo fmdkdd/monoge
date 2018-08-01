@@ -309,10 +309,9 @@ Looking at the code that populates availableLinksDsls, it iterates into:
 
 #+BEGIN_SRC java
 extensions = Platform
-				.getExtensionRegistry()
-				.getExtensionPoint(
-						"fr.inria.atlanmod.emfviews.virtuallinksdelegator.type")
-				.getExtensions();
+  .getExtensionRegistry()
+  .getExtensionPoint("fr.inria.atlanmod.emfviews.virtuallinksdelegator.type")
+  .getExtensions();
 #+END_SRC
 
 But this is also empty.  I guess because I haven't opened
@@ -626,11 +625,10 @@ No pollution between configurations.
 So that's good for reproductible environments (except, you know, the manual step
 of actually provisioning Eclipse with the new packages).
 
-But now if I need to install the Java dev tools for every
-configuration... or even update them... that's going to be a pain.  Ideally, I
-read somewhere that p2 was able to pool from a common bundle.  So I should be
-able to download all this stuff in just one place, then let Eclipse get the
-plugins from one pool.
+But now if I need to install the Java dev tools for every configuration... or
+even update them... that's going to be a pain.  Ideally, I read somewhere that
+p2 was able to pool from a common bundle.  So I should be able to download all
+this stuff in just one place, then let Eclipse get the plugins from one pool.
 
 But I really don't want Eclipse to load /all/ the plugins in the pool.  Even if
 it's "lazy-loading" them, it's still taking ages AND I have no say in how
@@ -12896,3 +12894,26 @@ It crashes with NullPointerException.
 It looks like it's not trivial to reuse the extension point registry outside of
 Eclipse... So instead, I added a way to register delegates directly in map, so
 clients can just use set that and not run inside Eclipse.
+
+* [2018-08-01 mer.]
+** Updated to latest Eclipse                                        :eclipse:
+Process was relatively smooth.
+
+I didn't even copy anything from the old Eclipse, since all settings are kept in
+the workspace.
+
+I got a cruft-free Eclipse from this (slightly hidden) [[http://download.eclipse.org/eclipse/downloads/drops4/R-4.8-201806110500/][page]].
+
+Then installed what I needed:
+
+- JDT
+- EMF
+- ATL
+- Epsilon
+- MoDisco
+- Classic OCL & Unified OCL
+
+For OCL, the console is hidden in the full package.  I had to untick "Group by
+category" in the install wizard.
+
+Also, I updated Java to 10, and it's a smooth experience for now.
