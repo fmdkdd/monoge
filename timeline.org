@@ -12917,3 +12917,34 @@ For OCL, the console is hidden in the full package.  I had to untick "Group by
 category" in the install wizard.
 
 Also, I updated Java to 10, and it's a smooth experience for now.
+
+* [2018-08-08 mer.]
+** Reading H's thesis chapter on EMF Views                         :emfviews:
+p. 75
+No legend for '# * @ ##' footnote symbols
+
+Doesn't 'Multiple Models' arity include 'Single Model'?
+
+Runtime Consistency/View/ is it an exclusive 'OR'?  Table shows ticks for both
+branches of OR.  If it's not exclusive, what's the difference with not putting
+anything?
+
+p. 77
+3rd par. s/puting/putting/
+
+p. 96
+For MEL, could state explicitly that we can specialize/generalize *new concepts*
+(due tox this being allowed by the Weaving model)
+
+p. 103
+4th par.  We do not generate eview files from VPDL.  We probably should, but
+we'd need to specify the contributing models
+
+4th par.  s/the view behave/the view behaves/
+
+Overall
+Maybe make it clear that much of the chapter contents are taken verbatim from
+papers?
+
+p. 114
+last par.  s/sigal/signal/
