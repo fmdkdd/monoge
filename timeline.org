@@ -12948,3 +12948,49 @@ papers?
 
 p. 114
 last par.  s/sigal/signal/
+
+* [2018-08-09 jeu.]
+** Thinking about view maintenance                                 :efmviews:
+View maintenance works in EMF Views due to virtual objects being just proxies to
+concrete objects.
+
+So updating a model attribute or reference is directly visible in the view
+without additional work.
+
+However, synthetic view elements are computed only once, at view creation.
+That's because the weaving model is extensional in nature, even though the VPDL
+gives you an intensional interface through ECL.
+
+If we were to define a purely intensional weaving model, then the view could be
+always in sync.  The first inefficient approach would be to recompute the value
+of a feature using the intensional definition.  A more efficient way would be to
+cache and invalidate on update to contributing elements.
+
+In order to describe the approach, I would prefer an abstract model of EMF
+rather than the full-blown thing.  I wonder how people usually deal with that,
+for ATL or other
+
+- [[https://www.isa-afp.org/entries/Featherweight_OCL.html][Featherweight OCL]] is a machine-checked semantics of OCL, expanding upon the
+  semi-formal "Annex A" of the OCL standard.  It's in Isabelle.
+
+  Maybe too heavy-handed for what I had in mind.  I think I can get away without
+  a full mechanization of OCL.
+
+- [[http://dblp.org/rec/bibtex/journals/sosym/Westfechtel14][Merging of EMF models - Formal foundations]] is quite interesting in its own
+  right.  Merging EMF models is complex, and this looks like it tackles most
+  corner cases in a formal way.
+
+  \sect3 contains a small mathematical model of Ecore metamodels and Ecore models.
+  There is also some formalization of /change/ to models, due to the setting of
+  tackling model merging.
+
+  A good candidate to take inspiration from.
+
+- [[http://dblp.org/rec/bibtex/journals/sosym/BiermannET12][Formal foundation of consistent {EMF} model transformations by algebraic graph
+  transformation]] formalizes EMF models as graphs, for the purpose of using
+  algebraic graph transformation theory to ensure consistent EMF
+  transformations.
+
+  Neat on the surface.  The EMF graph formalization looks straightforward.
+  Looking for consistent transformations could help making sure MEL extensions
+  make sense.
