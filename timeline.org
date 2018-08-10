@@ -12980,7 +12980,7 @@ for ATL or other
   right.  Merging EMF models is complex, and this looks like it tackles most
   corner cases in a formal way.
 
-  \sect3 contains a small mathematical model of Ecore metamodels and Ecore models.
+  \sect4 contains a small mathematical model of Ecore metamodels and Ecore models.
   There is also some formalization of /change/ to models, due to the setting of
   tackling model merging.
 
@@ -12994,3 +12994,103 @@ for ATL or other
   Neat on the surface.  The EMF graph formalization looks straightforward.
   Looking for consistent transformations could help making sure MEL extensions
   make sense.
+
+* [2018-08-10 ven.]
+** Attempt at a formal model for EMF Views                         :emfviews:
+Following Westfechtel.
+
+Ecore model is a tuple (C,D,F,P), resp. sets of classes, data types, features
+and properties.  F is a partition of A and R, resp. attributes and references.
+
+Packages and factories are ignored.
+
+A model instantiated from an Ecore model (C,D,F,P) is a tuple (O,class,FV): a
+set of objects O, a function ~class: O \to C~  from objects to their class, and a
+set of feature value functions.
+
+A viewtype is a tuple (MM, C_V, D_V, F_V, P_V): M is a set of Ecore models, C_V, D_V, and
+F_V are additional classes, data types and features.
+
+A viewtype can be interpreted as an Ecore model (C,D,F,P) as such:
+
+- C = C_v \cup \sum_{e \in MM} C_e
+- D = D_v \cup \sum_{e \in MM} D_e
+- F = F_v \cup \sum_{e \in M}M F_e
+- All functions of P canonically apply to their model e \in MM:
+  - dom: F \to C = dom_e if f \in F_e
+                 dom_v otherwise
+  - etc.
+
+(Alternatively, a viewtype is a disjoint union of Ecore models)
+
+With a viewtype V = (MM, C_V, D_V, F_V, P_V), a view is a set of models.
+
+*** A step back
+What are we trying to prove here?  The tricky parts of views are: filters (which
+might leave the model inconsistent) and modifying existing links or
+cardinalities (which might break invariants).  Another motivation was making
+sense of view maintenance and view update.  For these, we need to model change
+in models as well.  Westfechtel definitions are read-only.
+
+For filters, we have several options:
+
+- A list of filtered elements (as in the weaving model)
+- A function filtered : C \cup D \cup F \to which tells us if an Ecore
+  element is filtered out
+- Or say that a viewtype is also a tuple (C,D,F,P), and the filtered elements
+  are just not included in its sets.
+
+An interesting property is whether transitive inheritance is kept, even in the
+presence of filters:
+
+: A <- B <- C
+
+superTypes(C) = {B}, but superTypes*(C) = {A,B}.
+
+However, if we filter B in the viewtype, superTypes(C) = {} because B does not
+exist anymore, but A is still conceptually a superType of C, even though the
+transitive closure must be empty (since C has no direct parent).
+
+So we have a contradiction, or at least a very unintuitive behavior.  But
+really, something I've overlooked before is that C should not exist in the
+viewtype if we filter B out.  That solves the conundrum.
+
+Because if C continues to exist, it might reference B in its feature (might have
+a feature of type B for instance).  What should we do with this feature?  Change
+its type to C?  Remove it?
+
+If C exists, does it get the feature inherited from B?
+
+So, the simplest option is to C to be filtered as well.  That means:
+
+- To a given Ecore we can associate a /weaving model/.  To start with a weaving
+  model is just a function ~filtered C \cup D \cup F \to boolean~ which indicates if an
+  element from the Ecore model is to be filtered.
+
+- From a weaving model we can create a /viewtype/.  A viewtype is an Ecore
+  model (C_V, D_V, F_V, P_V), (with F_V is partitioned in A_V and R_V) where:
+
+  - C_V = { c \in C | (\not filtered(c)) \wedge (\forall s \in superTypes*(c), \not filtered(s)) }
+  - D_V = { d \in D | \not filtered(d) }
+
+For data types we don't have inheritance.  However, they are used as types for
+attributes.  If we filter the data type out, the attribute is invalid.  We
+should filter the attribute as well to restore consistency.  Same argument for
+references and classes.  If we filter the containing class, the feature is out.
+So:
+
+- A_V = { a \in A | \not filtered(a) \wedge \not filtered(domain(a)) \wedge \not filtered(range(a)) }
+- R_V = { r \in R | (\not filtered(r)) \wedge \not filtered(domain(r)) \wedge \not filtered(range(r)) }
+
+The functions of P_V are restricted to the subsets visible in the viewtype:
+
+- \forall c \in C_V superTypes(c) = superTypes_C(c) \cap C_V
+- \forall f \in F_v domain(f) = domain_C(f) \cap C_V
+- \forall f \in F_v range(f) = range_C(f) \cap (C_V \cup D_V)
+- \forall f \in F_V many(f) = many_C(f)  (idem ordered, unique)
+- \forall r \in R_V containment(r) = containment_C(r)
+- \forall r \in R_V opposite(r) = opposite_C(r) if r \in domain(opposite_C) \wedge opposite_c(r) \in R_V
+                         undefined otherwise
+
+That's a start.  That only covers filters, not even aggregation of Ecore models,
+and not yet extension.
