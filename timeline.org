@@ -13055,13 +13055,13 @@ So we have a contradiction, or at least a very unintuitive behavior.  But
 really, something I've overlooked before is that C should not exist in the
 viewtype if we filter B out.  That solves the conundrum.
 
-Because if C continues to exist, it might reference B in its feature (might have
-a feature of type B for instance).  What should we do with this feature?  Change
-its type to C?  Remove it?
+Because if C continues to exist, it might reference B in its features (might
+have a feature of type B for instance).  What should we do with such a feature?
+Change its type to C?  Remove it?
 
-If C exists, does it get the feature inherited from B?
+Also, if C exists, does it get the features inherited from B?
 
-So, the simplest option is to C to be filtered as well.  That means:
+So, the simplest option is for C to be filtered as well.  That means:
 
 - To a given Ecore we can associate a /weaving model/.  To start with a weaving
   model is just a function ~filtered C \cup D \cup F \to boolean~ which indicates if an
@@ -13094,3 +13094,142 @@ The functions of P_V are restricted to the subsets visible in the viewtype:
 
 That's a start.  That only covers filters, not even aggregation of Ecore models,
 and not yet extension.
+
+* [2018-08-13 lun.]
+** Improving the rules                                             :emfviews:
+The rules:
+
+- A_V = { a \in A | \not filtered(a) \wedge \not filtered(domain(a)) \wedge \not filtered(range(a)) }
+- R_V = { r \in R | (\not filtered(r)) \wedge \not filtered(domain(r)) \wedge \not filtered(range(r))
+
+are wrong.  Take an Ecore mode with a class B with a single attribute b of type
+B, and a class A supertype of B.
+
+In the weaving model, filtered(x) = true  if x = A
+                                    false otherwise
+
+In the viewtype, C_v = {} because A and all its subtypes are filtered out.  Since
+B is filtered out, we expect A_v to be empty, but domain(b) is undefined, so it
+is nto filtered out, and thus present.
+
+The set of visible classes C_v is not the same as the set of classes that are not
+filtered out, due to filters propagating to subtypes.  So a subtype can be
+filtered out implicitly.  Then, we want to include only the features of visible
+types, so we have to use the 'visibility' definition rather than the 'non
+filtered' one.
+
+So:
+
+- A_V = { a \in A | \not filtered(a) \wedge domain(a) \in C_V \wedge range(a) \in D_V }
+- R_V = { r \in R | \not filtered(r) \wedge domain(r) \in C_V \wedge range(r) \in C_V }
+
+Note that domain and range are the ones from the Ecore model (obviously, since
+domain_V is defined on F_V, not F).
+
+The opposite definition can be simplified:
+
+- \forall r \in R_V opposite(r) = opposite_C(r) if opposite_C(r) \in R_V
+                         undefined    otherwise
+
+*** Whitelisting
+So far the filters are taken as blacklists: filter things /out/ of the base
+Ecore model.  Let's see if whitelisting changes anything.  At the outset, we
+need to reverse the meaning of filtered:
+
+- C_V = { c \in C | filtered(c) ... }
+
+But what happens in A <- B <- C if B is filtered?  Clearly, we do not care about
+C.  But what about A?  If A is filtered out, then it doesn't really matter.  If
+we do not take their features into account, there is no reason to include A.
+
+So:
+
+- C_V = { c \in C | filtered(c) }
+
+However, if we include a feature, then we have to include its domain and range
+to be consistent.  But that means extending the C_V set after the fact.  So the
+C_V definition should instead be:
+
+- C_v = { c \in C | filtered(c) \vee (\exists f \in F_V, c = domain(f)) \vee (\exists r \in R_V, c = range(r)) }
+
+If we include an attribute, its data type must be included as well:
+
+- D_V = { d \in D | filtered(d) \vee (\exists a \in A_V, range(a) = c) }
+
+and after that:
+
+- F_V = { f \in F | filtered(f) }
+
+So the interesting observation is that the rules for whitelisting are not
+trivially symmetric to blacklisting.
+
+*** Access control without consistency
+Why do we care about consistency anyway?  In EMF Views, we can in fact create
+viewpoints that are inconsistent Ecore models.  There's a value in that for
+access control purposes.  Then you don't care about propagating visibility of
+classes or features, it's just:
+
+- C_V = { c \in C | \not filtered(c) }
+
+idem for D_V and F_V.
+
+You might run into problems though (missing datatypes means attributes have no
+sensible value).  And it can be tedious in whitelisting mode.  That's why
+propagating visibility is useful.
+
+*** Aggregating several Ecore models in viewtypes
+If we allow viewtypes to take several Ecore models as inputs, then it's a
+trivial extension.  The base Ecore models are disjoint, and there are no
+interactions between them.  We just have to extend the definitions to take all
+models into account.  So:
+
+- C_V = { c \in C | (\not filtered(c)) \wedge (\forall s \in superTypes*(c), \not filtered(s)) }
+
+becomes:
+
+- C_V = \sum_m { c \in C_m | (\not filtered(c)) \wedge (\forall s \in superTypes_m*(c), \not filtered(s)) }
+
+where m is taken over the set of input Ecore models.
+
+Note that in practice, EMF elements are identified by their name, which must be
+unique in a given package.  Here, this constraint may be invalidated in a
+viewtype if it holds in base models: m_1 and m_2 both have a class named 'A', the
+viewtype now has two classes named A.  To respect the constraint, the sensible
+thing to do is to prefix the classes by their package name.
+
+*** Extending Ecore models in viewtypes
+Adding new types is easy, with their own features, is like taking one more input
+model.  Trivial.
+
+Adding features to base model types is similarly simple.
+
+Problems arise when we want to /change/ existing elements instead of just adding
+new ones.  We can fake a change to an existing element by combining a filter and
+an add.  Let's say we want to change the type of the feature A.a from B to C.
+
+We could, in the weaving model, write:
+
+: filter A.a
+: new A.a : C
+
+and this would be consistent.  As far as the mathematical model is concerned,
+the filtered A.a and the new A.a are different objects.  They happen to have the
+same name, but names only matter in the EMF implementation.
+
+If the filtered A.a had an opposite, the opposite link is now null.
+
+What if tried to change a class?  Change A to B, where B has all the features of
+A minus one?
+
+: filter A
+: new B
+
+Ah, but then, we have to basically recreate the features of A in B (and
+eventually updating the types from A to B).  So there is potentially a problem
+of expressivity of the weaving model (it's more verbose than it should), but not
+a problem of consistency.
+
+There might be invalidated constraints though, but these will appear at the EMF
+level of implementation.
+
+So it looks like this model is mostly useful for formalizing how filters work.
