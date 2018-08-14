@@ -13233,3 +13233,87 @@ There might be invalidated constraints though, but these will appear at the EMF
 level of implementation.
 
 So it looks like this model is mostly useful for formalizing how filters work.
+
+* [2018-08-14 mar.]
+** About filtering and inheritance                                 :emfviews:
+First of all, in blacklisting, it's not obvious that we should remove C when B
+is filtered.
+
+A <- B <- C
+
+True, superTypes*(C) = {A,B}, but superTypes_V*(C) = {} even though A still
+exists in the view.  But that's only the case if we use a naive definition for
+superTypes_V*.  If we define it as:
+
+- \forall c \in C_V, superTypes_V*(c) = superTypes_C*(c) \cap C_V
+
+Then superTypes_C*(C) = {A,B}, and superTypes_V*(C) = {A,B} \cap {A,C} = {A}.
+
+That means we can define C_V simply as:
+
+- C_V = { c \in C | \not filtered(c) }
+
+So that leaves the potential problem of inherited features from B in C.  But if
+B is filtered out, then its features are also filtered out (by definition of A_V
+and R_V).  Meaning that:
+
+A <- B <- C
+
+A.a : int
+B.b : int
+C.c : int
+
+Then, in the view, C only has attributes {a, c}.
+
+- C_V = {A,C}
+- A_V = { a \in A | \not filtered(a) \wedge domain(a) \in C_V \wedge range(a) \in D_V }
+- A_V = { a, c }
+
+And any link pointing to B is dropped:
+
+C.r : B
+
+- R_V = { r \in R | \not filtered(r) \wedge domain(r) \in C_V \wedge range(r) \in C_V }
+- R_V = {}
+
+*** Revisiting whitelisting
+The dual to the A <- B <- C example in whitelisting is that we include both A,
+C, leaving B out.  So:
+
+- C_V = { A, B }
+
+And we have the same question: should superTypes_V*(C) = {A} or {}?
+
+We can define superTypes_V* the same as for blacklisting:
+
+- \forall c \in C_V, superTypes_V*(c) = superTypes_C*(c) \cap C_V
+
+and we have the more intuitive answer {A}.
+
+*** Multiple inheritance and filtering
+Is multiple inheritance a problem for filtering?
+
+A <- B <- D
+A <- C <- D
+
+superTypes*(D) = {A,B,C}
+spureTypes*(C) = {A}
+spureTypes*(B) = {A}
+superTYpes*(A) = {}
+
+filter(B)
+
+C_V = {A,C,D}
+superTypes*(D) = {A,B,C} \cap {A,C,D} = {A,C}
+
+Can't think of a problematic case.
+
+*** Another formalization of EMF models
+Pointed out by JC: [[https://dblp.uni-trier.de/rec/bibtex/journals/isse/EgeaR10][Formal executable semantics for conformance in the {MDE}
+framework]].
+
+The formalization is straightforward, using sets for classes, features and the
+supertype relationship.  They do not state conformance properties (one container
+per feature, etc.) as Westfechtel does, because these conformance properties can
+be expressed as base OCL constraints.  They then provide an executable semantics
+for full conformance (including additional, metamodel-specific OCL constraints).
