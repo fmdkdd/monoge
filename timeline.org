@@ -9252,7 +9252,7 @@ It seems that putting the EPackage in the global registry would not be a bad
 idea after all.
 
 * [2018-02-22 jeu.]
-** Extending the test suite for DSLs                           :efmviews:mel:
+** Extending the test suite for DSLs                           :emfviews:mel:
 I found a strange bug, which I attributed to the lazy rule having funky
 behavior.  Turns out, lazy rules do not work the same with EMFTVM and the
 regular ATL VM.  As [[https://wiki.eclipse.org/ATL/EMFTVM#Lazy_rules][the documentation states]], in EMFTVM lazy rules are matched
@@ -12950,7 +12950,7 @@ p. 114
 last par.  s/sigal/signal/
 
 * [2018-08-09 jeu.]
-** Thinking about view maintenance                                 :efmviews:
+** Thinking about view maintenance                                 :emfviews:
 View maintenance works in EMF Views due to virtual objects being just proxies to
 concrete objects.
 
