@@ -13317,3 +13317,31 @@ supertype relationship.  They do not state conformance properties (one container
 per feature, etc.) as Westfechtel does, because these conformance properties can
 be expressed as base OCL constraints.  They then provide an executable semantics
 for full conformance (including additional, metamodel-specific OCL constraints).
+
+* [2018-08-20 lun.]
+** Formalization of views proper                                   :emfviews:
+A model instantiated from an Ecore model (C,D,F,P) is a tuple (O,class,FV): a
+set of objects O, a function /class/: O \to C from objects to their class, and a
+set of feature value functions.
+
+At first, let us consider views with trivial weaving models (i.e., no filtering
+or new attributes).
+
+A /view/ (O_V, class_V, FV_V) is created from a viewtype (C_V, D_V, F_V, P_V) and a
+base model (O, class, FV).
+
+For conformanc, the view can only contains objects whose class exists in the
+viewtype.
+
+- O_V = { o \in O | class(o) \in C_V }
+
+The class_V function is simply restricted on O_V \to C_V.
+
+- class_V : O_V \to C_V, \forall{}o \in O_V class_V(o) = class(o)
+
+The set FV_V is restricted to features that exist on the viewtype.
+
+- FV_V = { fv \in FV | feature(fv) \in F_V }
+
+where /feature/ : FV \to F is the bijective function that associates a feature
+value function to its owning feature.
