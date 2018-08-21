@@ -12936,7 +12936,11 @@ p. 96
 For MEL, could state explicitly that we can specialize/generalize *new concepts*
 (due tox this being allowed by the Weaving model)
 
+First par. of listing 4 (MEL example) is not coherent with listing.
+
 p. 103
+((.ecl)) -> (.ecl)
+
 4th par.  We do not generate eview files from VPDL.  We probably should, but
 we'd need to specify the contributing models
 
@@ -13330,7 +13334,7 @@ or new attributes).
 A /view/ (O_V, class_V, FV_V) is created from a viewtype (C_V, D_V, F_V, P_V) and a
 base model (O, class, FV).
 
-For conformanc, the view can only contains objects whose class exists in the
+For conformance, the view can only contains objects whose class exists in the
 viewtype.
 
 - O_V = { o \in O | class(o) \in C_V }
@@ -13345,3 +13349,52 @@ The set FV_V is restricted to features that exist on the viewtype.
 
 where /feature/ : FV \to F is the bijective function that associates a feature
 value function to its owning feature.
+
+* [2018-08-21 mar.]
+** Formalization of views, contd.                                  :emfviews:
+If we look at Westfechtel properties for models, it's easy to see they hold for
+views as well.
+
+Referenced objects must be part of the model:
+
+- \forall{}o_1 \in O, o_2 \in fv(o_1): o_2 \in O
+
+The equivalent property for the view is:
+
+- \forall{}o_1 \in O_V, o_2 \in fv_V(o_1): o_2 \in O_V
+
+But this means we have to change the feature value functions.  Since, for
+instance if we have a class with a reference feature a, and a class B, and a
+model with two objects o_1 and o_2, such that:
+
+- class(o_1) = A
+- class(o_2) = B
+- fv^a(o_1) = o_2, where fv^a \in FV and feature(fv^a) = a
+
+then o_2 \in O by referential integrity.
+
+However, if the viewtype is defined by excluding B, in the view we have O_v = {
+o_1 } (o_2 is excluded since its class is not part of the viewtype), and then:
+
+- fv_v^a(o_1) = o_2 \notin O_V
+
+so referential integrity is violated.
+
+We have to redefine the feature value functions to check for that:
+
+- For each feature f \in F_V, there is a feature value function fv_v, defined as:
+  fv_v(o) = fv(o) \cap O_V if many(f)
+           undefined  otherwise
+
+(Instead of undefined, we could have a sentinel value for references pointing
+nowhere.)
+
+Opposites should be consistent:
+
+- For two features value functions fv_1 and fv_2 such that feature(fv_1) =
+  opposite(feature(fv_2)),
+
+  \forall{}o_1, o_2 \in O : o_2 \in fv_1(o_1) \leftrightarrow o_1 \in fv_2(o_2)
+
+That one should not be impacted, as long as the opposite_v function is sound in
+the viewtype.
