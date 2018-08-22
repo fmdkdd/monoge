@@ -13398,3 +13398,44 @@ Opposites should be consistent:
 
 That one should not be impacted, as long as the opposite_v function is sound in
 the viewtype.
+
+* [2018-08-22 mer.]
+** Formalization of views, third                                   :emfviews:
+Each object has at most one container.  fv^1 and fv^2 are feature value functions
+for containment references:
+
+- \forall_{}o, o_1, o_2 \in O, o \in fv^1(o_1) \wedge o \in fv^2(o_2) \rArr o_1 = o_2 \wedge
+  feature(fv^1) = feature(fv^2)
+
+That one should hold on the views as long as it holds on the base model.
+
+Similarly, since we are only taking things out of the base model, there is no
+way to add a containment cycle.
+
+*** Choices in formalization
+To restrict the functions from Ecore models to viewtypes, we have at least two
+obvious solutions.
+
+1. domain_V : F_V \to C_V, \forall{}f \in F_V domain_V(f) = domain(f)
+2. domain_V = { (f, c) \in F_V \times C_V | domain(f) = c }
+
+In the first, domain_V is total, but in the second we do not know.  However, in
+the first form we have to show that \forall{}f \in F_V, domain(f) \in C_V.  In the second form
+this is given, and we have to show instead that domain_V is total: \forall{}f \in F_V, \exists{}c \in
+C_V s.t. domain_V(f) = c.
+
+The argument will be about the same for both proofs (by construction of F_V and
+C_V), so it doesn't really matter.
+
+However, for a partial function like opposite_V, then the second form is better.
+
+There is a minor argument whether c \in superTypes(c).  To me, it's most
+convenient to answer yes.  Inheritance is reflexive and transitive.  And it
+makes definitions simpler.
+
+There is an oversight in Westfechtel: it's unclear what single-valued references
+which are not set have as value.  For multi-valued features, it can be the empty
+set, or the empty list.  But for single-valued features, the feature value
+function /is/ defined, but we still need something to stand as value.  That
+means the range of the feature value function includes that special value.  \perp is
+fine.
