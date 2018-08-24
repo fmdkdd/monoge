@@ -13439,3 +13439,13 @@ set, or the empty list.  But for single-valued features, the feature value
 function /is/ defined, but we still need something to stand as value.  That
 means the range of the feature value function includes that special value.  \perp is
 fine.
+
+* [2018-08-24 ven.]
+** Formalizing change to models and weaving models                 :emfviews:
+Westfechtel's definitions are immutable.  If we want to give an account of view
+maintenance, we have to add functions that change values of features.
+
+Also, we could probably tweak the definition of weaving models to be operations
+that the viewtype accepts dynamically, rather than a list of rules from which
+the viewtype reads only once at creation time.  That would let us alter a
+viewtype and a view by applying a filter dynamically.
