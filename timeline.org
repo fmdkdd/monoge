@@ -13449,3 +13449,53 @@ Also, we could probably tweak the definition of weaving models to be operations
 that the viewtype accepts dynamically, rather than a list of rules from which
 the viewtype reads only once at creation time.  That would let us alter a
 viewtype and a view by applying a filter dynamically.
+
+* [2018-08-27 lun.]
+** Metamodel extension                                             :emfviews:
+Currently we allow adding new concepts, attributes and references to the
+viewtype.
+
+This may break some properties of the viewtype.
+
+The viewtype weaving model has a set of new concepts C_WM, a set of new attributes
+A_WM, and new references R_WM.
+
+The viewtype is then constructed as:
+
+- C_V = { c \in C | ... } \cup C_WM
+- A_V = { a \in A | ... } \cup A_WM
+- R_V = { r \in R | ... } \cup R_WM
+
+We also need to supply supertype information for new concepts.  But we can have
+base classes or new classes as supertypes, so supertypes_WM : C_WM \to 2^{(C \cup NC)}.
+
+From there, we can build supertypes_V:
+
+- supertypes_V(c) = supertypes(c) \cap C_V   if c \in C
+                   supertypes_WM(c) \cap C_V otherwise (c \in C_WM)
+
+There's an interesting situation where we add a new class B that has A as
+supertypes, and A is also excluded by the weaving model.  It's a bit
+nonsensical, but what should we do with it?  Intersection with C_V makes sure
+these do not appear.
+
+Now I'm wondering, do I even need to spell out that intersection with C_V in the
+definition?  If the codomain of supertypes is 2^{C_V}, it seems pretty clear that
+we can have only elements of C_V.  On the other hand, it's less explicit.  Hmm,
+maybe it's more natural to leave it out, but I feel it's better to have it
+explicit.
+
+At this point it becomes cumbersome to carry three different definitions of
+supertypes.  But it also maps best to what we have in the implementation.
+
+Similarly, all the functions of the set P have a correspondance in P_WM: domain,
+range, many, opposite...
+
+Opposite has the interesting case where we add a new reference as an opposite to
+an existing association.
+
+After that, we have the weaving model for views.  If we add a new concept to the
+viewtype, then we need a way to add new instances to the view through the view
+weaving model.  This can be done by extension, as in a set O_WM of new objects.
+Or by intension, as a function of O to the set of all objects that can be
+instantiated from the classes in C_V.
