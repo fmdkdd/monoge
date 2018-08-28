@@ -13499,3 +13499,44 @@ viewtype, then we need a way to add new instances to the view through the view
 weaving model.  This can be done by extension, as in a set O_WM of new objects.
 Or by intension, as a function of O to the set of all objects that can be
 instantiated from the classes in C_V.
+
+* [2018-08-28 mar.]
+** Other formalisms                                                :emfviews:
+Z. pointed me to a couple of relevant Ecore formalisms:
+
+- View-based model-driven software development with ModelJoin, Burger et al.
+- Reconstructing Complex Metamodel Evolution, Vermolen et. al
+
+First one is particularly relevant because it's about another view mechanism.
+They do not seem to prove any meaningful property about their views however;
+their definitions only serve to give a semantics to ModelJoin.
+
+** Meeting with H                                                  :emfviews:
+We figured a few things out.
+
+1. In a <- b <- c with excluded(b) = true, we can state that supertypes_V(c) = {
+   a } instead of redefining supertypes_V^{+}.  It's equivalent, but it makes things
+   less awkward (the transitive closures are canonically defined).
+
+2. We should make an option in the weaving model for cascading subtypes
+   filtering, which is the first behavior I retained for solving the subtypes
+   problem.  Both options seem valid in hindsight, maybe cascading is more
+   intuitive.
+
+3. Referential integrity is free, because R_V does not contain any reference
+   whose range is filtered out.  However, need to check if it's still true in
+   more complex cases where we filter a parent class, and have a reference which
+   targets the child type.
+
+4. Proposition 7 is defined at the model level, but it seems it could be more
+   directly defined at the metamodel level?
+
+5. For view maintenance and updates, we can just say that we have OCL requests
+   that compute a set of view objects, or attributes, and whenever we update a
+   contributing model, then we run these requests again to obtain a modified
+   view.  No need to actually know what is inside these requests.
+
+   No need either to state that we have a dependency graph between these
+   requests and model features, which helps us determine the minimal set of
+   requests we need to re-execute.  That only helps performance, and has no
+   impact on the semantics.
