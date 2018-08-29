@@ -13540,3 +13540,71 @@ We figured a few things out.
    requests and model features, which helps us determine the minimal set of
    requests we need to re-execute.  That only helps performance, and has no
    impact on the semantics.
+
+* [2018-08-29 mer.]
+** Containment cycles                                    :emfviews:formalism:
+If we define contains on the metamodel as:
+
+- contains = { (f_1, f_2) \in F^2 | containment(f_1) \wedge range(f_1) = domain(f_2) }
+
+We can state that the metamodel has no containment cycles if:
+
+- \forall{}f \in F : (f,f) \notin contains^{+}
+
+This one is a stronger property.  No containment cycles at the model level
+implies no contaiment cycles at the metamodel level.  However, in the case of an
+empty model, we could have a containment cycle at the metamodel level.
+
+So forbidding cycles at the metamodel level seems better.
+
+** Revamping inheritance                                 :emfviews:formalism:
+The supertypes_V definition is slightly more complex.  But it seems to make more
+sense.  Seems to work with multiple inheritance.  Only weird case I can think of
+is the diamond:
+
+A <- B <- D
+A <- C <- D
+
+When you filter B, you end up with:
+
+A <- C <- D
+A <- D
+
+and clearly A <- D is redundant.  But is that an issue?  Not really.  If it
+becomes one, we can add that case to the definition of supertypes_V.
+
+Another thing is that supertypes shouldn't be reflexive, as that makes the
+supertypes_V definition more cumbersome.
+
+One thing lacking from Westfechtel is a clear connection between a class and its
+features.  We can define a relation:
+
+- features(c \in C) = { f \in F | domain(f) = c }
+
+but usually we will want all the features of a class, including inherited ones:
+
+- allfeatures(c \in C) = { f \in F | domain(f) = c
+                                \vee (\exist{}s \in supertypes^{+}(c) : domain(f) = s) }
+
+
+For a feature f \in F, we can access its value with get_f : O \to val.  The domain can
+be restricted to the set of objects that respond to the feature f, that is, the
+feature must belong to the features of the instantiating class or one of its
+supertype:
+
+- { o \in O | f \in allFeatures(class(o)) }
+
+The codomain depends on the feature.  A many-valued feature will range over sets
+of values of range(f).  A single-valued feature will be either v \in range(f) or
+\perp, indicating the absence of value.
+
+We can change the value of a feature for an object o using set_f : O \times val \to O.
+
+- get_f(set_f(o, v)) = v
+
+To populate new associations, the weaving model contains requests.  Each new
+association has a request r \in Req.  The value of the new association in the view
+come from r.  Whenever the base model is updated, we can reconstruct the view
+using these requests:
+
+- O_V = { o \in O | class(o) \in C_V } \cup { r(O) | \forall{}r \in Req }
