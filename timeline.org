@@ -12954,7 +12954,7 @@ p. 114
 last par.  s/sigal/signal/
 
 * [2018-08-09 jeu.]
-** Thinking about view maintenance                                 :emfviews:
+** Thinking about view maintenance                       :emfviews:formalism:
 View maintenance works in EMF Views due to virtual objects being just proxies to
 concrete objects.
 
@@ -13000,7 +13000,7 @@ for ATL or other
   make sense.
 
 * [2018-08-10 ven.]
-** Attempt at a formal model for EMF Views                         :emfviews:
+** Attempt at a formal model for EMF Views               :emfviews:formalism:
 Following Westfechtel.
 
 Ecore model is a tuple (C,D,F,P), resp. sets of classes, data types, features
@@ -13100,7 +13100,7 @@ That's a start.  That only covers filters, not even aggregation of Ecore models,
 and not yet extension.
 
 * [2018-08-13 lun.]
-** Improving the rules                                             :emfviews:
+** Improving the rules                                   :emfviews:formalism:
 The rules:
 
 - A_V = { a \in A | \not filtered(a) \wedge \not filtered(domain(a)) \wedge \not filtered(range(a)) }
@@ -13239,7 +13239,7 @@ level of implementation.
 So it looks like this model is mostly useful for formalizing how filters work.
 
 * [2018-08-14 mar.]
-** About filtering and inheritance                                 :emfviews:
+** About filtering and inheritance                       :emfviews:formalism:
 First of all, in blacklisting, it's not obvious that we should remove C when B
 is filtered.
 
@@ -13323,7 +13323,7 @@ be expressed as base OCL constraints.  They then provide an executable semantics
 for full conformance (including additional, metamodel-specific OCL constraints).
 
 * [2018-08-20 lun.]
-** Formalization of views proper                                   :emfviews:
+** Formalization of views proper                         :emfviews:formalism:
 A model instantiated from an Ecore model (C,D,F,P) is a tuple (O,class,FV): a
 set of objects O, a function /class/: O \to C from objects to their class, and a
 set of feature value functions.
@@ -13351,7 +13351,7 @@ where /feature/ : FV \to F is the bijective function that associates a feature
 value function to its owning feature.
 
 * [2018-08-21 mar.]
-** Formalization of views, contd.                                  :emfviews:
+** Formalization of views, contd.                        :emfviews:formalism:
 If we look at Westfechtel properties for models, it's easy to see they hold for
 views as well.
 
@@ -13400,7 +13400,7 @@ That one should not be impacted, as long as the opposite_v function is sound in
 the viewtype.
 
 * [2018-08-22 mer.]
-** Formalization of views, third                                   :emfviews:
+** Formalization of views, third                         :emfviews:formalism:
 Each object has at most one container.  fv^1 and fv^2 are feature value functions
 for containment references:
 
@@ -13441,7 +13441,7 @@ means the range of the feature value function includes that special value.  \per
 fine.
 
 * [2018-08-24 ven.]
-** Formalizing change to models and weaving models                 :emfviews:
+** Formalizing change to models and weaving models       :emfviews:formalism:
 Westfechtel's definitions are immutable.  If we want to give an account of view
 maintenance, we have to add functions that change values of features.
 
@@ -13451,7 +13451,7 @@ the viewtype reads only once at creation time.  That would let us alter a
 viewtype and a view by applying a filter dynamically.
 
 * [2018-08-27 lun.]
-** Metamodel extension                                             :emfviews:
+** Metamodel extension                                   :emfviews:formalism:
 Currently we allow adding new concepts, attributes and references to the
 viewtype.
 
@@ -13501,7 +13501,7 @@ Or by intension, as a function of O to the set of all objects that can be
 instantiated from the classes in C_V.
 
 * [2018-08-28 mar.]
-** Other formalisms                                                :emfviews:
+** Other formalisms                                      :emfviews:formalism:
 Z. pointed me to a couple of relevant Ecore formalisms:
 
 - View-based model-driven software development with ModelJoin, Burger et al.
@@ -13511,7 +13511,7 @@ First one is particularly relevant because it's about another view mechanism.
 They do not seem to prove any meaningful property about their views however;
 their definitions only serve to give a semantics to ModelJoin.
 
-** Meeting with H                                                  :emfviews:
+** Meeting with H                                        :emfviews:formalism:
 We figured a few things out.
 
 1. In a <- b <- c with excluded(b) = true, we can state that supertypes_V(c) = {
