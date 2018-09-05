@@ -13608,3 +13608,10 @@ come from r.  Whenever the base model is updated, we can reconstruct the view
 using these requests:
 
 - O_V = { o \in O | class(o) \in C_V } \cup { r(O) | \forall{}r \in Req }
+
+* [2018-09-05 mer.]
+** Reading the ModelJoin paper                 :emfviews:formalism:modeljoin:
+They have a straightforward (although symbol-heavy) set theory-based formalism.
+They don't try to prove any property though: they just describe how the
+modeljoin operators work, by giving the set the operators construct, and the
+properties the operators hold.
