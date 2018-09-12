@@ -13615,3 +13615,25 @@ They have a straightforward (although symbol-heavy) set theory-based formalism.
 They don't try to prove any property though: they just describe how the
 modeljoin operators work, by giving the set the operators construct, and the
 properties the operators hold.
+
+* [2018-09-12 mer.]
+** Preparing a cool demo with EGL templates           :emfviews:egl:megamart:
+We wanted to show off a nice interactive HTML page constructed from an EGL
+template extracted from a traceability view.
+
+But of course, EGL template don't work anymore with the current version.
+
+Specifically, the template runs, but it finds no instances of Log.  I had the
+issue [[*Fixing EGL templates with EMF Views][previously]], and I guess it's the same issue still: EGL loads a view and a
+viewpoint (V_1) separately, directly from file, and loading the view creates a
+separate instance of viewpoint (V_2).  Since both instances are different, their
+virtual elements are differ as well, and thus in the view, there are no
+instances of V_{2}.Log, only instances of V_{1}.Log.
+
+My solution at the time was to use a viewpoint registry to keep track of loaded
+viewpoints.  But this turned out to be [[*Viewpoint registry may not be a good solution][a bad solution]], so I reverted the
+registry.  And probably this broke EGL, but we didn't have any tests for that.
+
+(Also, templates presumably can work if created programmatically.  The headache
+is mostly a result of the interface assuming a standard Ecore metamodel as file
+or URI.)
