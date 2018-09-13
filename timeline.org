@@ -13637,3 +13637,22 @@ registry.  And probably this broke EGL, but we didn't have any tests for that.
 (Also, templates presumably can work if created programmatically.  The headache
 is mostly a result of the interface assuming a standard Ecore metamodel as file
 or URI.)
+
+* [2018-09-13 jeu.]
+** Repairing EGL templates                                     :emfviews:egl:
+Grmbl.  Spent a lot of time trying to make that work.  Had to resort to using
+the ViewpointRegistry trick again, since the Java API for calling EGL still
+requires us to give it a metamodel and a model separately.
+
+Maybe there's a better way.
+
+Managed to make it work by going to the design-runtime-demo branch.  And also I
+needed to tick the "Read on load" box in the EGL launcher.  Otherwise, the model
+was never loaded.
+
+Maybe that suffices to make it work in master as well?
+
+Yes!  Pfft.  Stupid error.  Anyway, now onto the fun stuff.
+
+Got something nice working, so we can quickly see which requirements are tied to
+a trace and vice-versa.  Just needs some polish.
