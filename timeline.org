@@ -13656,3 +13656,108 @@ Yes!  Pfft.  Stupid error.  Anyway, now onto the fun stuff.
 
 Got something nice working, so we can quickly see which requirements are tied to
 a trace and vice-versa.  Just needs some polish.
+
+* [2018-10-02 mar.]
+** Hackathon                                                       :megamart:
+*** WP4 Challengy CSY_1 Log interpretation
+They want to join runtime logs to specification.  They have:
+
+- A B-language model
+- A B ecore metamodel
+- Some generated C code
+
+We picked that one.
+
+*** Post-mortem
+We wanted to do something very similar to the petstore demo that links runtime
+logs to design requirements.
+
+They have B code for specifying a core safe subset of their software.  The B
+generates C code, which has also unsafe parts.  And they have large runtime
+traces (~500MB CSV files) that they want to connect to the B code (because they
+are mostly interested in the safe core).
+
+Traces look like this:
+
+: <timestamp> <input/Output variable name> <variable value>
+
+One thing they want is to find out what happened in the code when the variable
+"fallback" occurs with a non-zero value.  Ideally, they want to find out what
+branches were taken in the code when that value appears.
+
+What we wanted to do for the day was to first load their B code and the traces
+into EMF-usable models.
+
+For the trace, we just had to define a new Ecore metamodel, then transform the
+CSV into the XMI file.  That was done by R and J.
+
+My part was to load the B model.  They already provided XML files of the B AST
+they were able to generate.  And an XSD file for the XML.  It was supposed to be
+easy, but it wasn't.
+
+We generated an Ecore from the XSD, and tried to load an XMI file (generated
+from the XML -- only the header changes) with that Ecore.  It didn't work.
+There is mismatch between the XMI tags and the classifiers in the Ecore
+metamodel.
+
+In the XML/XMI files, we have tag names like Machine, Abstraction,
+Operations... but in the Ecore file we have classifiers called MachineType,
+AbstractionType, OperationsType...
+
+Thus, when trying to load the XMI file, Ecore complains that it cannot
+instantiate the "Machine" class.
+
+We tried /several/ things suggested online to no avail.  We tried generating the
+code, regenerating the Ecore from XSD, looked for loading options, ...
+
+Dropping the "Type" suffix from classifiers looked like the only sound
+workaround.  I did that by generating the Ecore package from XSD
+programmatically and iterating over the classifiers.  But there was a
+complication.  In the XSD there are presumably homonyms, which get disambiguated
+in the Ecore package by adding increasing numbers: ValueType, ValueType1,
+ValueType2...
+
+And, somehow, we have enumerations and classes with the same name in the Ecore
+package.  So when loading the XMI with the doctored Ecore package, I'm now
+getting the error:
+
+: org.eclipse.emf.ecore.impl.EEnumImpl cannot be cast to org.eclipse.emf.ecore.EClass
+
+*** Future work with CSY
+All in all, the XML from B was already a bit underwhelming, because it wasn't a
+real graph of the B project like what we can get from MoDisco.
+
+It was simply an AST of B files as XML (without comments).  A call site in
+module A wasn't linked in any way to the definition site in module B.  So even
+if we had been able to load the XML files into EMF, we would have had to
+reconstruct this information by through additional analysis on the single ASTs.
+
+The proper way to go forward is to create an actual graph of the B code
+(preserving comments while we are at it) as an XMI directly.  Maybe using
+MoDisco as a base technology, where we plug-in a custom discoverer for B code
+that emits a new metamodel.
+
+Then we have a good basis to answer the problem.
+
+To gather useful information though, we probably will have to enhance the B code
+to emit additional debugging information, e.g., record which branches were taken
+at runtime, and put that into the traces.
+
+From my understanding though, they really wanted to be able to do post-mortem
+analysis of existing traces.  For these traces, we wouldn't have the additional
+information available, so that's a harder problem.  My intuition is that we
+should be able to get /some/ information by doing static analysis of the B code
+that generated the traces, since we know input variables, we could determine for
+instance that a branch had to have been taken, or have not been taken.  If we
+have all the inputs, it's in theory feasible (at worst, we just run the code
+again).  But we still have to look at the code and inputs in detail to know if
+that would be doable.
+
+*** Potential collaboration with LAQ
+A potential collaboration with L'aquila is to use JTL traces as weaving models
+for EMF Views.  JTL lets you create transformations that links a source model to
+a target model.  They have an ATL-like language to create traceability links
+between source and target elements.  In the end, they have a traceability model,
+where all these links exist.  Basically, this is very similar to a view weaving
+model for us.  We could maybe use these traceability links as weaving model
+instead of ECL.
