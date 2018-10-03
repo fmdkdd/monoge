@@ -13753,7 +13753,7 @@ have all the inputs, it's in theory feasible (at worst, we just run the code
 again).  But we still have to look at the code and inputs in detail to know if
 that would be doable.
 
-*** Potential collaboration with LAQ
+*** Potential collaboration with UAQ
 A potential collaboration with L'aquila is to use JTL traces as weaving models
 for EMF Views.  JTL lets you create transformations that links a source model to
 a target model.  They have an ATL-like language to create traceability links
@@ -13761,3 +13761,133 @@ between source and target elements.  In the end, they have a traceability model,
 where all these links exist.  Basically, this is very similar to a view weaving
 model for us.  We could maybe use these traceability links as weaving model
 instead of ECL.
+
+* [2018-10-03 mer.]
+** XSD to Ecore issues                                         :megamart:xsd:
+The EEnum to EClass issue was caused by having a 'Machine' enum in the Ecore but
+only a 'MachineType1' class.  Renaming the MachineType1 to Machine and the enum
+to MachineEnum fixed it.
+
+Now, the Machine class cannot find the 'Abstraction', 'Imports' and 'Operations'
+/features/.
+
+When looking at a correct XMI, we have:
+
+#+BEGIN_EXAMPLE
+<Trace>
+  <logs message="">
+#+END_EXAMPLE
+
+So the 'logs' feature is used directly as a tag in XMI.  Looking at the XMI
+generated from XML:
+
+#+BEGIN_EXAMPLE
+<Machine>
+  <Abstraction>Treatment</Abstraction>
+#+END_EXAMPLE
+
+But the 'Machine' class in the Ecore has only an 'abstractions' feature, so it
+should rather be:
+
+#+BEGIN_EXAMPLE
+<Machine>
+  <abstraction value="Treatment"/>
+#+END_EXAMPLE
+
+So the XMI itself is malformed, with respect to what EMF accepts.
+
+Looking at [[ All these names can be control with ecore:name annotations in the
+schema (or you could change then in your Ecore manually).][this Eclipse thread]], the XSD to Ecore conversion is the way it is because XSD
+has different constraints than Ecore.
+
+Crucially, we can doctor the XSD by adding 'ecore:name' annotations to instruct
+the conversion process which name to take for a specific element.
+
+But this doesn't solve the issue that EMF is unable to load the XMI correctly,
+because the XML -> XMI conversion is busted.
+
+So the issue now is more: how to load an XML with a specific Ecore?
+
+Aaah, but apparently, when you generate the code, there /is/ a resource factory
+implementation for your specific package!  So I may be able to use that when
+loading the XML directly?
+
+[Waiting for after my demo, since yesterday evening when preparing the demo
+MoDisco was refusing to load with the Bxml plugin activated, for some mysterious
+reasons]
+
+Success!
+
+** Properly loading an XML from XSD as an EMF model               :xsd:ecore:
+The recipe is then:
+
+1. Create a genmodel from the XSD
+
+   New project \to EMF Generator Model
+
+   Then you have to select 'XML Schema' as 'Model Importer'.  I didn't have XML
+   schema as an option until I installed most XSD-related plugins (especially,
+   XSD to Ecore mapping).
+
+2. Generate the model code
+
+   Open the genmodel \to right-click on the root element \to Generate model code
+
+3. Add the 'suppress document root' option in the generated ResourceFactoryImpl
+
+   The XML file should load without it, but I'm interested in getting the same
+   kind of runtime object I would get out of loading an XMI.  This option does
+   it.  You could add it as an option when loading the resource, but for me it
+   makes more sense to have it as default.
+
+   In the generated ResourceFactoryImpl in the model.util package:
+
+   #+BEGIN_SRC java
+   result.getDefaultLoadOptions().put(XMLResource.OPTION_SUPPRESS_DOCUMENT_ROOT, Boolean.TRUE);
+   #+END_SRC
+
+4. Load the XML file with the generated ResourceFactoryImpl
+
+   Arguably the only trick in the approach is to use the generated
+   ResourceFactoryImpl in order to load the XML correctly.  The code is fairly
+   straightforward:
+
+   #+BEGIN_SRC java
+   public static void main(String[] args) {
+     BxmlPackageImpl.eINSTANCE.eClass();
+
+     Resource.Factory.Registry.INSTANCE
+       .getExtensionToFactoryMap()
+       .put("bxml", new BxmlResourceFactoryImpl());
+
+     Resource r = new ResourceSetImpl().getResource("path-to.bxml", true);
+   }
+   #+END_SRC
+
+   And now the resource contains an instance of the top-level element.
+
+** Some files do not conform to the XSD                        :xsd:megamart:
+In truth, I also had to tweak the Bxml file, which presumably was not conforming
+to the XSD?
+
+The typref feature of ~Boolean_Literal~ was not known:
+
+: <Boolean_Literal value='TRUE' typref='2043437594'/>
+
+and the TypeInfos tag shouldn't contain anything:
+
+: <TypeInfos>
+:   <Type id='2043437594'>
+:     <Id value='BOOL'/>
+:   </Type>
+: </TypeInfos>
+
+xmllint agrees:
+
+#+BEGIN_EXAMPLE
+$ xmllint Treatment_i.bxml --schema bxml.xsd
+...
+Treatment_i.bxml:67: element Boolean_Literal: Schemas validity error : Element 'Boolean_Literal', attribute 'typref': The attribute 'typref' is not allowed.
+Treatment_i.bxml:128: element Type: Schemas validity error : Element 'Type': This element is not expected. Expected is ( TypeInfo ).
+Treatment_i.bxml fails to validate
+#+END_EXAMPLE
