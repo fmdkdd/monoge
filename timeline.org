@@ -13891,3 +13891,55 @@ Treatment_i.bxml:67: element Boolean_Literal: Schemas validity error : Element '
 Treatment_i.bxml:128: element Type: Schemas validity error : Element 'Type': This element is not expected. Expected is ( TypeInfo ).
 Treatment_i.bxml fails to validate
 #+END_EXAMPLE
+
+* [2018-10-04 jeu.]
+** Looking to properly discover B                                     :csy:b:
+[[https://sourceforge.net/p/abtools/code/HEAD/tree/src/ABTOOLS/GRAMMAR/B.g][Found]] some ANTLR grammar file for B.  Not so small.
+
+There's also [[https://sourceforge.net/p/bcomp/code/HEAD/tree/trunk/B_COMPILER/][this source code]] for the B compiler from CSY.  Not updated since
+2015, and there's no Yacc file to be found.
+
+Grabbed the source code and compiled it, because I noticed an interesting
+option:
+
+: print("\t-[s|l] <file>  : [save|load] Betree [into|from] file\n") ;
+
+The Betree is the tree constructed after parsing and even the semantic and
+dependency analyses.  I wanted to know what this dump looked like, because we
+could maybe use it to export to XML/XMI.
+
+But joke's on me, because that option actually does nothing in the code.  It's
+not implemented!  Probably that option was dropped at some point, but among the
+revisions available at the sourceforge repo, the code for this option is nowhere
+to be found.
+
+Ahah!  There is actually decent documentation for the Betree object and its API
+under in ~doc/Specification_BeTree.pdf~.  In we can find that saving a Betree to
+file is done by the ~compiler_save_betree~ function, which is actually commented
+out in ~c_api.cpp~!
+
+[[https://sourceforge.net/p/bcomp/code/111/][r111]] is the revision which commented out this code.  It introduced compatibility
+for 64bit AtelierB.  Maybe the save/load of betree was not compatible with 64bit
+and that part was dropped?
+
+I will try to uncomment the code.  If it crashes, I can use r110 instead.
+
+* [2018-10-09 mar.]
+** Trying to fix exceptions in Sample Ecore Editor                 :emfviews:
+Changin VirtualEClassifier.setExtendedMetaData to a no-op triggers another
+exception: ClassCast from EObjectContainmentEList$Resolving to EObject.
+
+: EObject otherEObject = (EObject)((EObject)value).eGet(eOtherEnd);
+
+Somehow, we are getting an EObjectContainmentEList from the eGet, even though
+the feature should not be a containment one in this branch.  Thus, the EObject
+cast fails.
+
+Maybe EObjectContainmentEList can be given as a result for non-containment
+features?  Or something fishy is going on.
+
+This happens reliably with the Petstore view, when clicking on any element of
+the UML package, but not with other packages.
+
+Also, this happens because the editor is trying to populate a menu with commands
+for creating objects, which is currently not useful for views.
