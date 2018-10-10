@@ -13943,3 +13943,24 @@ the UML package, but not with other packages.
 
 Also, this happens because the editor is trying to populate a menu with commands
 for creating objects, which is currently not useful for views.
+
+* [2018-10-10 mer.]
+** A proper fix for EGL templates?                             :egl:emfviews:
+I need to find a way to make a proper fix, since workarounds are not gonna cut
+it, and EGL templates are actually useful for our demo purposes.
+
+The problem currently is that EGL expects a metamodel and model given
+separately, but the view (model) creates its own viewpoint (metamodel).  The
+viewpoint, when created, will be registered in the package registry.  So maybe
+we can just pass an URI to the view, and it will load the viewpoint from the
+registry there?
+
+Argh, what was I thinking.  The package registry contains packages, not
+viewpoints.  Ok so we need to save the viewpoints in a registry.  But we can
+make it opt-in.  The viewpoint file can have an option saveInRegistry, and the
+view can refer to the viewpoint from its URI instead of file.
+
+Okay, that worked!  For some reason, loading the view now takes forever though.
+Need to investigate.
+
+Hmm, now it seems to work fine.  Curious.
