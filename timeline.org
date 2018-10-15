@@ -13964,3 +13964,48 @@ Okay, that worked!  For some reason, loading the view now takes forever though.
 Need to investigate.
 
 Hmm, now it seems to work fine.  Curious.
+
+* [2018-10-15 lun.]
+** Fix failing travis builds                            :travis:lfs:emfviews:
+My deployment ended with:
+
+#+BEGIN_EXAMPLE
+ERROR: Authentication error: Authentication required: You must have push access to verify locks
+error: failed to push some refs to 'git@github.com:atlanmod/emfviews.git'
+Script failed with status 1
+#+END_EXAMPLE
+
+Was my deployment key suddently invalid?  No, it turns out this is a [[https://github.com/git-lfs/git-lfs/issues/2284][Git LFS
+error]].  I used Git LFS to include the Java model for the Petstore example since
+it was a few megabytes.  But apparently this broke the deployment script.
+
+One workaround is to remove the pre-push hook for LFS, which is harmless here
+since we don't touch the LFS during the deployment.
+
+** Looking to upgrade the atlanmodexp server                    :atlanmodexp:
+There is a way to load an image via IDRAC, but you need to use the virtual
+console to attach it.  The virtual console is a Java applet.  I installed the
+icedtea plugin and it launches, but after clicking through a few dialog boxes,
+it finally fails with "Connection failed".
+
+Crawled a bit, found [[https://gist.github.com/xbb/4fd651c2493ad9284dbcb827dc8886d6][steps]] to connect to the virtual console bypassing the
+webstart non-sense.  Still "Connect failed".  Tried to change the java.security
+file as suggested (to accept the disabled SSLv3 algo), no success.  Tried the
+both credentials of idrac as user/password and the ones supplied in the
+viewer.jlnp file.  No success.
+
+Maybe updating idrac will do the trick?
+
+It was a bit annoying to find the right file, as the DELL support site is a
+mess.  The surefire way is to use the service tag/express code.  Then look for
+iDRAC.  Ultimately, I found [[https://www.dell.com/support/home/us/en/04/drivers/driversdetails?driverId=MXKG2&osCode=WS8R2&productCode=poweredge-r710][this page]], which only had windows exe.  But in fact,
+the ~iDRAC6_2.91_A00_FW_IMG.exe~ is an executable archive which yields a
+firwmare image that can be accepted by Idrac.  Using Wine was enough.
+
+Trying to update through the iDRAC interface failed though.  Trying again to
+"wait 5 minutes and click update", as suggested [[https://www.dell.com/community/Systems-Management-General/iDRAC6-firmware-upgrade-failed-during-process/td-p/3855103][here]].  No dice.
+
+Maybe I need to update the Lifecycle Controller first?  Hmm, [[https://www.dell.com/support/article/us/en/19/sln292343/poweredge-server-lifecycle-controller-update?lang=en][looks like]] we need
+hardware access for that.
+
+So I give up.  We need hardware access to do anything here.
