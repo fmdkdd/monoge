@@ -14009,3 +14009,57 @@ Maybe I need to update the Lifecycle Controller first?  Hmm, [[https://www.dell.
 hardware access for that.
 
 So I give up.  We need hardware access to do anything here.
+
+* [2018-10-24 mer.]
+** Reading about news MODELS'18 papers on view              :emfviews:papers:
+First is Incremental View Model Synchronization Using Partial Models.
+
+Strange focus on composability of view transformations and on parallel
+transformations.  Not really well motivated.  Approach is incremental though,
+but built on VIATRA, so reusing its incremental graph query engine.
+
+Heavy use of mathematical notation that is often ill-defined or not at all.  Not
+sure it makes the text clearer.
+
+Section 2.2 is a useful classification of transformation engines (batch,
+incremental, consistent, validating).  There's an accompanying comparison of
+existing approaches.
+
+Second paper is Distributed Graph Queries for Runtime Monitoring of
+Cyber-Physical Systems.
+
+The relevant part for us is this:
+
+#+BEGIN_QUOTE
+Runtime monitors are synthesized by /transforming high-level query specifi-
+cations into deployable, platform dependent source code for each computation/
+unit used as part of a monitoring service.  The synthesis includes a query opti-
+mization step and a code generation step to produce platform-dependent C++
+source code ready to be compiled into an executable for the platform.
+#+END_QUOTE
+
+Enticing.  But immediately followed by disappointment:
+
+#+BEGIN_QUOTE
+Due to space restrictions, this component of our framework is not detailed in
+this paper.
+#+END_QUOTE
+
+There's another bit:
+
+#+BEGIN_QUOTE
+A graph query is evaluated according to a search plan [43], which is a list of
+predicates ordered in a way that matches of predicates can be found efficiently.
+During query evaluation, free variables of the predicates are bound to a value
+following the search plan. The evaluation terminates when all matches in the
+model are found. An in-depth discussion of query optimization is out of scope
+for this paper, but Sect. 5 will provide an initial investigation.
+#+END_QUOTE
+
+But Section 5 does not in fact contains any relevant info.  However, the search
+plan paper sounds more promising.
+
+So the next paper is then An algorithm for generating model-sensitive search
+plans for pattern matching on EMF models.  But maybe that one is best to read
+/after/ we have an idea and prototype on how we want to tackle the similar
+problem for OCL queries.
