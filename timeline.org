@@ -14063,3 +14063,29 @@ So the next paper is then An algorithm for generating model-sensitive search
 plans for pattern matching on EMF models.  But maybe that one is best to read
 /after/ we have an idea and prototype on how we want to tackle the similar
 problem for OCL queries.
+
+* [2018-10-26 ven.]
+** Building a Bxml view                                    :csy:emfviews:emf:
+I had to regenerate the Ecore metamodel from the new XSD.  After that, no issues
+with loading bxml files or creating a dummy view with it.
+
+However, trying to populate a virtual association between traces and identifiers
+doesn't work.  The traces do have the new virtual feature, but the identifiers
+don't.  Even with an always-true matching model predicate, the new virtual
+associations remain empty.
+
+There's something funky in these bxml models.  Clicking on identifier instances
+in MoDisco often triggers (but not always!), cast exceptions in
+VirtualEObject.dynamicGet:
+
+#+BEGIN_SRC java
+Object value = concreteEObject.eGet(concreteFeature);
+if (feature.isMany()) {
+  @SuppressWarnings("unchecked")
+  EList<EObject> list = (EList<EObject>) value;
+  return new VirtualEList(list, virtualizer);
+#+END_SRC
+
+See, I thought that a many-valued features would always be an EList... but here
+it's not.  It's a BasicFeatureMap.  I knew the day would come where we would
+have to handle feature maps.  Now I need to brush up.
