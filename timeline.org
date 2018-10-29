@@ -14089,3 +14089,54 @@ if (feature.isMany()) {
 See, I thought that a many-valued features would always be an EList... but here
 it's not.  It's a BasicFeatureMap.  I knew the day would come where we would
 have to handle feature maps.  Now I need to brush up.
+
+* [2018-10-29 lun.]
+** Feature maps                                        :csy:emfviews:emf:xsd:
+Chapter 8 of the EMF bible was illuminating.  A feature map is mostly a way to
+handle the situation where values need to appear in multiple features.
+
+One of the use-case cited is for expressing the ~xsd:choice~ relationship in XSD
+schemas.
+
+Chapter 9 also helpfully describes the XSD to Ecore process, along with the
+annotations we can add to the XSD in order to tweak the resulting Ecore.
+
+So, on the one hand, EMF Views should support feature maps.  But on the other
+hand, as the current bxml output is probably ill-suited for views (missing or
+garbled info ...), we might as well export to a proper XML.  Or better yet,
+directly to XMI with a simple corresponding Ecore metamodel!
+
+** Dumping B syntax trees from the B compiler                         :b:csy:
+With r201, uncommenting the code and simply calling ~compiler_save_betree~ on
+the analysed btree is not enough:
+
+: bcomp: B_COMPILER/d_misc.cpp:419: void T_object::dump_disk(T_disk_manager*): Assertion `end - start == metaclass->get_size()' failed.
+
+What if.. I disable the assert?
+
+Haha!  It succeeds.  Now I have a binary file.  But I'm not sure which is
+simpler: reading that binary file and restoring the Betree info from it (in
+order to dump it as XMI), or modifying the B compiler to directly dump the info
+as XMI after the semantic analysis...  Presumably the latter has fewer steps.
+And I might benefit from the existing API for navigating Betrees... or I might
+fight it.  We'll see.
+
+Also, the binary file might not be quite correct.  The magic number I get is
+0fab ccba, whereas it should have the form x999 88yy.  So that binary dump is
+probably busted.
+
+The HTML dump is also useful.  However, it's concerning that most values inside
+the dump are:
+
+#+BEGIN_EXAMPLE
+ILLEGAL ADDRESS 0x0x55c082c51e18
+ILLEGAL ADDRESS 0x0x55c082c51f38
+ILLEGAL ADDRESS 0x0x55c082c52148
+ILLEGAL ADDRESS 0x0x55c082c5f628
+...
+#+END_EXAMPLE
+
+or NULL.
+
+Another helpful resource is [[https://tools.clearsy.com/tools/b-compiler/b-compiler-tutorial/][this tuto]].  At least navigating operation names
+seems to work.  So I might be able to work out an XMI export.
