@@ -14140,3 +14140,103 @@ or NULL.
 
 Another helpful resource is [[https://tools.clearsy.com/tools/b-compiler/b-compiler-tutorial/][this tuto]].  At least navigating operation names
 seems to work.  So I might be able to work out an XMI export.
+
+* [2018-10-30 mar.]
+** Further Bcomp investigations                                       :b:csy:
+What a mess.
+
+It's all C++ files, but actually it's plain C in OO-style mixed with some C++.
+It's a mess of tabs and indentation and odious brace style.  There are debug
+#defines everywhere, and commented-out code.  And the API is strangely
+verbose...
+
+: res->get_root()->get_abstraction_name()->get_name()->get_value()
+
+I can understand the first two... but ~get_abstraction_name()->get_name()~,
+really?
+
+There's plenty of dead code as well.  The save/load options were not the only
+options left in the code but not plugged into anything.  The 'R' option is as
+well.
+
+But more importantly, I do not understand how the semantic analyses are supposed
+to work.  The syntactic analysis is fine.  The semantic one is supposed to look
+at other files to construct an actual graph.  So in the file ~Treatment_i.imp~,
+we have:
+
+#+BEGIN_SRC
+IMPLEMENTATION Treatment_i
+REFINES Treatment
+#+END_SRC
+
+which refers to ~Treatment~.  The bcomp will look for a the files called
+Treatment.ref, Treatment.mch and Treatment.sys, in that order.  Since it doesn't
+find Treatment.ref, it fails and exits.
+
+According to the doc, a .ref file is a refinement of an abstract machine.  The
+implementation could refine a refinement, I guess.  But the compiler should
+certainly keep looking.
+
+Thanks for strace, it looks like the bcomp is looking.. in the current
+directory!  And there's an ~-I~ option for including a directory in the lookup.
+That solves this issue.
+
+Looking at the ~Treatment_i.imp~ file, the bcomp has to open and parse 5 other
+(.mch) files.  Now I'm expecting that these 5 files are accessible as betrees
+objects.  Doesn't look like it?
+
+If I iterate over betrees:
+
+#+BEGIN_SRC c
+for (T_betree *cur = betree; cur; cur = cur->get_next_betree()) {
+   printf("%s\n", betree->get_root()->get_machine_name()->get_name()->get_value());
+}
+#+END_SRC
+
+I get:
+
+#+BEGIN_EXAMPLE
+Treatment_i
+Treatment_i
+Treatment_i
+Treatment_i
+Treatment_i
+Treatment_i
+#+END_EXAMPLE
+
+Maybe... ~machine_name~ is actually shared?  If I look at what operations each
+machine has instead:
+
+#+BEGIN_SRC c
+T_machine *mch = cur->get_root();
+T_op* op = mch->get_operations();
+while (op != NULL) {
+  string name = op->get_op_name()->get_value();
+  cout << "Operation name : " << name << endl;
+  op = (T_op*)op->get_next();
+}
+#+END_SRC
+
+#+BEGIN_EXAMPLE
+machine name: Treatment_i
+Operation name : aopp_authorization
+machine name: Treatment_i
+Operation name : aopp_authorization
+machine name: Treatment_i
+Operation name : is_train_in_par
+Operation name : is_train_stopped
+machine name: Treatment_i
+Operation name : are_doors_opening
+machine name: Treatment_i
+Operation name : get_inputs
+machine name: Treatment_i
+Operation name : print
+Operation name : urgent_print
+Operation name : flush
+#+END_EXAMPLE
+
+So they are not all the same!  But the have the same machine name, which is
+confusing to me.
+
+At this point I'm wondering if going the Xtext route to produce an Ecore from a
+reduced grammar would not be more productive.
