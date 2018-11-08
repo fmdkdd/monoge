@@ -14240,3 +14240,139 @@ confusing to me.
 
 At this point I'm wondering if going the Xtext route to produce an Ecore from a
 reduced grammar would not be more productive.
+
+* [2018-11-06 mar.]
+** Meeting with E
+Some directions for interesting research with applications to emulators:
+
+1. Use generic tools (like omniscient debuggers) on emulators
+2. Build a complete emulator system using MDE tools (a model of CPU instructions,
+   a model of GPU pipeline, a model of audio synthesis, ...)
+
+There's also a strong component of generating performant code.
+
+Maybe tackling real machines like GB or MD is too much work, but we can look at
+CHIP8 or simple derivatives.
+
+Another direction is in testing emulators: large-scale testing on a corpus of
+ROMS, or testing comparing the behavior of many different emulators.
+
+* [2018-11-08 jeu.]
+** Xtext grammar for B                                          :csy:b:xtext:
+Is not going quickly.  Making a grammar is hard!  I had trouble parsing binary
+expressions, because ANTLR doesn't like left recursions.  Luckily there's [[http://www.eclipse.org/Xtext/documentation/301_grammarlanguage.html][a
+section in the Xtext documentation]] about using assigned actions to eliminate
+left recursions.
+
+Still, even with this trick, the languages parses but we got a deep tree.  The
+solution was to re-read the aforementioned documenation carefully, and find out
+that writing this:
+
+: TermExpr ({Expr.left=current} '&' ...)
+
+instead of:
+
+: left=TermExpr ({Expr.left=current} '&' ...)
+
+made all the difference.  With the latter, we always construct an instance of
+the rule, adding the TermExpr instance as a feature.  With the former,
+since ~TermExpr~ is an unassigned rule we don't construct anything at this
+stage, and ultimately build a TermExpr directly.
+
+In my case I had multile levels, to handle operator precedence:
+
+#+BEGIN_SRC xtext
+Expr:
+  left=ImplyExpr ({AndExpr.left=current} '&' right=ImplyExpr)?
+
+ImplyExpr:
+  left=EqualExpr ({ImplyExpr.left=current} '=>' right=EqualExpr)?
+
+EqualExpr:
+  left=TermExpr ({EqualExpr.left=current} '=' right=TermExpr)?
+#+END_SRC
+
+So, this would construct an Expr containing an ImplyExpr, containing an
+EqualExpr, eventually containing a TermExpr, even though the expression was
+terminal (a constant, let's say).
+
+Dropping the ~left=~ as suggested by the doc gives me a single TermExpr for a
+constant, an ImplyExpr for a '=>', and so on.  Which is good!  But not perfect.
+
+See, the Imply and Equal expressions are clearly binary, but the AndExpr is not:
+it's n-ary.  So if you have:
+
+: a & b & c & d
+
+You end up with an unbalanced binary tree:
+
+#+BEGIN_EXAMPLE
+  And
+ /   \
+a    And
+    /   \
+   b    And
+       /   \
+      c     d
+#+END_EXAMPLE
+
+Which is unecessarily verbose.  At first I tried:
+
+: Expr
+:  ImplyExpr ({AndExpr.left=current} '&' rights+=ImplyExpr)*
+
+The multiplicy and the ~+=~ assignement ought to do it?  But no, still got the
+degenerate tree.
+
+Then I realised that the Kleene star probably applied to the assigned rule call,
+and wrote that instead:
+
+: ImplyExpr ({AndExpr.exprs+=current} ('&' exprs+=ImplyExpr)+)?
+
+So the right part is optional, because we can have a standalone ImplyExpr, but
+if we go into it then we do the tree rewriting to turn into an AndExpr, but then
+we just push the rest of the ImplyExpr in the same feature.  So now I have:
+
+#+BEGIN_EXAMPLE
+       And
+     / | | \
+    a  b c  d
+#+END_EXAMPLE
+
+which is much more palatable.
+
+Help.  I'm swarmed by non-LL decision errors, and I can't seem to find the
+cause.  I mean, I can comment stuff that looks recursive and then ANTLR stops
+complaining, but it doesn't /look/ recursive to me.  One problematic rule is
+Condition:
+
+#+BEGIN_SRC xtext
+Condition:
+  CondEq ({CondAnd.exprs+=current} ('&' exprs+=CondEq)+)?
+;
+
+CondEq returns Condition:
+  CondLessThan ({CondEq.left=current} '=' right=CondLessThan)?
+;
+
+CondLessThan returns Condition:
+  CondMinus ({CondLessThan.left=current} '<' right=CondMinus)?
+;
+
+CondMinus returns Condition:
+  CondTerm ({CondMinus.left=current} '-' right=CondTerm)?
+;
+
+CondTerm returns Condition:
+  '(' Condition ')'
+  | {Ref} var=[Variable]
+  | {IntLiteral} value=INT
+  | {BoolLiteral} value=BoolLiteralEnum
+#+END_SRC
+
+Specifically, if I remove the first alternative of CondTerm, then no more non-LL
+decision error.  However, it's not recursive!  If I'm taking the first
+alternative, I'm clearly advancing the token stream.  What gives?
+
+Ah!  [[https://blogs.itemis.com/en/debugging-xtext-grammars-what-to-do-when-your-language-is-ambiguous][This post]] suggests using ANTLRWorks which can help debugging the grammar.
+Will try that tomorrow.
