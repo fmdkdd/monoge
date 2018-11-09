@@ -14376,3 +14376,22 @@ alternative, I'm clearly advancing the token stream.  What gives?
 
 Ah!  [[https://blogs.itemis.com/en/debugging-xtext-grammars-what-to-do-when-your-language-is-ambiguous][This post]] suggests using ANTLRWorks which can help debugging the grammar.
 Will try that tomorrow.
+
+* [2018-11-09 ven.]
+** Xtext B grammar progress                                     :xtext:b:csy:
+After defeating the left-recursion hydra, I am now parsing all the B files!
+
+It's not a total victory yet, as I now have to fix the scoping in order to
+construct a proper graph of the project.
+
+Xtext references are not very useful for a general purpose language like B,
+because there are very little ways to distinguish the uses of the same token.
+At first I had variables, constants, sets and operations, but I had to drop
+constants and sets, since these could appear where variables could.. and the
+grammar is context-free.
+
+Still, the references work for Machines and Implementations, so I don't have to
+handle that.
+
+Next time: re-reading the linking/scoping part of the manual, and fixing that
+for the grammar.
