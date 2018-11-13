@@ -14395,3 +14395,17 @@ handle that.
 
 Next time: re-reading the linking/scoping part of the manual, and fixing that
 for the grammar.
+
+* [2018-11-13 mar.]
+** Xtext scoping                                                :xtext:b:csy:
+The [[http://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#scoping][Xtext documentation on scoping]] is a bit light.  The local scoping part is
+fine enough, but the global scoping is hairy.
+
+I looked at [[https://github.com/tetrabox/minijava/blob/master/plugins/org.tetrabox.minijava.xtext/src/org/tetrabox/minijava/xtext/scoping/MiniJavaScopeProvider.xtend][E's minijava]] and [[https://www.eclipsecon.org/france2017/session/deep-dive-xtext-scoping-local-and-global-scopes-explained][this presentation]] before realizing that, hey, I
+don't need global scoping!  Overriding the default "local" scope provider is
+enough, since I /can/ look at other resources from it.  That means I can get all
+variables/operations defined in imported machines without having to mess with
+what Xtext calls "global scoping".
+
+Now just one issue to fix with some expressions that still do not parse (return
+expressions that would cause left-recursion if naively added).
