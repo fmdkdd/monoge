@@ -14409,3 +14409,18 @@ what Xtext calls "global scoping".
 
 Now just one issue to fix with some expressions that still do not parse (return
 expressions that would cause left-recursion if naively added).
+
+* [2018-11-14 mer.]
+** Building a view for B + traces                            :csy:b:emfviews:
+Some things are lacking in the model, to investigate next time:
+
+1. We have to specify one B file in the view, but we would rather have the whole
+   project as input model.  Do we specify multiple files?  (Doesn't work) Do we
+   specify a folder?  Can we resolve all proxies in the B file in ECL?
+
+2. As a workaround we tried to build a view aggregating all B files, with an
+   empty weaving model.  This works, but then when we try to use that view as a
+   model in another view, we cannot find the virtual association "identifiers"!
+
+3. There seems to be duplicate entries for the "aopp" variable in the view.  A
+   bug due to forcing insertion of values in the opposite virtual reference?
