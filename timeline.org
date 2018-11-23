@@ -14424,3 +14424,46 @@ Some things are lacking in the model, to investigate next time:
 
 3. There seems to be duplicate entries for the "aopp" variable in the view.  A
    bug due to forcing insertion of values in the opposite virtual reference?
+
+* [2018-11-23 ven.]
+** Whether to use Gitlab for hosting EMF Views builds       :emfviews:gitlab:
+Our self-hosted Gitlab is busted: the SSL certificate is out of date and the IT
+departement is probably not goint to change it.  Besides, our version is super
+old.  It probably hasn't been updated since it was first created.
+
+On the other hand, the version hosted by the university is up to date.  I'm
+seeing [[https://gitlab.univ-nantes.fr/help][version 11.4.7]], and [[https://gitlab.com/gitlab-org/gitlab-ce/blob/master/CHANGELOG.md][the latest]] (which came out yesterday) is 11.5.0.
+Gitlab releases every month, so this is looking good.
+
+Gitlab is capable of [[https://docs.gitlab.com/ee/user/project/packages/maven_repository.html][hosting a Maven repository]], but it's for paying users (even
+for self-hosting!).  I was a bit confused at first, but the community version
+only has the [[https://about.gitlab.com/pricing/self-managed/feature-comparison/]["Core" features]], which includes CI/CD but not the Maven repo.
+
+So we could probably use this Gitlab to host all our JARs.  But we could do it
+on Github as well.  It doesn't make sense to use Gitlab just for one part,
+unless we want to reduce our dependency on Github.
+
+While I'm at it, I'll check if we can use CI/CD on the university Gitlab.  From
+what I understand, the built-in CI/CD requires that runners be installed.  I'm
+guessing we can always fallback on using external services like Travis, or [[https://github.com/travis-ci/travis-ci/issues/5931][maybe
+not]].
+
+Well I guess I'll try with a dumb project and see how that goes.  Okay looks
+like it works!
+
+[[file:doc/gitlab-ci-test.png]]
+
+If I understand the Runners configuration correctly, there appears to be exactly
+one Docker shared runner.  But on further testing, it appears that runner is
+able to spawn multiple containers per project.  I was able to run three jobs
+concurrently: two in the same project, and one in another project.
+
+However, for pages hosting:
+
+#+BEGIN_QUOTE
+Support for domains and certificates is disabled. Ask your system's
+administrator to enable it.
+#+END_QUOTE
+
+So it means we won't be moving our public-facing project with pages to this
+Gitlab, unless we ask the admins if this is a possibility.
