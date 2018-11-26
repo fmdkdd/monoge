@@ -14467,3 +14467,22 @@ administrator to enable it.
 
 So it means we won't be moving our public-facing project with pages to this
 Gitlab, unless we ask the admins if this is a possibility.
+
+* [2018-11-26 lun.]
+** Putting the formalism in the journal paper           :emfviews:formalisim:
+Trying to use dots above symbols instead of the V suffixes.  Maybe we need a
+different way to signal stuff that's part of the viewtype, as dots are easily
+missed, and look a bit weird on longer names like /range/.
+
+I updated the text to include multiple Ecore models in the definitions.  It's
+tedious having to lug these extra i suffixes around, especially for the
+functions of P: domain_i, range_i, etc.  It might be simpler to lump them all and
+say we have functions for a set of models which act as you expect.
+
+I thought I solved the problem we had with inheritance by simply using a
+transitive relation.  If we remove elements from the sets participating in the
+relation, the transitivity still holds.  But actually if we have a < b < c, and
+note << the viewtype inheritance relationship, and exclude b, then we cannot
+have a << c by transitivity.
+
+So we should probably define << a restriction on the transitive closure of <.
