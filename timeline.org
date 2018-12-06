@@ -14485,4 +14485,135 @@ relation, the transitivity still holds.  But actually if we have a < b < c, and
 note << the viewtype inheritance relationship, and exclude b, then we cannot
 have a << c by transitivity.
 
-So we should probably define << a restriction on the transitive closure of <.
+So we should probably define << as a restriction on the transitive closure of <.
+
+* [2018-11-29 jeu.]
+** Updating the EMF Views update site manually         :emfviews:atlanmodexp:
+Had to do that to help with the CSY use case.  Luckily the command was in the
+history:
+
+: mvn -Dmwe2-skip-generate=true package
+: scp -rP 10922 update/target/repository/* atlanmodexp.info.emn.fr:/var/www/html/updatesite/snapshot/
+
+Hopefully we'll get CD up soon enough.
+
+* [2018-12-05 mer.]
+** Troubles with EMF Views build from scratch                :emfviews:maven:
+Forgot to add the sexp2emf dependency.  On the other hand, it should only be
+required for testing.  Maven has the ability to 'scope' dependencies, but here
+we are using Tycho, which pulls dependencies from Eclipe's MANIFEST files, which
+do not have this extra metadata.
+
+On the same topic, building the manual requires Emacs... which is an extra
+involved step for people just wanting to try out the plugins.
+
+Maven allows you to disable specific sub-modules:
+
+: mvn -pl !doc
+
+But the emfviews feature requires the doc plugin in any case, so you would have
+to exclude all of them.  Instead, I created an 'update-site' profile which
+builds the update site and doc plugin.
+
+It can even use that profile by default if the toc.xml exists (presumably because
+the doc has been built).  Nifty!  But a bit dangerous if we move folders around
+at some point.  Better be explicit than magic.
+
+** Looking at Git for hosting our JARs                           :git:neoemf:
+I can see what the problem is with NeoEMF.  I'm trying to clone the repo, and
+it's at 3GiB.  Pretty bad.
+
+I'm pretty sure we can just scratch the history of the gh-pages branch to avoid
+ballooning the size.  I think a combination of --orphan to create a branch
+without history, adding all files to it, and force-pushing to a remote branch
+should do it.
+
+Let's test it out.
+
+Yeah, seems to work.  Just create an orphan branch:
+
+: git checkout --orphan new-gh-pages
+
+and force-push it to the remote branch:
+
+: git --force push origin new-gh-pages:pages
+
+Tada!  History lost.  We could deploy using that.  We could have two rotating
+branches as well, to be on the safe side in case the deploy script fails.
+
+* [2018-12-06 jeu.]
+** Investigating a failing maven build                       :emfviews:maven:
+So:
+
+1. Cloning emfviews and doing ~mvn verify~ fails to run the tests with null
+   pointer exceptions.
+
+2. Travis has no issue building and running the tests.
+
+3. Calling ~mvn verify~ on my local copy works fine.
+
+4. [[https://github.com/atlanmod/emfviews/issues/4#issuecomment-444560147][This]] is yet another error.
+
+Trying out with a more recent Eclipse release.. 4.8, 4.9.  First of all, had to
+track down the correct p2 repositories to use.
+
+If you go [[http://download.eclipse.org/eclipse/downloads/drops4/R-4.9-201809060745/][here]], you will see links to a p2 repository, like this:
+
+: http://download.eclipse.org/eclipse/updates/4.9/
+
+But trying to use that one in our pom.xml will trigger unmet dependencies,
+something about
+
+: org.epsilon.emc.emf requires org.eclipse.emf 0.0.0 but could not be found
+
+No EMF?  What?
+
+Turns out, the p2 repository is not a main release one, so you don't get the
+basic stuff in it (even though there seems to be EMF plugins in there...).
+
+Anyway, to get past this error, I used the [[https://wiki.eclipse.org/Simultaneous_Release][simultaneous release p2 repositories]]
+instead.
+
+Now we get /another/ dependency error.  Actually we get a bunch of them, and
+most of them seem to complain at some point about missing ~javax.annotation~.
+
+Well, [[https://bugs.eclipse.org/bugs/show_bug.cgi?id=539038][I'm not the only one]].  Something to do with java 9 and 10 modules
+splitting stuff out of the core JDK.  Apparently one workaround is to manually
+require javax.annotation in test modules.  Great.
+
+It does work.  In the sense that I don't have a missing dependency anymore.  Now
+instead I get back to state #1:
+
+#+BEGIN_EXAMPLE
+addSuperclass(org.atlanmod.emfviews.tests.TestVirtualObjects)  Time elapsed: 0.036 sec  <<< ERROR!
+java.lang.NullPointerException
+	at org.atlanmod.emfviews.tests.TestVirtualObjects.createConcreteModel(TestVirtualObjects.java:75)
+#+END_EXAMPLE
+
+Same issue under 4.8 and 4.9.  So upgrading the eclipse release makes no
+change.  Using java8 instead of java10 makes no change.
+
+Now, these NPE all seem to come from the EcoreFactory.eINSTANCE call returning
+null.  Why does that happen, and why can't I replicate it only in a fresh clone?
+
+Ok so actually, the NPE comes not from EcoreFactory.eINSTANCE being null, but
+from EcoreFactory.eINSTANCE.getEPackage() returning null.
+
+A ~mvn -Dmwe2-skip-generate=true clean verify~ on my development version of
+emfviews /succeeds/ in running the tests.  No NPEs.  What is different here?
+
+OKAY fantastic.  I was testing my fresh clone in /tmp, and on a hunch I tested
+another fresh clone in /home instead.  And tada!  The emfviews.test pass.
+
+Lesson learned: do not run mvn in /tmp.
+
+LO AND BEHOLD.  A ~mvn clean verify~ works perfectly on a fresh clone (outside
+/tmp).
+
+I can also build the manual:
+
+: pushd doc
+: cask install
+: make
+: popd
+: mvn clean verify -P update-site
