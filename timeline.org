@@ -14617,3 +14617,59 @@ I can also build the manual:
 : make
 : popd
 : mvn clean verify -P update-site
+
+* [2018-12-13 jeu.]
+** Streamlining the EMF Views installation                 :eclipse:emfviews:
+So, even though we have a nice update site, we also have extra dependencies that
+may require the user to install additional stuff before they are able to install
+EMF Views.
+
+If they grab an Eclipse Modeling Tools distribution, they get Xtext and ATL, so
+the only thing missing is Epsilon.  And that's only one update site to add.
+
+However!  The experience is still rather terrible.  Try to add EMF Views, wait
+for Eclipse to compute alternate solutions... then if you squint when reading
+the error message you will find that it's chocking on an epsilon dependency.  If
+you then go back to the README, you will find that Epsilon is actually
+required... and if you install it everything goes smoothly from there on.
+
+But it's stupid!  Why doesn't Eclipse let you specify another update site to
+contact during installation?  Well, actually it does.  There are in fact
+/multiple ways/ to specify that, but none of them work.
+
+In a feature.xml, you can specify "Sites to visit".  This does nothing.
+
+In a category.xml for an update site, you can specify an "Additional
+repository".  This is [[https://bugs.eclipse.org/bugs/show_bug.cgi?id=426531][exactly what we want]].  But, first gotcha, [[https://bugs.eclipse.org/bugs/show_bug.cgi?id=453708][it doesn't work
+with Tycho]].  So if you use Tycho to build the update site, that setting does
+nothing.
+
+At the end of the day, that setting is supposed to [[https://stackoverflow.com/a/8279204][add a couple of lines to an
+XML file]], and that could be done with an external script.  Alternatively, just
+to test it, you can use the Export command of Eclipse to build the update site
+without Tycho, and there the content.xml file has the covoted lines:
+
+#+BEGIN_SRC xml
+<references size='2'>
+  <repository uri='http://download.eclipse.org/epsilon/updates/' url='http://download.eclipse.org/epsilon/updates/' type='0' options='0'/>
+  <repository uri='http://download.eclipse.org/epsilon/updates/' url='http://download.eclipse.org/epsilon/updates/' type='1' options='0'/>
+</references>
+#+END_SRC
+
+Do not ask me why the URL needs to appear /four times/ in the XML.  Probably
+because it wasn't verbose enough otherwise.  Also, there's no documentation for
+this.
+
+But, testing that out in a fresh Eclipse does not make a difference.  Well, it
+does make one little: after /failing/ to install emfviews due to not finding
+epsilon, I now have an extra update site:
+
+[[file:doc/eclipse-drives-me-mad.png]]
+
+The Epsilon one.  So these two lines had an effect.  But look!  The update site
+has been disabled automatically, so it cannot be used to fetch the dependency.
+
+I tried to, blindly, change the 'options=0' into 'options=1'.  No dice.
+
+At this point, I throw my hands in the air, curse the software gods, and give
+up.
