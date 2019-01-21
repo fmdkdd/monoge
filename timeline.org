@@ -14673,3 +14673,46 @@ I tried to, blindly, change the 'options=0' into 'options=1'.  No dice.
 
 At this point, I throw my hands in the air, curse the software gods, and give
 up.
+
+* [2019-01-21 lun.]
+** Thinking about splitting requests                    :emfviews:neoemf:ocl:
+*** Computing in RAM or leveraging DB indexing?
+List of names in DB, need to match them against another list of names in RAM.
+Assuming you can't load the DB in RAM, to do the matching you would pull the DB
+names one by one, and match them against the ones in RAM.
+
+(Although for really large datasets, using using a probablistic data structure
+like a bloom filter may be best)
+
+But maybe the other way would be more efficient?  Dumping the RAM names in DB,
+do the matching using the indexed structure of the DB, and return the result to
+RAM?
+
+*** Lazy query execution
+Other typical problem: do some complex joins, to only get the first line of the
+result: map.join.map.map.first().  Here the ineffiency comes from computing the
+query eagerly.  Nothing groundbreaking, but adding laziness may skip hitting the
+DB entirely, depending on the query.
+
+On a related note, I read about [[http://adapton.org/][ADAPTON]], a language for incremental computation
+that ticks many boxes.
+
+*** Matching subqueries with model sources
+Before even considering optimization, we can ask: can we statically determine
+which parts of a query can be run on a given backend?
+
+trace::Log.allInstances()
+  ->any(l | l.message.startsWith('CaptchaValidateFilter'))
+.javaClass._'package'.component.requirements->size()
+
+Assuming all Log instances come from the same source, ~any~ will only reduce the
+collection so stay in the same source.  ~javaClass~ brings us into a different
+source.  We know that because, in the viewpoint, the Log class has a javaClass
+attribute with type modisco.java::ClassDeclaration, and the view knows that the
+modisco model comes from an XMI file.
+
+It seems we can do that in general, and at worst we would get an upper bound of
+on the set of sources a query might touch.
+
+That information could then be used to make a request plan, eventually splitting
+or parallelizing queries in backends.
