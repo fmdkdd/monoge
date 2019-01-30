@@ -14716,3 +14716,269 @@ on the set of sources a query might touch.
 
 That information could then be used to make a request plan, eventually splitting
 or parallelizing queries in backends.
+
+* [2019-01-23 mer.]
+** Algorithm for identifying sources                    :emfviews:neoemf:ocl:
+Inputs:
+- An OCL query expression
+- Context object for the OCL query (optional)
+- Metamodel, with the ability to map features to model sources
+
+Output:
+- S, the set of model sources "touched" by the query
+
+Algo:
+1. If we have a context object, add its source to S.
+2. Get an AST for the OCL expression.
+3. Interpret the AST.  For each node:
+   - If it's a Type (~Foo::A~), add the source to S.
+   - If it's a navigation to a reference (~a.bar~), add the source of its target
+     type to S.
+4. Return S.
+
+Straightforward.  The only useful thing you can do with that is that if S only
+has one source, you may dispatch the query to that source directly.  E.g., if
+the source is in NeoEMF, you may be able to use Mogwaï to convert the query to
+Gremlin, and reap the benefits.
+
+Better would be to identify sub-sequences of the query that are tied to a single
+source.  E.g.:
+
+reqif10::SpecObject.allInstances()
+  ->any(r | r.values->selectByType(reqif10::AttributeValueString)->exists(v | v.theValue.startsWith('Controller')))
+    .components
+  ->collect(c | c.javaPackages)
+  ->collect(p | p.ownedElements)
+  ->selectByType(java::ClassDeclaration)
+  ->collect(c | c.traces)
+  ->size()
+
+Fisrt two lines are for the ReqIF source:
+
+reqif10::SpecObject.allInstances()
+  ->any(r | r.values->selectByType(reqif10::AttributeValueString)->exists(v | v.theValue.startsWith('Controller')))
+
+And these two are for the Java source:
+
+->collect(p | p.ownedElements)
+  ->selectByType(java::ClassDeclaration)
+
+To get that kind of information, we could tag each node of the AST with its
+sources.  Then we could collect sequences of homogeneous sources.
+
+We can get that information mostly by looking at type of flowing data:
+
+reqif10::SpecObject.allInstances()     : Set[reqif::SpecObject]
+->any(...)                             : Set[reqif::SpecObject]
+->collect(c | c.javaPackages)          : Set[java::Package]
+->collect(p | p.ownedElements)         : Set[java::AbstractTypeDeclaration]
+->selectByType(java::ClassDeclaration) : Set[java::ClassDeclaration]
+->collect(c | c.traces)                : Set[trace::Log]
+->size()                               : int
+
+The predicate inside ~any~ is interesting:
+
+r                                             : reqif::SpecObject
+.values                                       : Set[reqif::AttributeValue]
+->selectByType(reqif10::AttributeValueString) : Set[reqif::AttributeValueString]
+->exists(...)                                 : boolean
+
+Inside ~exists~:
+
+v                         : reqif::AttributeValueString
+.theValue                 : string
+.startsWith('Controller') : boolean
+
+Here we are staying inside reqif, but the predicate could have queried another
+model source.  E.g.:
+
+trace::Log::allInstances()
+  ->any(t | t.total == java::ClassDeclaration.allInstances()->select()->size())
+  .message
+
+where the predicate queries the java source.  Disregarding the fact that here
+the result of the right-hand side is likely constant for the duration of the
+query, and could be cached, it's an example where the external sequence stays in
+Log, but actually we are intermingling calls to the Java model source.
+
+* [2019-01-24 jeu.]
+** Building an OCL parser                                               :ocl:
+Trying out [[http://tree-sitter.github.io/tree-sitter/creating-parsers][tree-sitter]].  Lost 30min because the instructions installed the
+0.14-beta3 version, which does not include tree-sitter proper, hence failing to
+compile the generated grammar.
+
+The grammar language is a bit rough, but using the latest 0.13 version works.
+
+Error messages are rough as well.
+
+Okay, after a lot of tweaking around, I got a prototype going.  It's
+tree-sitter + codemirror inside electron.  Since tree-sitter generates a native
+node module, I cannot just use it on a webpage.  I wanted to use codemirror as
+editor, so that left not many options.  Electron was quite painless to setup.
+
+* [2019-01-25 ven.]
+** Further improvements on the OCL toy                                  :ocl:
+So, using Tree-sitter and hooking into the change event of codemirror, I'm able
+to reparse only the changed bits of an expression.  In /theory/.  In practice,
+I've got bugs trying to convert the change data into something tree-sitter is
+expecting.  The documentation is lacking in what exactly is expected.
+
+Well, anyway that's overkill for the size of the expressions I'm dealing with.
+
+I've added highlighting of syntax errors using the codemirror lint plugin.
+Tree-sitter does not provide good errors out of the box, but I guess you could
+walk the AST and generate good errors by looking at the type of the node and
+what is inside.
+
+Tree-sitter is able to generate a graphviz dot file for the CST.  Nifty.  But
+I'm going to generate an AST with D3 anyway.
+
+* [2019-01-30 mer.]
+** Good progress on the type checker                                    :ocl:
+It now seems to type check all the examples I drew up.  It's not handling helper
+functions yet, but it's sufficient to type check the queries from the MODELS
+paper.
+
+It's a bit verbose.  Calling it on:
+
+: trace::Log.allInstances()->size()
+
+yields:
+
+#+BEGIN_EXAMPLE
+(query : number
+  (prim_expr : number
+    (path_expr : number
+      (path : Classifier trace::Log
+        (identifier : Package trace)
+        (identifier : Classifier trace::Log))
+      (call : Set trace::Log
+        (identifier : Classifier S . () -> Set S))
+      (call : number
+        (identifier : Set S . () -> number)))))
+#+END_EXAMPLE
+
+We could omit some redundant nodes like ~prim_expr~ and ~path_expr~.  Actually,
+that's easy to do.  I just did it.
+
+So now we have:
+
+#+BEGIN_EXAMPLE
+(query : number
+  (path : Classifier trace::Log
+    (identifier : Package trace)
+    (identifier : Classifier trace::Log))
+  (call : Set trace::Log
+    (identifier : Classifier S . () -> Set S))
+  (call : number
+    (identifier : Set S . () -> number)))
+#+END_EXAMPLE
+
+The type-checker could probably be simplified, as it's a bit ad-hoc currently.
+There are two ways to go about it.  The first one is to view the type-checker as
+an abstract interpreter of the query, so when you go down the tree, you do what
+an OCL interpreter would do, but instead you check the input types, and return
+output types.
+
+What's interesting is for situations like this:
+
+: Log.allInstances()->any(l | l.name.startsWith('foo'))
+
+When interpreting ~any~, you get a ~Set Log~ as input (the receiver to the
+method call), and a lambda as input.  You evaluate the lambda (i.e., get its
+type), and get ~Log -> bool~.  The pseudo-code for ~any~ will thus be something
+like:
+
+#+BEGIN_SRC js
+function any(self, pred) {
+  // 1. Check self is a Set of T (emit error if not)
+  // 2. Given pred.arg has the type T, evaluate pred.body
+  // 3. Check pred.body has type bool (emit error if not)
+  // 4. Return type T
+}
+#+END_SRC
+
+Of course, T is a concrete type, ~Log~ in this case.
+
+I actually started this way, but then it was obvious that all operation calls
+(any, select, collect...) were the same.  It became tedious to duplicate the
+checks for arguments type and predicate types.
+
+Instead, the second way to implement it is to define a small language to
+describe how these operations behave:
+
+#+BEGIN_EXAMPLE
+any    : Set T . (T -> bool) -> T
+exists : Set T . (T -> bool) -> bool
+collect: Set T . (T -> S)    -> S
+#+END_EXAMPLE
+
+And implement the method call generically, just by interpreting this type
+annotation.  The tricky part was handling the type variables T and S correctly,
+so that applying ~any~ to a ~Set Log~ would return the type ~Log~, and not just
+~T~.
+
+The way I ended up doing it is by first checking that types are compatible, that
+is, if they are strictly equal (bool == bool) or if one of them is a variable.
+
+Then, a second step is to 'flow' a concrete type into a type potentially
+containing variables.  This is done in two steps.  First, gather the bindings
+for type variables.  If we look at the receivers we have a pair of the actual
+receiver type and the expected receiver type (the part before the dot in the
+type signature of any):
+
+: (~Set Log~, ~Set T~)
+
+Trying to unify these types yields the type bindings:
+
+: [ T: Log ]
+
+Once we have the bindings, we can flow them into the larger type of ~any~:
+
+: [ T : Log ]
+: Set T . (T -> bool) -> T
+
+replacing T by Log yields:
+
+: Set Log . (Log -> bool) -> Log
+
+This replacement is just like the usual replacement of free variables in
+function application, except here we are substituting types.
+
+The whole process feels a bit ad-hoc, but it works.
+
+You have to repeat it for arguments as well, since each argument can have type
+variables, they must be flowed into the expected type in order to get a fully
+concrete type.  For ~collect~, it's not until you have given the type of the
+lambda argument that you can know the return type (S).
+
+The big advantage of using the type annotations is that now you just give the
+type of the operations, and you don't need to have custom code emulating what
+the operation should do.  It seems that this very simple type language with
+variables, akin to Java generics, is enough to type all the examples I've tried.
+
+One thing the type system doesn't handle is subtyping.  I haven't found a
+necessity to use it now, but it comes up in the ~selectByType~ operation.  It's
+supposed to return all instances of T from a Set of A, where A is a supertype of
+T.  So its type should be:
+
+: Set T . (Classifier S) -> S  where S <: T
+
+And if we wanted to build a type analysis to check that queries are correct, we
+should check the relationship between S and T.  But for our purposes, we don't
+need to!  All that matters is to know the return type, so the type can simply
+be:
+
+: Set T . (Classifier S) -> S
+
+and if S isn't actually a subtype of T, then the query will not even run!
+
+-----
+
+I also got synchronized highlighting working between the type tree and the code,
+so moving the cursor over the code highlights the expression at point and in the
+type tree, and vice-versa.
+
+Pretty nifty!  Now what's left is the dependency analysis.  I'll probably go
+with merging tree nodes from the leaves up, as long as they are in the same
+source.
