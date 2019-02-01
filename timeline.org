@@ -14802,7 +14802,7 @@ query, and could be cached, it's an example where the external sequence stays in
 Log, but actually we are intermingling calls to the Java model source.
 
 * [2019-01-24 jeu.]
-** Building an OCL parser                                               :ocl:
+** Building an OCL parser                                      :ocl:analysis:
 Trying out [[http://tree-sitter.github.io/tree-sitter/creating-parsers][tree-sitter]].  Lost 30min because the instructions installed the
 0.14-beta3 version, which does not include tree-sitter proper, hence failing to
 compile the generated grammar.
@@ -14817,7 +14817,7 @@ node module, I cannot just use it on a webpage.  I wanted to use codemirror as
 editor, so that left not many options.  Electron was quite painless to setup.
 
 * [2019-01-25 ven.]
-** Further improvements on the OCL toy                                  :ocl:
+** Further improvements on the OCL toy                         :ocl:analysis:
 So, using Tree-sitter and hooking into the change event of codemirror, I'm able
 to reparse only the changed bits of an expression.  In /theory/.  In practice,
 I've got bugs trying to convert the change data into something tree-sitter is
@@ -14834,7 +14834,7 @@ Tree-sitter is able to generate a graphviz dot file for the CST.  Nifty.  But
 I'm going to generate an AST with D3 anyway.
 
 * [2019-01-30 mer.]
-** Good progress on the type checker                                    :ocl:
+** Good progress on the type checker                           :ocl:analysis:
 It now seems to type check all the examples I drew up.  It's not handling helper
 functions yet, but it's sufficient to type check the queries from the MODELS
 paper.
@@ -14982,3 +14982,23 @@ type tree, and vice-versa.
 Pretty nifty!  Now what's left is the dependency analysis.  I'll probably go
 with merging tree nodes from the leaves up, as long as they are in the same
 source.
+
+* [2019-02-01 ven.]
+** Why use a static analysis?                                  :ocl:analysis:
+Answer to a question I got from E, which may be need to be addressed in the
+paper.
+
+Why couldn't we hook into the OCL (or ECL/ATL) interpreter and use the info
+that's provided there?
+
+Answer: it's too late.  If we hook into the individual operations, we cannot
+know if OCL already executed part of the query before an operator.  If we want
+to split the query, it might be too late.
+
+We have to look at the whole thing first before passing it down to OCL, as we
+may bypass OCL completely by rewriting a subquery and passing it to NeoEMF/CDO.
+
+Implementation-wise, we would do the static analysis at /runtime/, and we could
+even re-use the type analysis of OCL (if there is one that precedes
+evaluation).  But it's still static because we haven't executed the query yet
+(and maybe we will transform it).
