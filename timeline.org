@@ -15002,3 +15002,18 @@ Implementation-wise, we would do the static analysis at /runtime/, and we could
 even re-use the type analysis of OCL (if there is one that precedes
 evaluation).  But it's still static because we haven't executed the query yet
 (and maybe we will transform it).
+
+* [2019-02-04 lun.]
+** Using gzip for identifying patterns in large logs                    :csy:
+[[https://dl.acm.org/citation.cfm?id=1379445][Astute paper]].  We were talking about this issue CSY have, which is to find
+patterns in very large execution traces.  Some patterns they already know, some
+they don't.  What would be interesting is to automatically find patterns from
+the raw logs, which are too large to feasibly comb by hand.
+
+I thought of using a similar technique as the LZ algorithm to detect redundancy.
+Well, that paper did just that, but not by reusing the algorithm techniques, but
+by using the compression algorithm directly, and measuring the compression ratio
+to detect "interesting" chunks of logs.
+
+You may have to massage the logs a bit (the "anonymizer phase" in the paper),
+but the technique is quite general, as long as you are looking for redundancy.
