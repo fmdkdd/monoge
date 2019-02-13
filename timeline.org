@@ -15017,3 +15017,26 @@ to detect "interesting" chunks of logs.
 
 You may have to massage the logs a bit (the "anonymizer phase" in the paper),
 but the technique is quite general, as long as you are looking for redundancy.
+
+* [2019-02-13 mer.]
+** Using queries to populate a view                                :emfviews:
+With the CSY use-case, we hit two limitations of EMF Views.  First, using ECL
+for matching traces to other traces in a large log is too slow.  We had a
+similar issue in the MODELS paper where I had to write a Java program to output
+the view weaving model using a faster algorithm.  Here I did the same thing.
+
+It's unfortunate because this manual weaving model cannot be "called" by EMF
+Views directly.  And it's not even a very large file.
+
+The second limitation was that I wanted to add a virtual attribute whose value
+would have been computed from two other attributes.  There was no way to do that
+at all in EMF Views, since the view weaving model did not take properties into
+account.
+
+Now, it looks to me that instead of using a matching model with ECL, we could
+provide a 'build model' with EOL/OCL/ATL.  The build model would contain queries
+for each virtual attribute/relation/concept.  We would then call the
+corresponding executor in order to populate the view when we load it.
+
+As a first step, we could do all this populating upfront.  More interesting
+would be to execute the query only when the virtual feature is accessed.
