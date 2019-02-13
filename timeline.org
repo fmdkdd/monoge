@@ -15040,3 +15040,10 @@ corresponding executor in order to populate the view when we load it.
 
 As a first step, we could do all this populating upfront.  More interesting
 would be to execute the query only when the virtual feature is accessed.
+
+The viewpoint weaving model could hold the queries for each feature, and the
+view could access these to populate itself.
+
+However, the CSY example is interesting, because the attribute query needs to
+refer to the traces that will populate a virtual association, and computing them
+again would be wasteful (and slow!).
