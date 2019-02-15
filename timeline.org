@@ -15047,3 +15047,36 @@ view could access these to populate itself.
 However, the CSY example is interesting, because the attribute query needs to
 refer to the traces that will populate a virtual association, and computing them
 again would be wasteful (and slow!).
+
+* [2019-02-15 ven.]
+** Prototype of using OCL queries to populate a view           :emfviews:ocl:
+Added a query field on the weaving model, and using OCL to execute that and
+populate the view.  Unresolved issues:
+
+- What should the context of the query be?  We have multiple input models, but
+  OCL is not able to query all of them at once.  The context should thus be the
+  view itself, but at this step the view is still in construction, so we have to
+  be careful.  In any case, either we enforce an order on query execution, or
+  things may explode in the case of recursive queries (if query A inspects the
+  value of B and vice-versa).
+
+- What do we do if a view weaving model is also provided?  This should only
+  contain computed elements, so we could simply add them to the ones already
+  computed by the queries.  This has the nice side-effect of keeping backwards
+  compatibility.
+
+  Though I'm also tempted to just drop view weaving models, and use the query
+  mechanism instead.
+
+- At first I went with EOL, because that would have been more interesting for
+  us.  But EOL are complete programs, and I couldn't find a "query" subset of
+  the language I could use.  This raised more questions: how to use the EOL
+  language to communicate to the view builder the new elements?  There is no
+  "return value" as in OCL.  Should we use specially-named top-level variables?
+  Should we provide a phony "ViewOutput" class that the EOL program should
+  instantiate and populate?
+
+  Using EOL for populating the view has the potential to be the most efficient
+  option (since with OCL you may need have duplicated computation between
+  queries, with no way to reuse them), but we still need to find the adequate
+  syntactic option.
