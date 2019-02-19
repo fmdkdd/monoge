@@ -15080,3 +15080,72 @@ populate the view.  Unresolved issues:
   option (since with OCL you may need have duplicated computation between
   queries, with no way to reuse them), but we still need to find the adequate
   syntactic option.
+
+* [2019-02-19 mar.]
+** Populating a virtual association using an OCL query         :emfviews:ocl:
+I hacked a first version yesterday.  It works, but it was too slow at first.
+The problem was: the query to populate the virtual association ~m24~ was
+executed on every instance of Trace.  In the Java program I wrote to bootstrap
+the view, I'm not running the query on all instances, rather, I'm only
+considering a subset of traces that have the ~fallback~ variable.  As there are
+only 4 of them, compared to >1000 instances of Trace, finding the corresponding
+sensor is much faster.
+
+This highlights the need to add guards to queries.  OCL has pre-conditions, and
+we could use the same thing: queries that output the set of objects you want to
+execute the populating query on.
+
+Another way of doing it is to let the user provide an OCL "builder program", in
+which the user is able to direct the flow of construction.  So instead of
+giving:
+
+: Event.allInstances()->asSequence()->select(... 'm24' ...)->last()
+
+for the virtual association ~m24~, and potentially doing the same thing for
+populating the association ~m21~, you would write a single program:
+
+#+BEGIN_SRC ocl
+events = Event.allInstances()->asSequence()
+sensor(name) = events->select(... name ...)->last
+
+m24 = sensor('m24')
+m21 = sensor('m21')
+#+END_SRC
+
+With ~m24~ and ~m21~ being "special" values that will populate the view, while
+~events~ and ~sensor~ are just helpers.  Of course we would need a distinctive
+syntax to avoid name clashes here, but that's a syntactic detail.
+
+There are several benefits to this approach:
+
+1. It reduces duplication.  Here we had two virtual associations that are
+   populated using the same query, with just one parameter changed between them.
+   Above, we can use a helper to factorize this duplication.  More readable,
+   DRY, etc.
+
+2. It prevents redundant computation.  The OCL evaluator has the opportunity to
+   cache the result of ~events~ here, and other parts of queries, since
+   everything is running in the same "execution".  Which is not the case of the
+   current prototype, where we have one new OCL instance for each source model
+   element.
+
+3. It leaves control to the programmer.  It's basically an inversion of control:
+   you do not call my queries, I populate the view.  More flexible, as having
+   one query field per virtual link is too restrictive.
+
+Now, ideally, we may not want to execute these queries every time we open the
+view, because these queries may be expensive.  A first solution would be to
+allow caching of these results.  Which means we still need the view weaving
+model to exist (in some form), in order to persist it.
+
+But it would be best to make sure whatever solution would allow us to /lazily/
+build the view in the future.  Working on the MODELS paper last year, I started
+hacking together a lazy version of the view, which did not iterate the weaving
+model and only registered 'proxies'.  Trying to get the value of a feature would
+'force' it, and actually retrieve the links from the weaving model.
+
+With queries, it seems both the current solution and the 'builder program' one
+are amenable to lazification.  Instead of executing the queries outright, we
+just register them to be played whenever the feature is accessed; then the
+result is cached (which leads to cache invalidation, but that's a concern for
+later).
