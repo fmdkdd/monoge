@@ -7,6 +7,15 @@ Export-Package: emfviews.test
 Require-Bundle: org.junit;bundle-version="4.12.0",
  org.eclipse.emf.ecore;bundle-version="2.13.0",
  org.atlanmod.emfviews,
- org.eclipse.uml2.uml
+ org.eclipse.uml2.uml,
+ org.eclipse.m2m.atl.engine;bundle-version="4.0.0",
+ org.eclipse.m2m.atl.common;bundle-version="4.0.0",
+ org.eclipse.m2m.atl.dsls;bundle-version="4.0.0",
+ org.eclipse.m2m.atl.emftvm;bundle-version="4.0.0",
+ org.eclipse.ocl.pivot,
+ org.apache.log4j;bundle-version="1.2.15",
+ com.google.guava;bundle-version="21.0.0",
+ com.google.inject;bundle-version="3.0.0",
+ org.eclipse.ocl.xtext.completeocl;bundle-version="1.4.0"
 Import-Package: org.atlanmod.emfviews.virtuallinks
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8

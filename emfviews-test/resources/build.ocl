@@ -1,0 +1,19 @@
+import 'platform:/resource/emfviews.test/resources/metamodels/Log.ecore'
+
+package Log
+
+context Trace::name : Trace
+
+init: self.variable = 'fallback'
+derive:  
+  let events = Event.allInstances()->sortedBy(e | e.timestamp),
+      sensors = events
+                  ->subOrderedSet(1, events->asSequence()->indexOf(self.oclContainer())-1)
+                  ->collect(e | e.traces)
+                  ->select(t | t.sensor = 'M24' and t.variable = 'Position')
+  in if sensors->isEmpty()
+     then null
+     else sensors->last() 
+     endif
+
+endpackage

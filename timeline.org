@@ -15149,3 +15149,72 @@ are amenable to lazification.  Instead of executing the queries outright, we
 just register them to be played whenever the feature is accessed; then the
 result is cached (which leads to cache invalidation, but that's a concern for
 later).
+
+* [2019-02-20 mer.]
+** Prototype to populate a view with an OCL document           :ocl:emfviews:
+So, my previous attempt was using queries attached to individual virtual
+property/associations.  But then it appeared that it would be more flexible to
+use a full OCL program to drive the building of the view.
+
+I've built a small prototype, not hooked to EMF Views yet, that just takes an
+OCL document (in the CompleteOCL language), like this:
+
+#+BEGIN_SRC ocl
+import 'platform:/resource/emfviews.test/resources/metamodels/Log.ecore'
+
+package Log
+
+context Trace::name : Trace
+
+init: self.variable = 'fallback'
+derive:
+  let events = Event.allInstances()->sortedBy(e | e.timestamp),
+      sensors = events
+                  ->subOrderedSet(1, events->asSequence()->indexOf(self.oclContainer())-1)
+                  ->collect(e | e.traces)
+                  ->select(t | t.sensor = 'M24' and t.variable = 'Position')
+  in if sensors->isEmpty()
+     then null
+     else sensors->last()
+     endif
+
+endpackage
+#+END_SRC
+
+and calls OCL to obtain the objects we should eventually put in a view.  The
+above program works, and the good thing is that the code consuming that OCL
+document does not contain model-specific hacks; it's generic.
+
+However, there are still a few hurdles to clear:
+
+1. The ~import~ should point to the viewpoint, but OCL expects an Ecore file
+   here.  Hopefully there's a way to instruct it to load the eviewpoint and get
+   an EPackage as expected.  Currently I've pointed to the contributing
+   metamodel, but then I cannot use the virtual properties since they are not
+   present in that metamodel.
+
+2. I'm using the PropertyContext to specify an extension, because I needed two
+   sub-expressions: a pre-condition (the guard) and the query used to obtain the
+   result for the virtual property.  So here ~init~ is the guard, and ~derive~
+   the query.
+
+   But actually, it would be nice to be able to specify a default value using
+   ~init~.
+
+   Now that I think of it, we can probably move the guard in the ~derive~... But
+   having the guard as a separate syntactic entity would allows some
+   optimization down the road.  Currently, it's noticeably slower to obtain the
+   view information than with the previous prototype which hardcoded the guard.
+
+   For each element, to know if it's filtered out, we must: create an OCL query
+   (parse it), then execute it.  It's a significant overhead to using ~eGet~
+   directly for instance.  If we restrict the guard to very simple expressions
+   that we are able to interpret into calls into the EMF API, bypassing OCL, we
+   would probably gain.
+
+   If I hardcode the guard with eGets, the view information is extracted in ~1
+   second, while it takes ~13 seconds through OCL.
+
+3. I thought I would be able to resue the OCL query objects, but apparently
+   calling query.evaluateEcore a second time raises an exception.  Still, it's
+   only a minor optimization point.
