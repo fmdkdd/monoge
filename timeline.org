@@ -15218,3 +15218,22 @@ However, there are still a few hurdles to clear:
 3. I thought I would be able to resue the OCL query objects, but apparently
    calling query.evaluateEcore a second time raises an exception.  Still, it's
    only a minor optimization point.
+
+* [2019-02-27 mer.]
+** Running EOL queries on views with NeoEMF resources   :eol:neoemf:emfviews:
+Was a hassle.  Because NeoEMF resources are linear, and I wanted to use a
+matching model in ECL to create the view weaving model, and the Epsilon Delegate
+only knew how to open models via a resource URI (even though we give it a list
+of already loaded resources...).
+
+Turns out, there's an ~InMemoryEmfModel~ implementation of ~EmfModel~ which
+shortcuts this roundabount, and solves the issue of opening the NeoEMF resource
+twice.
+
+Now, trying to write an EOL query on that view, I ran into a [[*Creating HTML from a view][familiar problem]] of
+Property not found.  Turns out, I forgot to virtualize objects in the result of
+View.getAllInstances which was called by our EMFViews connector with epsilon.
+D'oh.
+
+Now it works.  Have to figure out how to intercept operations and split queries
+now.
