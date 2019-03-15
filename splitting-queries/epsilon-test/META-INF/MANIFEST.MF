@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: epsilon-test
+Bundle-SymbolicName: epsilon-test
+Bundle-Version: 1.0.0.qualifier
+Export-Package: .
+Require-Bundle: org.eclipse.epsilon.ecl.engine;bundle-version="1.5.1",
+ org.eclipse.epsilon.eol.engine;bundle-version="1.5.1",
+ org.eclipse.epsilon.emc.emf;bundle-version="1.5.1",
+ org.eclipse.emf.ecore,
+ org.eclipse.epsilon.emc.csv;bundle-version="1.5.1",
+ org.apache.commons.csv_1.5;bundle-version="1.5.0"

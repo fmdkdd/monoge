@@ -15237,3 +15237,27 @@ D'oh.
 
 Now it works.  Have to figure out how to intercept operations and split queries
 now.
+
+* [2019-03-15 ven.]
+** Using arbitrary Epsilon models instead of EMF resources :emfviews:epsilon:
+Epsilon has a vast range of connectors allowing you to use EOL and other
+languages on EMF resources, CSV files, Bibtex files, etc.
+
+It could be interesting to allow view loading such files.  The problem is that
+right now we are tightly coupled to EMF.  Viewpoints need Ecore packages, views
+expect resources...
+
+When you look at what a View does, ultimately it just wraps EObjects and keeps
+values for virtual associations in the wrapper.  With EMF, the wrapper is also
+an EObject, and we use eSet to populate the virtual associations.
+
+The point of EMF is to provide a unified interface (EObject) to manipulate model
+elements.
+
+I tried matching between an EMF model and a CSV file using Epsilon.  The match
+gives me EObjects for the EMF model and ... a LinkedHashMap for CSV.  In
+general, in ECL, you can get any Object.  So you don't have a usable interface
+to do anything with that result.  The only solution is to use reflection.
+
+To load CSV with EMF Views then, it would make more sense to have an EMF
+interface to CSVs...
