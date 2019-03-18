@@ -58,6 +58,7 @@ public class MatchEMFandCSV {
 
     // Add CSV
     var csvModel = new CsvModel();
+    var csvGetter = csvModel.getPropertyGetter();
     csvModel.setName("CSV");
     try (var br = new BufferedReader(new FileReader(new File("resources/names.csv")))) {
       csvModel.setReader(br);
@@ -68,9 +69,9 @@ public class MatchEMFandCSV {
       // Execute the module
       var mt = (MatchTrace) module.execute();
 
-      System.out.println(mt);
-
-      mt.getMatches();
+      for (var match : mt.getMatches()) {
+        System.out.printf("%s %s\n", match.getRight(), csvGetter.invoke(match.getRight(), "name"), csvModel.getTypeOf(match.getRight()));
+      }
     }
   }
 }

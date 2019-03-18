@@ -15261,3 +15261,83 @@ to do anything with that result.  The only solution is to use reflection.
 
 To load CSV with EMF Views then, it would make more sense to have an EMF
 interface to CSVs...
+
+* [2019-03-18 lun.]
+** Loading a view with an Epsilon model                    :emfviews:epsilon:
+It worked.
+
+First problem is loading an Epsilon model as an EMF resource.  Defined a dummy
+Resource object that calls an adequate EMC driver depending on the file we are
+looking at.  In general, a map from extension to factory like EMF does it would
+suffice.
+
+Then the resource needs to be able to yield its contents.  IModel has
+allContents, but no notion of containment references really.  So we may have to
+add a dummy root element to Epsilon models.
+
+Then we want to actually query the contents.  The EMF API provides eGet and
+eSet, but eGet takes a feature object.  We don't have a notion of metamodel on
+Epsilon, so we have to pass a mock feature object (new EpsilonFeature("name")),
+and since the eGet is going to end up on a VirtualEObject, we can special-case
+that.  If it's an EpsilonFeature, then the concrete object is an Epsilon model,
+and we can use the PropertyGetter of that model to access the feature.
+
+Not sure how it would work more generally, but that's a good first step.
+
+Next, to see how we can handle Simulink models.
+
+** Call with G.                                            :emfviews:epsilon:
+Need to nail the motivation of the paper.  We have two contributions in mind:
+
+1. Extend EMF Views to load Epsilon-based models.
+
+   Au passage, this lets you handle Epsilon-based models through the EMF API.
+2. Optimize queries on views when they are made through Epsilon technologies.
+
+For #2, why use EMF Views at all?  You can already run EOL queries on several
+models.  "Virtual features" can be defined through helpers in a query.  You
+already leverage optimized EMC drivers (e.g. JDBC), while by adding EMF Views in
+the mix you have to re-implement the delegation to get the optimized versions
+back.
+
+Well, one argument might be that you want to benefit from what the view gives
+you.  Virtual features are not more expressive than helpers, but they are
+defined when the view is designed, not when it is queried.  It's a matter of
+shifting the concern.
+
+Also, views can filter elements from contributing models.  Restrictions of
+concerns, access control.
+
+The overall motivation looks like:
+
+1. Views are useful, we want views.
+2. EMF Views solves the view problem, but only for EMF models.
+3. Epsilon has a different approach that lets you query non-EMF models.
+4. Epsilon does not have views.
+5. Now you can have views in Epsilon.
+
+Point 4 is where the counter-argument above can be raised.  "Epsilon does not
+need views".  Need to support all the 5 points.
+
+*** Epsilon vs. EMF
+EMF lets you build the infrastructure for dealing with models.  You need to
+define a metamodel, but then you get the code and associated tools to work with
+the models.  However, the serizliation is handled by the framework.  You are
+locked in the framework basically.  Also, upfront costs of having to define a
+metamodel.  And unbearable if you already have models in ad-hoc formats (unless
+you solve automatic discovery of EMF models).
+
+Epsilon works the other way around: you have models, but lying around in
+different formats.  You still want to use nice tools for them.  Epsilon lets you
+query them.
+
+Question for York: why is there no interest in having a way to handle Epsilon
+models through the EMF API?  There is an existing bridge to treat an EMF model
+as an Epsilon one, but the reverse does not exist.  It doesn't seem complicated
+though.
+
+
+Epsilon also has an API that's more amenable to optimization (e.g., redefining
+abstract operations on EOL).
+
+- Q for York: Why no Epsilon -> EMF?

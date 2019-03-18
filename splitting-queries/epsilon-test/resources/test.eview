@@ -1,0 +1,3 @@
+contributingModels=VirtualLinks.ecore,names.csv
+matchingModel=matching.ecl
+viewpoint=test.eviewpoint
