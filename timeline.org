@@ -15336,8 +15336,32 @@ models through the EMF API?  There is an existing bridge to treat an EMF model
 as an Epsilon one, but the reverse does not exist.  It doesn't seem complicated
 though.
 
-
 Epsilon also has an API that's more amenable to optimization (e.g., redefining
 abstract operations on EOL).
 
 - Q for York: Why no Epsilon -> EMF?
+
+* [2019-03-20 mer.]
+** Trying out another Epsilon model                        :epsilon:emfviews:
+Wanted to try Simulink.  It's part of Matlab.  Matlab is proprietary and
+academic licenses are for students, not for researchers.  I may be able to grab
+one from the school.
+
+Still, it's easier to test with another model.  They have a bibtex driver.
+Let's use that.
+
+Loading a Bibtex model works.  The API is strange though, since it accepts a
+Bibtex file as a string, while the CSV model wanted a BuffereadReader...
+
+Anyway, the property getter works.  Strangely though, I cannot access the type
+of a bibtex entry (article, book, etc.).  The type property is parsed, but
+seemingly only used for allOfKind.
+
+So the only thing that changes between Bibtex and CSV is how we load the model.
+Getting/setting properties is the same (via property getters).  Good sign.
+
+I don't think there is any good reason that these models do not have a metamodel
+defined somewhere.  For CSV I understand that it's loose, but EMF has solved
+this problem with feature maps.  For Bibtex, if I want to know which fields are
+supported and which are not, I have to look into the source code.  This will
+also make adding virtual links more tricky.

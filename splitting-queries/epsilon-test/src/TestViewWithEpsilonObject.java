@@ -20,15 +20,18 @@ public class TestViewWithEpsilonObject {
   public static void main(String[] args) throws IOException {
     EcorePackage.eINSTANCE.eClass();
     Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put("ecore", new EcoreResourceFactoryImpl());
-    Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put("csv", new Resource.Factory() {
+
+    Resource.Factory epsRF = new Resource.Factory() {
       @Override
       public Resource createResource(URI uri) {
         return new EpsilonResource(uri);
       }
-    });
+    };
 
-    ViewResource r =
-      new ViewResource(resourceURI("/resources/test.eview"));
+    Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put("csv", epsRF);
+    Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put("bib", epsRF);
+
+    ViewResource r = new ViewResource(resourceURI("/resources/test.eview"));
 
     r.load(null);
 
