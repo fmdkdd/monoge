@@ -1,5 +1,5 @@
 rule foo
-match a : ECORE!EClass with b : CSV!Row {
+match a : CSV!Row with b : ECORE!EClass {
   compare {
     return a.name = b.name;  
   }

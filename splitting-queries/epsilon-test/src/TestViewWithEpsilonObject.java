@@ -3,6 +3,7 @@ import java.io.IOException;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.xmi.impl.EcoreResourceFactoryImpl;
@@ -36,7 +37,10 @@ public class TestViewWithEpsilonObject {
     r.load(null);
 
     for (EObject o : r.getContents()) {
-      System.out.println(o.eGet(o.eClass().getEStructuralFeature("name")));
+      EStructuralFeature f = o.eClass().getEStructuralFeature("foo");
+      if (f != null) {
+        System.out.println(o.eGet(f));
+      }
     }
   }
 }

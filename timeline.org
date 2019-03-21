@@ -15365,3 +15365,58 @@ defined somewhere.  For CSV I understand that it's loose, but EMF has solved
 this problem with feature maps.  For Bibtex, if I want to know which fields are
 supported and which are not, I have to look into the source code.  This will
 also make adding virtual links more tricky.
+
+* [2019-03-21 jeu.]
+** Virtual links between Epsilon models                    :epsilon:emfviews:
+Right now ViewResource.loadWeavingModel will execute an ECL matching file
+on EMF resources.  It needs to turn these EMF resources into IModel.  I can use
+InMemoryEmfModel, sure, but if these resources are actually holding Epsilon
+models... that's a roundabout way of doing it.
+
+So we need to load models not as EMF resources, but as something else, which may
+be turned into an EMF resource or into an Epsilon model.  One problem what that
+is you may not be able to open the same resource as an EMF model /and/ as an
+Epsilon model at the same time.  We need some kind of linearity.  Not sure Java
+can enforce that.
+
+Hmm maybe the 'Either' type can dispose of one resource when we ask for
+the other one.  Like:
+
+#+BEGIN_SRC java
+class Either {
+  A myA;
+  B myB;
+
+  A asA() { if(myB) { myB.dispose() }; myA = new A(); return myA; }
+  B asB() { if(myA) { myA.dispose() }; myB = new B(); return myB; }
+}
+#+END_SRC
+
+Actually, I don't think that's a good solution.  Because even if we cache stuff,
+we are re-opening resources.  That may invalidate references we held to object.
+Bad stuff.
+
+Instead, what we just need is that if we are dealing with an Epsilon model
+wrapped as an EMF resource, then we need to be able to access the underlying
+Epsilon model.  No reloading.
+
+Hmm, when browsing through results of an ECL match, I need to map these results
+back to the model they come from.  It seems Epsilon has nothing built-in for
+that.  I can find out the signature for the left and right parameter of the
+matching rule, but that only gives me the alias for the model.  It won't work if
+I have multiple models from the same metamodel.
+
+Ah!  Spoke too soon.  Found ModelRepository.getOwningModel, which unfortunately,
+does what I had in mind: look exhaustively in the models and check if the object
+belongs to it.  For the CSV model it means do an O(n) lookup of the rows.  For
+EMF models, do an O(1) test against the EObject resource.
+
+So it may be a good idea to wrap /all/ models given to ECL in EpsilonResource,
+if performance of the O(n) lookup is an issue when building the weaving model.
+
+Having no metamodel at all is definitely a hindrance to the way EMF Views works
+right now.  Trying to work around it, but it's not going to be pretty.  The
+problem is that virtual associations used to be defined at the viewpoint level.
+Now they are defined by the view?  Or maybe in View.build I can define them on
+the viewpoint... but I still wouldn't have any kind of metamodel to extend for
+Epsilon models.
