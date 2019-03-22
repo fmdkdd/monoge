@@ -15420,3 +15420,62 @@ problem is that virtual associations used to be defined at the viewpoint level.
 Now they are defined by the view?  Or maybe in View.build I can define them on
 the viewpoint... but I still wouldn't have any kind of metamodel to extend for
 Epsilon models.
+
+* [2019-03-22 ven.]
+** Virtual links between Epsilon models (contd.)           :epsilon:emfviews:
+The problem I'm currently facing is that when executing an ECL file on Epsilon
+models and EMF resources, I can get plain Object or EObject.  I need EObject in
+the end, since in order to be virtualized, I need an underlying EObject.
+
+So I'm wrapping the match results in EpsilonEObject.  Crucially, these
+EpsilonEObjects are wrapped in VirtualEObject by the View, which populates
+virtual associations.  However, when loading the contents of the input models,
+EpsilonResource will wrap the Objects in /other instances of/ EpsilonEObject,
+leading to other instances of VirtualEObject, which means the populated
+virtual associations are lost.
+
+I tried to execute the ECL matching on EpsilonResource directly (delegating the
+instantiation of EpsilonEObject to the resource, with an instance cache to
+ensure referential transparency is preserved), but then I run into types not
+found error.  Presumably there's something EpsilonResource does not implement
+correctly.  It's understandable since it's just a hack.
+
+So another solution is to bypass the EpsilonResource when executing the matching
+model and use the underlying Epsilon model.  But then I need to ask the
+EpsilonResource to project the match results as EpsilonEObjects (so it can keep
+track of its instances), /and/ I need to keep track of the EpsilonResource tied
+to an Epsilon model.
+
+Ok, got something working.  I was able to populate a virtual association going
+from a CSV model to an Ecore model.  As there is no metamodel, the viewpoint is
+of no importance here.  The trick is that when populating the view, we are
+accessing a feature, and since we are dealing with a VirtualEObject wrapping an
+EpsilonEObject, we bypass the usual eGet mechanism:
+
+#+BEGIN_SRC java
+public Object eGet(EStructuralFeature feature) {
+  if (feature instanceof EpsilonEStructuralFeature) {
+    try {
+      return ((EpsilonEObject) concreteEObject).get(feature.getName());
+    } catch (EolIllegalPropertyException e) {
+      return virtualValues().computeIfAbsent(feature.getName(), name -> ECollections.asEList(new ArrayList<>()));
+    } catch (EolRuntimeException e) {
+      e.printStackTrace();
+      return null;
+    }
+  } else {
+    return super.eGet(feature);
+  }
+}
+#+END_SRC
+
+If that feature exists on the EpsilonEObject, then we get a result.  If it
+doesn't, then we assume it's a virtual feature.
+
+It works, but then any eGet call on a virtual object backed by an epsilon object
+will work, for any feature you can throw at it.  We may want to restrict that to
+the view build time only.
+
+For virtual features, we could go through the usual mechanism of declaring them
+in the viewpoint weaving model.  Though the trouble is that we really don't have
+that information from the Epsilon models right now...

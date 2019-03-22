@@ -37,9 +37,15 @@ public class TestViewWithEpsilonObject {
     r.load(null);
 
     for (EObject o : r.getContents()) {
-      EStructuralFeature f = o.eClass().getEStructuralFeature("foo");
-      if (f != null) {
+      {
+        EStructuralFeature f = o.eClass().getEStructuralFeature("name");
         System.out.println(o.eGet(f));
+      }
+      {
+        EStructuralFeature f = o.eClass().getEStructuralFeature("foo");
+        if (f != null) {
+          System.out.println(o.eGet(f));
+        }
       }
     }
   }
