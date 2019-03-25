@@ -15479,3 +15479,45 @@ the view build time only.
 For virtual features, we could go through the usual mechanism of declaring them
 in the viewpoint weaving model.  Though the trouble is that we really don't have
 that information from the Epsilon models right now...
+
+* [2019-03-25 lun.]
+** Using Ecore metamodels for Epsilon models           :epsilon:emfviews:emf:
+There is no good reason Epsilon models can not have Ecore packages.  Sure, the
+metamodel may not be very useful.  For CSV, the only thing you can say is that
+you have a "Row" type, but you don't know how many fields it has.  You could add
+a "fields" attribute of type Object, but that's about it.
+
+The point though is to avoid the EpsilonEStructuralFeature hack: all virtual
+features should be declared at the viewpoint level.
+
+But it means that when wrapping Epsilon objects, I can map them to an EClass
+from a metamodel.  In this case, rows from CsvModel should be mapped to the Row
+EClass (from a trivial metamodel I created).  How to know the "type" of that
+object?  Well, IModel.getTypeNameOf of course!  Except it's inconsistent:
+
+#+BEGIN_SRC java
+public String getTypeNameOf(Object instance) {
+  return LinkedHashMap.class.getName();
+}
+
+protected Collection<String> getAllTypeNamesOf(Object instance) {
+  return Collections.singleton("Row");
+}
+#+END_SRC
+
+Pretty sure we want the first one to return "Row" as well.  So I have to
+workaround it.
+
+I did, and now I can create virtual links to and from an Epsilon model.  I have
+to define a metamodel for the Epsilon model, in order to include it in the
+weaving model.
+
+I also refactored the Epsilon-specific hack of EpsilonEStructuralFeature to a
+more generic "dynamic feature" on VirtualEClass.  If that flag is true, the
+VirtualEClass will act as if any feature is valid.  The VirtualEObject can pick
+up on that, and delegate to the concrete object to answer for that feature.
+
+It's still a hack, since getEStructuralFeature will return features that do not
+exist in getAllStructuralFeatures...  One mitigation is to add dynamic features
+to a list when they are created, so getAll can pick from that list...  Another
+is to just document this potentially curious behavior.
