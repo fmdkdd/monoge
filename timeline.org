@@ -15521,3 +15521,70 @@ It's still a hack, since getEStructuralFeature will return features that do not
 exist in getAllStructuralFeatures...  One mitigation is to add dynamic features
 to a list when they are created, so getAll can pick from that list...  Another
 is to just document this potentially curious behavior.
+
+* [2019-03-27 mer.]
+** Running EOL queries on views                            :epsilon:emfviews:
+(views containing Epsilon models)
+
+A simple ~VIEW!Row.all.println()~ yields: ~Sequence {}~.  Presumably the
+getAllKindOf is not finding the right types.
+
+Ah, it was a matter of providing the EPackage for the viewpoint when
+constructing the IModel:
+
+: p = r.getContents().get(0).eClass().getEPackage();
+: new InMemoryEmfModel("VIEW", r, p)
+
+Now it works.  I can also navigate virtual links.  Relief!
+
+** Why not EpsilonViews instead?                  :epsilon:emfviews:models19:
+Now, is that efficient though?  We are using the default EmfModel
+implementation, which does this for the ~all~ operation:
+
+#+BEGIN_SRC java
+protected Collection<EObject> getAllOfKindFromModel(String kind) throws EolModelElementTypeNotFoundException {
+  final EClass eClass = classForName(kind);
+  final List<EObject> allOfKind = new ArrayList<EObject>();
+
+  for (EObject eObject : (Collection<EObject>)allContents()) {
+    if (eClass.isInstance(eObject)){
+      allOfKind.add(eObject);
+    }
+  }
+
+  return allOfKind;
+}
+#+END_SRC
+
+Exhaustive search over the contents of the resource, and an instance check.
+NeoEMF has a faster method, which we would like to use even when a NeoEMF
+resource is put into a view.  That motivates the EMFViews EMC driver.
+
+Though it /does/ sound like we are creating our own problems and solving them:
+we add abstraction, it has benefits but then it gets slow, so we add another
+stuff on the pile to make it faster.  We keep the benefits, but with the
+downside of added process complexity.  This begs the question: can we get the
+benefits without the complexity?
+
+The benefits of the approach are:
+1. ability to define views on EMF models and Epsilon models
+2. ability to filter elements
+3. ability to reuse the view for EMF navigation
+4. ability to reuse the view for Epsilon querying
+
+1 you already have with base Epsilon.  The view is not permanent though.
+
+2 you don't have, although you can define an Epsilon transformation that selects
+the content to put in the view.
+
+3 you definitely don't have.  Can't navigate Epsilon models using EMF tools.
+
+4 no, again the view is not permanent.
+
+So to get most of the benefits without the costs, we'd need basically the same
+thing as EMFViews, but working on top of Epsilon.  EpsilonViews.  Load any
+model, but expose them as one IModel.  Can filter, can reuse the view.
+Delegating operation calls from queries becomes straightforward.
+
+We still can't use EMF tools on it.  Unless it also exposes an EMF API, or we
+have a more generic facade from IModel to Resource.
