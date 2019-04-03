@@ -15588,3 +15588,75 @@ Delegating operation calls from queries becomes straightforward.
 
 We still can't use EMF tools on it.  Unless it also exposes an EMF API, or we
 have a more generic facade from IModel to Resource.
+
+* [2019-04-03 mer.]
+** Taking look at the CTF format                                        :ctf:
+[[https://diamon.org/ctf/][The CTF format]] is the one we may end up using for sharing traces in the
+project.  Seems like a decent solution.  It's a binary format, the tool is
+written in C with Python bindings.
+
+I was given an example trace, and the tool babeltrace is available readily and
+can be used to browse CTF traces.  So from this text file:
+
+#+BEGIN_EXAMPLE
+1 780000
+45 781000
+48 782000
+49 783000
+50 784000
+#+END_EXAMPLE
+
+We can produce create a CTF trace, which when viewed with babeltrace yields:
+
+#+BEGIN_EXAMPLE
+[01:00:00.000000000] (+?.?????????) 0 response_time: { }, { ID_field = 1, timestamp_field = 780000 }
+[01:00:00.000000000] (+0.000000000) 0 response_time: { }, { ID_field = 45, timestamp_field = 781000 }
+[01:00:00.000000000] (+0.000000000) 0 response_time: { }, { ID_field = 48, timestamp_field = 782000 }
+[01:00:00.000000000] (+0.000000000) 0 response_time: { }, { ID_field = 49, timestamp_field = 783000 }
+[01:00:00.000000000] (+0.000000000) 0 response_time: { }, { ID_field = 50, timestamp_field = 784000 }
+#+END_EXAMPLE
+
+The CTF format lets you define basically any kind of fields, but you always have
+/events/, which happen at given clock times.  So it looks to me like this
+particular trace was not constructed to take advantage of that, as we see a
+timestamp field which increases, but all events time are zero.  Rather, the
+timestamp should be used to drive the clock.
+
+Anyway, what I want to know is how easy it would be to manipulate these traces
+in Java, and integrate them with EMF/EMF Views.  My first idea was to use an
+Epsilon driver for these.  Since I have a build of EMF Views that loads Epsilon
+models... it means we can expose these traces as EMF models.  Tada.  (It might
+be more efficient to have a more straightforward EMF wrapper for Epsilon
+objects... but I digress.)
+
+There is [[https://www.eclipse.org/tracecompass/download.html][a Java tool]] for browsing CTF traces, and it's an Eclipse project to
+boot.  So there should be a package inside that does what I want.
+
+: org.eclipse.tracecompass.ctf.parser
+
+Bingo.
+
+After toying around with the API, I found a way to extract the same info:
+
+#+BEGIN_SRC java
+public static void main(String[] args) throws CTFException {
+  CTFTrace trace = new CTFTrace("tmpnl2pnllx");
+  for (ICTFStream s : trace.getStreams()) {
+    for (CTFStreamInput e : s.getStreamInputs()) {
+      CTFStreamInputReader r = new CTFStreamInputReader(e);
+      while (r.readNextEvent() != CTFResponse.ERROR) {
+        IEventDefinition d = r.getCurrentEvent();
+        if (d != null) {
+          System.out.printf("%s: %s\n", d.getTimestamp(), d.getFields());
+        }
+      }
+    }
+  }
+}
+#+END_SRC
+
+Stream events are /not/ loaded in memory directly, because they can be quite
+large.  So that's interesting.
+
+For interfacing with EMF, we could create an Ecore metamodel based on the CTF
+metadata.  Or use Epsilon (but no metamodels).
