@@ -15660,3 +15660,63 @@ large.  So that's interesting.
 
 For interfacing with EMF, we could create an Ecore metamodel based on the CTF
 metadata.  Or use Epsilon (but no metamodels).
+
+* [2019-04-10 mer.]
+** Testing EMF Views EMC delegation with NeoEMF models           :neoemf:emc:
+I got the EMF Views EMC working for Epsilon models, now I want to test with
+NeoEMF models.
+
+Trying on the example we already have of a Java package in a NeoEMF resource,
+and a Log model in XMI.  I had forgotten that I hacked around to not use the
+~//alias~ syntax in ECL files when building the weaving model... so now the
+matching model works.
+
+However, I have weird results when trying the query ~VIEW!Event.all~.  First,
+sometimes it works, sometimes it doesn't.  The culprit is:
+
+#+BEGIN_SRC java
+  public Collection<EObject> getAllOfKind(String kind) {
+    for (Entry<Resource, IModel> e : models.entrySet()) {
+      if (e.getValue().hasType(kind)) {
+#+END_SRC
+
+The order of ~entrySet()~ is not deterministic.  It shouldn't matter though,
+unless hasType() returns true for both metamodels... which it does!  So
+if we pick the log model first, it outputs all events.  If we pick up the Java
+model, it tries to enumerate all events... and there are none.
+
+Except that the Java metamodel does not have any Event class!  So what's going
+on here?
+
+AbstractEmfModel will respond to hasType by searching the type in the package
+registry of the model... or the global package registry!  So if the Log
+metamodel is in the global registry, the first model asked about it will say
+yes, even though it doesn't have instances of that type.
+
+Doesn't make sense to me.
+
+There are two way to fix it: either provide a resource set to the Epsilon model,
+or rewrite hasType to use the EPackages.  I'll try the first one since the
+second way is basically duplicating the Epsilon effort.
+
+Hmm okay so apparently ViewResource is already setting all metamodels on the
+resource set when loading resources.  So that's probably not going to work.
+Plan B then.
+
+Hmm ah wait I remember why I delegated hasType in EMFViewsModel... the CSV EMC
+for isntance has the hardcoded type "Row".  There is no corresponding
+metamodel.  Can we restrict the package registry used by the Epsilon models
+after the have been loaded maybe?
+
+Aahh.  It's NeoEMFModel.getPackageRegistry which is returning the global
+registry.  Crap.  Have to change that.
+
+Okay in the end we have to know which models belong to which metamodel at the
+viewpoint/view level.  Adding aliases to eviewpoint and reusing them in eview.
+Need to change more things now...
+
+It works!  I broke the Viewpoint API and the tests... but at least what I was
+trying to do works.  Following the virtual reference from Event to NeoEMF works.
+
+Now it would be great if we could run arbitrary EOL queries on views from the
+command line.  That would make benchmarking and testing a lot easier.

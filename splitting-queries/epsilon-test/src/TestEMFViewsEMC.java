@@ -1,5 +1,4 @@
 import java.io.File;
-import java.io.IOException;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EPackage;
@@ -38,9 +37,7 @@ public class TestEMFViewsEMC {
     Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put("csv", epsRF);
     Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put("bib", epsRF);
     Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put("eview", new EmfViewsFactory());
-
-    ViewResource r = new ViewResource(resourceURI("/resources/test.eview"));
-    r.load(null);
+    Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put("eviewpoint", new EmfViewsFactory());
 
     // Run EOL query on the view
     EolModule module = new EolModule();
@@ -56,11 +53,10 @@ public class TestEMFViewsEMC {
 
     // Add view
     // Need the viewpoint as well
-    EPackage p = r.getContents().get(0).eClass().getEPackage();
     EMFViewsModel m = new EMFViewsModel();
     m.setName("VIEW");
     m.setModelFileUri(resourceURI("/resources/test.eview"));
-    m.setMetamodelUri(p.getNsURI());
+    m.setMetamodelFileUri(resourceURI("/resources/test.eviewpoint"));
     m.load();
     module.getContext().getModelRepository().addModel(m);
 
