@@ -15720,3 +15720,107 @@ trying to do works.  Following the virtual reference from Event to NeoEMF works.
 
 Now it would be great if we could run arbitrary EOL queries on views from the
 command line.  That would make benchmarking and testing a lot easier.
+
+* [2019-04-12 ven.]
+** Outlining CTF in EMF solutions                                   :ctf:emf:
+There is already an Eclipse project for visualizing CTF traces, called
+[[https://www.eclipse.org/tracecompass/download.html][TraceCompass]].  This library comes with a parser for CTF files we can use in Java
+programs.
+
+Here is some Java code that goes through all the events of the trace you gave
+us:
+
+#+BEGIN_SRC java
+public static void main(String[] args) throws CTFException {
+  CTFTrace trace = new CTFTrace("tmpnl2pnllx");
+  for (ICTFStream s : trace.getStreams()) {
+    for (CTFStreamInput e : s.getStreamInputs()) {
+      CTFStreamInputReader r = new CTFStreamInputReader(e);
+      while (r.readNextEvent() != CTFResponse.ERROR) {
+        IEventDefinition d = r.getCurrentEvent();
+        if (d != null) {
+          System.out.printf("%s: %s\n", d.getTimestamp(), d.getFields());
+        }
+      }
+    }
+  }
+}
+#+END_SRC
+
+So loading CTF traces in Java is already solved.  The remaining problem is to
+interface these traces with EMF.  There are two characteristics of CTF which are
+relevant here:
+
+1. CTF traces can be large, even quite large.  For this reason, the Java library
+   lets you browse traces only by streaming: the metadata is loaded in RAM, but
+   the events are streamed as they are requested.  This entails we cannot fully
+   load arbitrary traces in RAM.
+
+2. The actual data content of the events may vary from trace to trace.  The
+   content format is fully specified by the trace metadata.  This means we
+   cannot precisely capture the structure of all traces in a single Ecore model.
+   We would need either one Ecore model /per trace/, and this model may be
+   conforming to a more generic CTF Ecore model.  Or we could use the generic
+   CTF Ecore model directly to stand as metamodel for the traces.
+
+   An example to illustrate: if our trace collects ~sensor_xyz~ events that each
+   have an ~id~ and a ~value~ field, a specific Ecore model for this trace would
+   be:
+
+   #+BEGIN_EXAMPLE
+         1    *            1     *
+   trace -----> sensor_xyz ------> id : int
+                        |
+                        |  1     *
+                        +--------> value : int
+   #+END_EXAMPLE
+
+   But a more generic one would instead speak of streams, events and fields:
+
+   #+BEGIN_EXAMPLE
+         1   *        1    *       1     *       1     *
+   trace ----> stream -----> event ------> field ------> name : String
+                                              |
+                                              |  1     *
+                                              +--------> value : Object
+   #+END_EXAMPLE
+
+   Working with the former model would be more straightforward, but then it
+   would not work for all CTF traces.  Working with the latter allows you to
+   handle any trace, at the cost of being less direct.
+
+   We could make the former model to conform to the latter, as a sort of hybrid
+   approach.  But the generic model should allow us to work with any CTF trace
+   via EMF.
+
+
+Implementation-wise, I see X potential solutions:
+
+1. A straightforward transformation that takes a CTF trace and outputs an EMF
+   model, conforming to a generic CTF Ecore model.  This would be an offline
+   transformation, which rules out live CTF traces.
+
+   For handling large traces, the transformation should not use the standard XMI
+   serialization but rather dump the trace in a database (NeoEMF could handle
+   that).
+
+2. An Eclipse plugin that implements the EMF Resource interface with a
+   CTFResource class.  The CTFResource class would use the TraceCompass CTF
+   library to query the CTF file directly, while keeping care of not loading the
+   trace in memory via lazy loading.
+
+   This solution could possibly work with live traces, although I'm not certain
+   EMF resources are meant to dynamically change in size.  As long as the
+   metadata is fixed for a given resource, I think it could work.
+
+   The advantage of this solution is that the transformation happens at runtime,
+   without requiring an extra step in the pipeline.  The specifics of the lazy
+   loading mechanism would need to be fleshed out further however.
+
+
+In conclusion, the CTF seems like a sensible choice for operating between WP3
+and WP4.  Although I didn't find any existing solutions to interface CTF traces
+with EMF, I don't see any technical hurdles that would make this unfeasible.
+There would be some work required for implementing both solutions I've outlined
+above, but this is probably something we can achieve before the end of the
+project.
