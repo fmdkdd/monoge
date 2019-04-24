@@ -15822,5 +15822,71 @@ In conclusion, the CTF seems like a sensible choice for operating between WP3
 and WP4.  Although I didn't find any existing solutions to interface CTF traces
 with EMF, I don't see any technical hurdles that would make this unfeasible.
 There would be some work required for implementing both solutions I've outlined
-above, but this is probably something we can achieve before the end of the
+above, but this is probably something that can be achieved before the end of the
 project.
+
+* [2019-04-24 mer.]
+** Describing the EpsilonResource hack                     :epsilon:emfviews:
+This IModel to EMF Resource adapter is a hack made to work with EMF Views
+specifically.  When we load a view on a CSV file, we load it through an
+EpsilonResource, which loads an Epsilon CsvModel under the hood.  When we need
+to call ECL (when building the view) or EOL (when querying), EMF Views will
+delegate directly to the underlying IModel.  However, when we need to treat the
+IModel as an EMF Resource containing instances of EObject (for instances when
+navigating the view using EMF-based tools), that's where things get hairy.
+
+To masquerade an IModel as an EMF Resource, we start with the [[https://github.com/atlanmod/emfviews/blob/load-epsilon-models/plugins/org.atlanmod.emfviews/src/org/atlanmod/emfviews/core/EpsilonResource.java][EpsilonResource]]
+class.  This overrides two relevant methods of ResourceImpl:
+
+1. void doLoad(InputStream in)
+2. EList<EObject> getContents()
+
+In doLoad, we want to load the contents of the input stream and turn them into
+EObject for getContents.  Here, we are assuming that the input stream points to
+something Epsilon can load.  For now, we are using the filename extension to
+know which Epsilon driver to call (".csv" uses CsvModel, ".bib" uses
+BibtexModel).  Once we know which Epsilon model to use, we simply load it.
+
+In getContents we need to produce EObjects, but an IModel.allContents holds
+instances of Object.  We use the [[https://github.com/atlanmod/emfviews/blob/load-epsilon-models/plugins/org.atlanmod.emfviews/src/org/atlanmod/emfviews/core/EpsilonEObject.java][EpsilonEObject]] class to obtain the interface we
+need.  Note that the mapping from Object to EpsilonEObject is cached, not for
+performance reasons but because we want referential equality to hold (whenever
+we getContents on the same resource, we should get the same EpsilonEObject
+instances, not new ones for each call).
+
+The EpsilonEObject is a barebones implementation of the EObject interface.  The
+two interesting methods are:
+
+1. EClass eClass()
+2. Object eGet(EStructuralFeature feature)
+
+For eGet, we delegate to the Epsilon property getter of the underlying Object
+managed by the IModel.  The EObject requires an EStructuralFeature though,
+whereas the property getter only needs a name.  Now, to be conforming to an
+Ecore model, the structural feature should be part of an EClass, which should be
+part of an EPackage: the metamodel of the model we are considering.  It turns
+out that since we only need the name string out of the feature, we can use a
+trivial implementation of EStructuralFeature which only responds to the getName
+method.  That is the [[https://github.com/atlanmod/emfviews/blob/load-epsilon-models/plugins/org.atlanmod.emfviews/src/org/atlanmod/emfviews/core/DynamicStructuralFeature.java][DynamicStructuralFeature]] class.
+
+For eClass, either we provide one at construction time, or we use the singleton
+EpsilonEClass.  I don't think that singleton is used anymore.  What it /should/
+do is give back instances of DynamicStructuralFeature for
+getEStructuralFeature(String).  So it's as if any feature exists on the EClass,
+but then when that feature is used to eGet in an EpsilonEObject, the property
+getter might complain if it can't be found.
+
+Now, unfortunately this dynamic approach is not enough when adding virtual
+features in EMF Views: the viewpoint declaration needs actual Ecore models.  For
+the CSV model, I created a trivial Ecore model with one EClass: Row, so the
+EpsilonEClass is not used.
+
+When navigating a CSV model through a view, we don't get an EpsilonEObject
+directly, but a VirtualEObject (wrapping an EpsilonEObject).  This
+VirtualEObject conforms to a VirtualEClass, but one that will emit
+DynamicStructuralFeature instances (this is done [[https://github.com/atlanmod/emfviews/blob/load-epsilon-models/plugins/org.atlanmod.emfviews/src/org/atlanmod/emfviews/core/View.java#L225][here]]).
+
+Currently the EpsilonResource adapter is tied to the way EMF Views make use of
+it.  If we wanted to extract it as a standalone thing, we would move the logic
+EpsilonEClass.  However, I'm not sure how far we can go when implementing
+EObject and EClass methods.
