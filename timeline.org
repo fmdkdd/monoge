@@ -15077,9 +15077,9 @@ populate the view.  Unresolved issues:
   instantiate and populate?
 
   Using EOL for populating the view has the potential to be the most efficient
-  option (since with OCL you may need have duplicated computation between
-  queries, with no way to reuse them), but we still need to find the adequate
-  syntactic option.
+  option (since with OCL you may have duplicated computation between queries,
+  with no way to reuse them), but we still need to find the adequate syntactic
+  option.
 
 * [2019-02-19 mar.]
 ** Populating a virtual association using an OCL query         :emfviews:ocl:
@@ -15215,7 +15215,7 @@ However, there are still a few hurdles to clear:
    If I hardcode the guard with eGets, the view information is extracted in ~1
    second, while it takes ~13 seconds through OCL.
 
-3. I thought I would be able to resue the OCL query objects, but apparently
+3. I thought I would be able to reuse the OCL query objects, but apparently
    calling query.evaluateEcore a second time raises an exception.  Still, it's
    only a minor optimization point.
 
@@ -15890,3 +15890,17 @@ Currently the EpsilonResource adapter is tied to the way EMF Views make use of
 it.  If we wanted to extract it as a standalone thing, we would move the logic
 EpsilonEClass.  However, I'm not sure how far we can go when implementing
 EObject and EClass methods.
+
+* [2019-05-03 ven.]
+** Using EOL to populate views                                 :eol:emfviews:
+Coming back to that point.  The OCL experiment was nice, but in truth EOL seemed
+more suited for the task.  As much as I'd like to toy with JIT'ing OCL into
+straight EMF API calls in Java, the performance problem I had with the guards in
+OCL just went away when I used an imperative program written in EOL to get the
+traces.
+
+Since we already use ECL to populate weaving models, this is just a more generic
+variant.  Right now it's only printing the results, but I could put the results
+into a weaving model as well.  I guess I would need to include the
+VirtualLinks.ecore as metamodel at least.  Then the open question is: how do I
+get the results back programmatically?
