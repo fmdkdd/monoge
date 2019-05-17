@@ -15904,3 +15904,10 @@ variant.  Right now it's only printing the results, but I could put the results
 into a weaving model as well.  I guess I would need to include the
 VirtualLinks.ecore as metamodel at least.  Then the open question is: how do I
 get the results back programmatically?
+
+* [2019-05-17 ven.]
+** Streamlining update site installation                   :eclipse:emfviews:
+Still no dice about querying the Epsilon update site when installing.  So I
+split out the Epsilon delegate in a separate feature, so at least people can
+blindly click 'next' and install EMF Views.  They just won't have ECL working
+out of the box unless they install Epsilon first.
