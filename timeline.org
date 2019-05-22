@@ -15911,3 +15911,32 @@ Still no dice about querying the Epsilon update site when installing.  So I
 split out the Epsilon delegate in a separate feature, so at least people can
 blindly click 'next' and install EMF Views.  They just won't have ECL working
 out of the box unless they install Epsilon first.
+
+* [2019-05-22 mer.]
+** Megamart Prague hackathon                                       :megamart:
+*** IKER challenge 1
+IoT ecosystem.  Want to improve log structure and discover links between logs
+and UML state machine.
+
+*** IKER challenge 2
+Automate the design of asynchronous architectures using models.
+Generate DSLs to assist developer in creating messages.
+
+*** CSY challenge 1
+Log interpretation.  Follow-up of our collaboration.
+Want to focus on the missing piece: automatic analysis of logs to identify
+fallback situations.
+
+*** CSY challenge 2
+Goal: model the overall system to simulate it faster than realtime.
+
+*** Volvo challenge
+Needs variability design models for their engines.
+
+*** BT challenge 1
+Convert actual train logs to CTF.
+Detect log anomalies and trace them back to requirements.
+More log analysis?
+
+*** BT challenge 2
+Improve testing feedback with models (continuation of previous challenge).
