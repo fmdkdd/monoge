@@ -15956,3 +15956,12 @@ will stop at the first matching one.  UML and Java both have a Package class, so
 it returns the UML one and so no matching happens.
 
 That does not explain why the templating was working correctly though.
+
+Oh, and the fix.  Well, we need to have a separate resource set for each
+resource to accomodate the way InMemoryEmfModel works.  Which means we need a
+mapping from model to metamodels.  I reused the change of putting aliases in
+front of metamodels and models (which breaks all examples).  But it's cleaner
+that way.
+
+Hmm there might be another fix, which is to specify the absolute path in the ECL
+file for ambiguous classifiers.  Certainly a simpler fix...  will see.
