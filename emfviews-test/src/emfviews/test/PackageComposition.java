@@ -10,6 +10,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import org.atlanmod.emfviews.core.View;
 import org.atlanmod.emfviews.core.Viewpoint;
@@ -370,7 +371,9 @@ public class PackageComposition {
   @Test
   public void createViewOnUML() {
     // 1. Create viewpoint
-    Viewpoint viewpoint = new Viewpoint(Arrays.asList(UMLPackage.eINSTANCE));
+    HashMap<String, EPackage> m = new HashMap<>();
+    m.put("uml", UMLPackage.eINSTANCE);
+    Viewpoint viewpoint = new Viewpoint(m);
 
     // 2. Create model
     UMLFactory f = UMLFactory.eINSTANCE;

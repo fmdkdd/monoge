@@ -15965,3 +15965,16 @@ that way.
 
 Hmm there might be another fix, which is to specify the absolute path in the ECL
 file for ambiguous classifiers.  Certainly a simpler fix...  will see.
+
+* [2019-06-03 lun.]
+** Fixing the traceability demo                                    :emfviews:
+So actually specifying the absolute path in the ECL file is not enough.  It
+would fix the ambiguousity in the traceability demo, but loading all metamodels
+in the resource set was not a good idea in the first place.  Besides, ECL was
+not warning us that there was indeed an ambiguous name.  Even the Ecore
+diagnostician would have let this slide.
+
+In the end, I'm not happy about the specific syntax used to communicate the
+metamodel-model association.  It does not account for multiple metamodels for
+one model, for instance.  But we can always extend the syntax later.  I'm
+thinking something like TOML would be palatable.
