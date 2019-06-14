@@ -15978,3 +15978,38 @@ In the end, I'm not happy about the specific syntax used to communicate the
 metamodel-model association.  It does not account for multiple metamodels for
 one model, for instance.  But we can always extend the syntax later.  I'm
 thinking something like TOML would be palatable.
+
+* [2019-06-14 ven.]
+** Updating the benchmarks for EOL                         :eol:ocl:emfviews:
+AAAArgh.  Everything is terrible.  The benchmarks code was a dirty pile of
+hacks, and now we have to add hacks on top of it.
+
+The main problem is that I ditched the weaving model loading in the
+load-epsilon-models branch because we couldn't locate matching objects in the
+resource.  Instead, I used more straightforward VirtualLinkMatch objects which
+are POJOs.  But the benchmarks relied on weaving models created offline for perf
+reasons...
+
+There are guards and preconditions to ECL, so we may be able to squeeze more
+speed out of it later down the road.  Or if that matters we can just ignore the
+whole matching phase when reporting times for queries.
+
+So I had to change the benchs to load the views using an ECL file instead.
+That's where things get fun: using XMI models everything is fine, but using CDO
+and NeoEMF models not so much.  I can run the OCL queries, but they return
+invalid results.  Some of the virtual association are not populated, and this
+stems from ECL not using the right EClass when trying to locate instances of
+match candidates, because it looks into a package registry that contains too
+many EPackage with the same name!
+
+Tried to disambiguate java and java-cdo, no dice.
+
+Okay, got it.  CDOResource returns a package registry that contains every
+package loaded.  Since AbstractEmfModel.classForName stops at the first result,
+it picks the one from the plain java package, not the java-cdo one.  Grrrr.
+
+Maybe I can rename the package?  But best thing would be to clean up the
+resourceset of the CDO resource.
+
+Ok cleaning up the resourceset package registry worked.  Yet another hack to the
+pile.  But I win.
