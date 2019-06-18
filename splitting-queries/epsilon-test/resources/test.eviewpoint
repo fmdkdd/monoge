@@ -1,2 +1,2 @@
-contributingMetamodels=http://www.eclipse.org/emf/2002/Ecore,CSV.ecore
+contributingMetamodels=ecore::http://www.eclipse.org/emf/2002/Ecore,csv::CSV.ecore
 weavingModel=weaving.xmi
