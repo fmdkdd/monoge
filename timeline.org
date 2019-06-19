@@ -16013,3 +16013,27 @@ resourceset of the CDO resource.
 
 Ok cleaning up the resourceset package registry worked.  Yet another hack to the
 pile.  But I win.
+
+* [2019-06-19 mer.]
+** Custom ECL matching, again                                  :ecl:emfviews:
+The benchmarks are running again, but loading the view was agonizingly slow.  Up
+to 3 minutes for a NeoEMF trace with 1000 elements.  That's due to the slow
+O(n^2) matching algorithm used by MatchRule in Epsilon.
+
+Last year, I wrote a custom Java class that executed the 'javaClass' rule from
+the ECL directly using Java and using a HashMap, for an O(n) algo.  This time
+though, I got rid of WeavingModel and used VirtualLinkMatch instead.  The key
+difference is that a weaving model file pointed to elements in a resource using
+strings, whereas the VirtualLinkMatch class points to object references in
+memory.
+
+I think there was also an issue of obtaining URI for objects in Epsilon
+resources that prevented the use of the offline weaving model.
+
+Anyway.
+
+I converted the code I had for the custom weaving model to do the same thing for
+virtual link matches.  Now the NeoEMF trace with 1000 elements loads in 8
+seconds, and the XMI one in 1 second.  The algo is linear, and quadratic for the
+latest rule but these are tiny models so it doesn't matter.  It should hold for
+the 10^6 models, but we'll see.
