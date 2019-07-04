@@ -16037,3 +16037,39 @@ virtual link matches.  Now the NeoEMF trace with 1000 elements loads in 8
 seconds, and the XMI one in 1 second.  The algo is linear, and quadratic for the
 latest rule but these are tiny models so it doesn't matter.  It should hold for
 the 10^6 models, but we'll see.
+
+* [2019-07-03 mer.]
+** Looking at a full benchmark run                         :emfviews:epsilon:
+Numbers are quite good.  Better than last year.  I'm not sure why there is such
+a disparity: 19sec instead of 82sec to iterate through the NeoEMF view, while at
+the same time, the XMI view jumps from 2sec to 6sec.
+
+Other weird stuff: the reqToTraces query is ~15ms with EOL but takes 20sec with
+OCL.  It should actually be fast since we are just following links, but somehow
+OCL struggles with it.
+
+The OCL optimisation is drastic.  EOL, not so much.  I'm guessing that the EMF
+Views EMC is breaking the pipeline optimisation by taking the elements out of
+the pipeline and into a list.  We can check that by looking at the numbers for a
+manual call to getAllOfKind.size.
+
+Can we get around that?  For the allInstances query, we should be able to keep
+the pipeline intact all along.
+
+Trying to get a feel for the lower bound by loading the neoemf trace directly
+with NeoEMFModel and counting its size, but running into issues.  Need to
+recreate the model?
+
+* [2019-07-04 jeu.]
+** Speeding up EOL optimisations                    :emfviews:epsilon:neoemf:
+Recreating the NeoEMF trace had no effect.  Still can't find the Log class.
+
+To get a lower bound, I just loaded the trace as a PersistentResource, and
+called getAllInstances.size on it.  Took 19s.  That's amazingly slow, since the
+FastExtentMap does exactly the same thing, and manages to do it in 2s.  It's not
+on the same machine but...
+
+For EOL we also reach 2s through the EMF Views EMC with the Gremlin pipeline.
+
+I'm going to give up on optimising further for now, and put the numbers we have
+in the paper.  We'll see about going faster after that.
