@@ -16073,3 +16073,25 @@ For EOL we also reach 2s through the EMF Views EMC with the Gremlin pipeline.
 
 I'm going to give up on optimising further for now, and put the numbers we have
 in the paper.  We'll see about going faster after that.
+
+* [2019-07-08 lun.]
+** Trying out the beefy LS2N machine                           :ls2n:ssh:vpn:
+Heard about a nice DELL 4x20 cores with 1.5To of RAM hosted at the LS2N we can
+use.
+
+Had an account created.  Have to use VPN to access it.  There's a nasty and lame
+proprietary client.  Luckily, it should also work with openconnect.
+
+The only trick is to pass the juniper flag:
+
+: sudo openconnect --juniper HOSTNAME
+
+It actually failed me with "cannot create tun device".  Figured it was because I
+updated the kernel before rebooting.  After reboot, it works fine.
+
+After that, SSH into the machine is simple.  The machine is shared, so there are
+long-running processes launched by other LS2N members.
+
+Tried to run some C++ program I had lying around, but of course I need to
+compile it statically since the machine does not have an up to date libc (I have
+2.27).  GCC on the machine is also ancient (6, I have 9), and clang is absent.
