@@ -16095,3 +16095,29 @@ long-running processes launched by other LS2N members.
 Tried to run some C++ program I had lying around, but of course I need to
 compile it statically since the machine does not have an up to date libc (I have
 2.27).  GCC on the machine is also ancient (6, I have 9), and clang is absent.
+
+* [2019-07-11 jeu.]
+** Lazy loading weaving models?                                    :emfviews:
+It's unnecessary to populate the virtual links when the view is created.  We
+could defer that work to when the target features are accessed and save on
+loading time.
+
+I tried that.  It's not that easy, unfortunately, because of opposite features.
+So I measure what we would gain by skipping the View.build phase:
+
+| view   | load time | lazy load time |
+|--------+-----------+----------------|
+| XMI    |        23 |              5 |
+| NeoEMF |       132 |            115 |
+
+(time in seconds)
+
+Not a lot.  The View.build phase is only O(n) after all.  We might have better
+gains by completely deferring the full ECL matching instead of just the
+populating phase.  In theory we would pay a very small constant overhead, until
+the feature is accessed.  The downside is that we could end up paying a higher
+total price when iterating over the full view.
+
+In the benchmarks for the SoSym paper, we already have good query numbers, and
+these would be negatively impacted by lazy loading.  Maybe not a priority,
+especially given the added complexity.
