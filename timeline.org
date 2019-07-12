@@ -16121,3 +16121,62 @@ total price when iterating over the full view.
 In the benchmarks for the SoSym paper, we already have good query numbers, and
 these would be negatively impacted by lazy loading.  Maybe not a priority,
 especially given the added complexity.
+
+* [2019-07-12 ven.]
+** Speeding up EOL connectors                       :emfviews:epsilon:neoemf:
+This time, loading the trace model using the NeoEMF EMC worked.  I tried a
+simple ~Log.all.size().println()~ query, and it took 29s.
+
+Funny thing... if I call PersistentResource.getAllInstances before executing the
+query, the getAllInstances takes 20s, and the query now only takes 1.5s!  Even
+with warmups, this result is consistent.
+
+So there must be some caching mechanism, either in PersistentResource, or in the
+DB itself.  Now, why do we get 2s for the same query on a view though?
+
+If I try to load the trace view (that contains only the trace model, no virtual
+links) through the EMF Views EMC, I get 22s to call View.getAllInstances, and
+1.5s to run the EOL query.  However, I also have 93s (!) in:
+
+: EMFViewsModel m = new EMFViewsModel(view);
+: m.setName("VIEW");
+: m.load();
+
+If I skip the View.getAllInstances, then it's 101s to load and 1.8s to execute
+the query.  It seems our good numbers for the queries are due to some heavy
+caching done up front when loading the resource.  The NeoEMF EMC does none of
+this caching, so it must happen in InMemoryEmfModel...
+
+So the culprit is the constructor, which calls InMemoryEmfModel.init!
+Specifically, the init method adds a CachedContentsAdapter, which crawls the
+resource to cache everything in RAM... and it's not togglable.  Since
+InMemoryEmfModel does really nothing more than EmfModel, let's inherit from the
+latter instead.
+
+Now I get 21s to execute the query, and no overhead in loading.  Good news: now
+at least I understand what is going on.  Bad news: we need to re-run the EOL
+queries to get accurate numbers.
+
+It doesn't explain why the FastExtentsMap can reach 2s for the same query
+though...
+
+Calling PersistentResource.getAllInstances twice gives 20s for the first call,
+then 2s.  But it doesn't look like the OCL query bench has hidden 20s away, as
+everything is accounted for.
+
+So, calling benchQuery on the trace view with ~Log.allInstances()->size()~
+takes... 20s!  With the fast extents map!  This is around what I expect of
+course, but it doesn't explain the numbers we have in the bench.  It could be
+that the bench machine is that fast...  Without fast extents map, I get 94s.  On
+the bench machine we had 20s.  The speedup is still more impressive on the bench
+machine.
+
+If I force the EMF EMC for the EOL query, I get 70s instead of 21s.  So at least
+the optimization is visible.  I'm still stumped by the bench machine results,
+but so far everything is coherent on my side now.
+
+Now to check why the traceToReq is so slow.
+
+Ha!  One thing is that matching the model to build the weaving model calls the
+getAllInstances(Log), so the 20s cost of that is hidden away in the loading
+model phase.  That's why we can get 2s results after.  Hmm.
