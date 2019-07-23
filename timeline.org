@@ -16180,3 +16180,36 @@ Now to check why the traceToReq is so slow.
 Ha!  One thing is that matching the model to build the weaving model calls the
 getAllInstances(Log), so the 20s cost of that is hidden away in the loading
 model phase.  That's why we can get 2s results after.  Hmm.
+
+* [2019-07-15 lun.]
+** Speeding up EOL connectors, contd.               :emfviews:epsilon:neoemf:
+So loading the NeoEMF trace resource using the noCache option does make a
+difference when calling getAllInstances.  Instead of 800ms the second time, we
+get 3000ms.  However, we are /still/ much faster after the first getAllInstances
+call.
+
+If no caching is happening in PersistentResource, maybe it's due to the JIT?
+
+Anyway, it's not that important, since we will be eating that cost when matching
+models in the view.  And it means we don't need to re-run all benchmarks for
+EOL.
+
+I've tracked the problem with traceToReq: the ~Log.all.select().first()~ is
+fetching the whole Gremlin pipeline, only to discard everything and keep one
+element.  I've added a getFirst option to the Gremlin collection wrapper, which
+greatly speeds things up.
+
+1.5s for NeoEMF, 0.5s for XMI, instead of 15s/10s on this machine.
+
+Hmm actually, with the default selectOne operation implementation, we get the
+same numbers.  So just the select().first() to selectOne change is enough.  Good
+news!  It means we don't even have to special case anything about the Gremlin
+pipeline in the EMF Views EMC.
+
+* [2019-07-23 mar.]
+** Freezing the old dokuwiki                                   :atlanmod:php:
+And now I'm realizing that if we don't want to break URLs, we need to keep at
+least a simple index.php file that redirects to static versions of the existing
+pages.  Damn.
+
+And I need intranet access to meddle with the sources.  Double damn.
