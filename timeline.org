@@ -16213,3 +16213,109 @@ least a simple index.php file that redirects to static versions of the existing
 pages.  Damn.
 
 And I need intranet access to meddle with the sources.  Double damn.
+
+** Extending VPDL to include an ECL-like grammar                   :vpdl:ecl:
+Long overdue.  Doesn't have to be full-ECL, we can just define a convenient
+subset.  The upside is that we can then output ECL, or we could generate
+something else down the line.
+
+Have to wrestle a bit with Xtext grammars again though.
+
+Ok, done.  Updated the example and it's still work!
+
+We'll probably need to extend that grammar again in the future, but it's a good
+start.
+
+I've updated the manual as well.  For future reference: I've used [[https://crates.io/crates/railroad][railroad]] to
+generate the grammar diagrams.
+
+* [2019-07-25 jeu.]
+** Implementing filters at the model level                         :emfviews:
+So far we cannot hide individual model elements in a view, even though the
+weaving model could support it, and I remember the original EMF Views version
+did.
+
+It's tricky though, because we cannot actually delete any elements from the
+contributing models.  And, even though we can easily not add a filtered element
+to the root contents list, we still need to make sure the element does not pop
+up in other places, like as a member of a multi-valued reference.
+
+Adding a "isHidden" flag to VirtualEObject is enough to register this info.
+
+For single-valued reference, it's not too much work to check the flag and act
+accordingly (the feature is unset, the object is null...).
+
+For many-valued reference however, it comes at a high price.  We return a
+VirtualEList, which must now account for potential hidden elements.  For
+List.size, we had:
+
+: return concreteList.size();
+
+but now we don't know the virtual list size until we know how many elements are
+hidden in it.  I'm working off the assumption that isHidden can be changed at
+any point, so we cannot pre-compute that info and look it up.
+
+So now to be correct we must do:
+
+#+BEGIN_SRC java
+int size = 0;
+for (EObject o : concreteList)
+  if (!getVirtual(o).isHidden)
+    ++size;
+return size;
+#+END_SRC
+
+which turns the size method into an O(n) operation.  Same thing for List.get.
+And that price is paid for /all lists/, even if the view doesn't effectively
+have a single hidden element!
+
+Is there a way to make this correct yet not pay that price?
+
+If the reference knows which elements are hidden by index, size could stay O(1):
+
+#+BEGIN_SRC java
+List<int> hiddenObjects;
+
+int size() {
+  return concreteList.size() - hiddenObjects.size();
+}
+#+END_SRC
+
+But it doesn't help much with get, since we would still need to iterate over the
+initial contents in order to find the index into the virtual list.
+
+get could be fast if we had list of indices of non-filtered elements instead:
+
+#+BEGIN_SRC java
+List<int> visibleObjects;
+
+T get(int idx) {
+  return concreteList.get(visibleObjects.get(idx));
+}
+#+END_SRC
+
+O(1) again, with a small overhead for additional bounds checking and
+indirection.
+
+And we could implement straightforwardly:
+
+#+BEGIN_SRC java
+int size() {
+  return visibleObjects.size();
+}
+#+END_SRC
+
+But the problem is now how to maintain this visibleObjects information?  We
+When toggling the visibility of a virtual object, we can't know all the
+references it appears in.
+
+So, I guess a good compromise is to opt-in into this costly behavior.  For
+consistency, "isHidden" should do nothing unless the option has been selected on
+the view.
+
+So here's how I did it: whenever an object is hidden, it notifies
+its view so we now have to use a FilteredVirtualEList that does the right thing.
+It's not perfect: if you retrieve a list before filtering, then you got a plain
+VirtualEList which still contains the object.  Basically, it's an issue of
+iterator invalidation.  But ultimately that's due to how EMF returns whole lists
+for features.
