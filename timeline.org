@@ -16319,3 +16319,50 @@ It's not perfect: if you retrieve a list before filtering, then you got a plain
 VirtualEList which still contains the object.  Basically, it's an issue of
 iterator invalidation.  But ultimately that's due to how EMF returns whole lists
 for features.
+
+* [2019-07-26 ven.]
+** Simplifying filtering in viewpoint                              :emfviews:
+Going over the leftover task tags.  This asymmetry between whitelist/blacklist
+behavior in the code is bugging me.  Besides, blacklisting has it easy: we
+simply ignore wildcards.
+
+The problem is this: any element can be filtered.  The meaning of filter changes
+if the weaving model is blacklisting or whitelisting.  So far, here is how we
+did it:
+
+For blacklists, we go over each filtered element, and hide them on their
+container.  But we can only hide elements, not mark them visible.  So, for
+whitelists, we go over all the elements in the metamodels, and hide those that
+are /not/ filtered.
+
+Thus the whitelist situation is slower.
+
+In addition, instead of targeting one element in particular, the filter can
+contain a wildcard.  If we target ~uml.Class.*~, then we should filter all
+features of ~uml.Class~, but we don't have to spell them out explicitly.
+
+It means that we should first go to the wildcard prefix, and mark all its
+contents as filtered.
+
+I think I've got a simpler solution.  Instead of marking the container, just add
+a flag to each BaseVirtualElement: filtered.  The meaning of this flag can be
+reversed by whitelisting, so just add a method:
+
+#+BEGIN_SRC java
+boolean isVisible() { return filtered == isWhitelist }
+#+END_SRC
+
+Now, we can easily check if an element is visible or not.  So the
+blacklist/whitelist difference does not matter anymore when applying the filters
+when building the viewpoint.  Just go over each filter, and toggle the bit.  The
+influence of whitelist is deferred to each isVisible call.
+
+For wildcards, find the prefix element (Package or Class), then toggle the bit
+for all its contents.
+
+Trying to implement that... most test passes, except two that I'm having a hard
+time tracking why.  They fail in locating metamodel objects, but didn't fail
+previously, presumably because the previous whitelisting method was enumerating
+all contents of the resource.
+
+Will fix that next time.
