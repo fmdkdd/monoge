@@ -1,9 +1,7 @@
 package emfviews.test;
 
 import java.io.File;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -72,10 +70,10 @@ public class BuildViewWithOCL {
     //Resource builder = rs.getResource(resourceURI(builderPath), true);
     Resource builder = ocl.parse(resourceURI(builderPath));
 
-    // @Correctness: If builder is null, we may have parsing or validation
-    // errors. Instead, we could open the resource directly and get a concrete
-    // syntax tree. If we only have validation errors, we should still be able
-    // to execute the body of properties.
+    // If builder is null, we may have parsing or validation errors. Instead, we
+    // could open the resource directly and get a concrete syntax tree. If we
+    // only have validation errors, we should still be able to execute the body
+    // of properties.
     //
     // For now, we assume the OCL file parses and validates correctly.
 
