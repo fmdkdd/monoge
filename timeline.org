@@ -16366,3 +16366,19 @@ previously, presumably because the previous whitelisting method was enumerating
 all contents of the resource.
 
 Will fix that next time.
+
+* [2019-07-29 lun.]
+** Upgraded Eclipse to 4.12                                         :eclipse:
+As usual: downloaded the platform binary, and reinstalled the required plugins
+(JDT, Xtend, Epsilon, OCL) on top of that.  Only 521 plugins in the PDE
+environment, which makes Eclipse responsivity bearable.
+
+Used a clean config, but imported my settings from the last version.  Worked
+well.  Didn't notice anything missing so far.
+
+** Simplifying filtering                                       :emfviews:emf:
+So the bug was that I forgot that whitelisting should also filter (as in,
+include) all the parents of the filtered elements.  Otherwise we don't see
+anything.
+
+Now it's fixed!
