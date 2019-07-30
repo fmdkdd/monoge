@@ -16382,3 +16382,45 @@ include) all the parents of the filtered elements.  Otherwise we don't see
 anything.
 
 Now it's fixed!
+
+* [2019-07-30 mar.]
+** Revamping view building                                         :emfviews:
+So far, we have relied on using the weaving model, which was mostly designed
+with the viewpoint in mind, to collect information in order to build views.
+
+The main problem is that the choice of vocabulary in the weaving model does not
+convey the semantics as clearly when it applies to views than when it applies to
+viewpoints.  Also, it's a roundabount way of doing things.
+
+In EclDelegate, after we collect matches between contributing models with ECL,
+we have to wrap these matches in ConcreteElement instances.  The overhead is not
+very important, but these are EMF objects, fancier than POJOs.  The bad part is
+that we are converting the reference to contributing model objects into strings,
+which are then fetched back by View.build with Resource.getEObject.
+
+So we have to extract an URI that identifies the element, and then use that URI
+for View to get back a memory reference to that object.  A memory reference that
+EclDelegate already had.  It's pretty dumb.
+
+We could have used proxies instead, but they are not as expressive for our
+purposes.  Using the ConcreteElement.path string lets us use the wildcard
+feature for filters for instance.
+
+While it makes sense to continue accepting these weaving models in View.build,
+we could also accept something even simpler.  I prototyped a much simpler
+version in the ecl branch, that just outputs POJOs for View.build, and it
+worked.
+
+On the other hand, we really only needed this for Epsilon... although it would
+make things clearer.  For instance, in ECLDelegate, we really want to return
+matches between concrete elements, not concepts.  At the view level, we only
+have objects, not Ecore objects.
+
+But, a virtual association can only point to concepts.  Even though we really
+only need to get a reference to matching objects.
+
+Well, in the end the nomenclature is not that critical.  I've refactored these
+parts a bit and added comments to note the inconsistency.  We'll see with H. if
+we want to create a separate View Weaving Model, as it could make sense to
+simplify the paper presentation as well.  We could argue that it's the same
+concept, but minor variations.  Doesn't need to be exactly the same thing.
