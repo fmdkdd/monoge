@@ -16615,3 +16615,114 @@ aggregations (sum, average, min, max, size), which EMF Views does not (yet!).
 
 No word on performance, but the bottleneck is surely the QVT transformation,
 which is not their contribution.
+
+* [2019-08-01 jeu.]
+** Testing VIATRA                                           :viatra:emfviews:
+They have a single update site.  The documentation seems much more complete.
+
+Unfortunately, there's a SHA256 sum mismatch for the 2.2.0 release!  Trying from
+the marketplace.  Okay seems to work.  Onto the [[https://www.eclipse.org/viatra/documentation/tutorial.html][tutorial]].
+
+*** Checking out ViewModel from MODELS'18
+Wait a minute, I'm not seeing anything view-related in there.  They have a
+MODELS'18 paper that talks of a ViewModel approach based on the VIATRA query
+language.  The repo is [[https://github.com/ftsrg/viewmodel][here]].
+
+There are benchmarks, but less documentation.  Update site works, but the SDK
+fails to install.  The runtime installs though.  The SDK contains editors and
+generators for the transformation language, so I should be able to test the
+thing still.
+
+There is a simple example [[https://github.com/FTSRG/viewmodel/blob/master/benchmarks/plugins/hu.bme.mit.inf.viewmodel.benchmarks.viewmodel/src/hu/bme/mit/inf/viewmodel/benchmarks/viewmodel/virtualswitchview/RailwayModel2VirtualSwitchModel.viewmodel][here]], but I'm not sure there is much tooling around
+it.  There are benchmarks though, so there should be code that creates views and
+stress-tests them somehow.
+
+Hmm without the SDK nothing gets generated from the viewmodel file, so I can't
+seem to run anything.
+
+There's still the development setup!
+
+Okay so I can clone and import the projects in Eclipse... but I'm seeing red all
+around.  Looks like I need to downgrade VIATRA, since the project mentions 1.7.2
+and I'm on 2.2.0, and there are clearly files that ViewModel expects that are
+not getting generated anymore.
+
+That was it.  After installing 1.7.2 and regenerating the Xtext artifacts for
+viewmodel.language, I get no errors.
+
+Looking through the benchmarks code... most of the viewmodel thing is driven by
+the Java API.  It does seem to produce an XMI, but I seem to execute the
+benchmarks.
+
+Maybe I can try a smaller example?
+
+Hm so I still can't make head or tails of this.  But, as far as I can gather
+from the paper and code, the models created by ViewModel exist in memory,
+rebuild incrementally to source changes, and can be serialized as XMI.  You
+should be able to use standard tooling on the output XMI.  It's unclear what the
+metamodel for the target is.
+
+Concerning the user process: the README mentions it starts from a ~viewmodel~
+file.  Here is one:
+
+#+BEGIN_SRC viewmodel
+import hu.bme.mit.inf.viewmodel.benchmarks.queries.virtualswitchview.*
+
+rule virtualSwitches(_) => createVirtualSwitch(_);
+
+rule connectedTo(Left, Right) => connectVirtualSwitches(VirtualLeft, VirtualRight) {
+	lookup virtualSwitches(Left) => (VirtualLeft);
+	lookup virtualSwitches(Right) => (VirtualRight);
+}
+
+rule countConnectedInFailure(Switch, N) => setConnectedSwitchesInFailureCount(VirtualSwitch, N) {
+	lookup virtualSwitches(Switch) => (VirtualSwitch);
+}
+#+END_SRC
+
+It doesn't seem to say much.  Notice it refers to
+~benchmarks.queries.virtualswitchview~.  So that must exist beforehand.  These
+are vql queries.  Here is one that is relevant:
+
+#+BEGIN_SRC vql
+import "platform:/plugin/hu.bme.mit.inf.viewmodel.benchmarks.models/model/virtualswitchview.ecore"
+
+@Template
+pattern createVirtualSwitch(Switch : VirtualSwitch) {
+	VirtualSwitch(Switch);
+}
+
+@Template
+pattern connectVirtualSwitches(Left : VirtualSwitch, Right : VirtualSwitch) {
+	VirtualSwitch.connectedTo(Left, Right);
+}
+
+@Template
+pattern setConnectedSwitchesInFailureCount(Switch : VirtualSwitch, N : java Integer) {
+	VirtualSwitch.countConnectedInFailure(Switch, N);
+}
+#+END_SRC
+
+Again, it doesn't look there's anything interesting going on here.  But there's
+a metamodel import, which again implies the view metamodel must exist
+beforehand.  Meaning, it isn't derived by the DSL.
+
+In addition, the viewmodel file will generate one Java class that creates a
+ViewSpecification, which is really what is used by the ViewModel runtime.  The
+VQL query above also generates 47 (!) Java source files.  That's part of VIATRA,
+so not really a characteristic of the approach, but still.  47 Java files from 3
+patterns that seemingly do nothing.
+
+So there seems to be a great deal of effort to create simple views, and it's
+unclear what is the expressivity of the language, or exactly what it does.  The
+paper may contain some answers.
+
+*** Reading the ViewModel paper
+\sect3.1 is a concise way of describing the Ecore structural constraints.
+
+\sect3.2: The use of 4-valued logic to resolve merges is interesting, but I don't
+really understand the use-case of merging arbitrary elements.
+
+Overall, I didn't find the answers I sought.  Figure 7 is an example of view
+transformation rules, but I'm still puzzled as to how it can be related to what
+views in EMF Views are.
