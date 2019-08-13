@@ -14469,7 +14469,7 @@ So it means we won't be moving our public-facing project with pages to this
 Gitlab, unless we ask the admins if this is a possibility.
 
 * [2018-11-26 lun.]
-** Putting the formalism in the journal paper           :emfviews:formalisim:
+** Putting the formalism in the journal paper           :emfviews:formalism:
 Trying to use dots above symbols instead of the V suffixes.  Maybe we need a
 different way to signal stuff that's part of the viewtype, as dots are easily
 missed, and look a bit weird on longer names like /range/.
@@ -16726,3 +16726,91 @@ really understand the use-case of merging arbitrary elements.
 Overall, I didn't find the answers I sought.  Figure 7 is an example of view
 transformation rules, but I'm still puzzled as to how it can be related to what
 views in EMF Views are.
+
+* [2019-08-13 mar.]
+** Draft rework of formalization                         :formalism:emfviews:
+Okay so here is how it should work:
+
+1. Viewpoint construction from weaving model.
+- combine source models packages
+- apply filters (blacklist/whitelist)
+- add virtual concepts to new package
+- add virtual features to new/existing classes
+
+- maintaining structural constraints with filtering
+
+2. View construction from weaving model:
+- apply filters (blacklist/whitelist)
+- populate virtual features
+
+2b. Using ECL for matching
+- apply rules, populate weaving model
+
+
+# Do we need packages?  Probably not: they don't tell anything interesting
+
+A metamodel is a tuple (P,C,F), where P, C, F are sets of packages, classes, and features respectively.
+Each class c is owned exactly by one package, and each feature f is owned by exactly one class c.
+owner(f) = c; owner(c) = p
+
+A weaving model is a tuple (Vc,Vf,Fl,WB), where Vc,Vf,Fl are sets of virtual classes, virtual features and filtered objects resp.
+WB indicates whether the weaving model is whitelist or blacklist: WB in {w,b}
+visible is a predicate on objects that indicates whether an object will be visible in the viewpoint or view.
+visible is derived from Fl and WB:
+visible(o) = o in Fl      if WB=w
+             o not in Fl  otherwise
+
+The key concept of EMF Views is the virtualization.
+Each model (and metamodel) object is represented in views and viewpoints by a virtual object, which is a proxy to the source element it represents.
+The function virtual() maps source objects to their unique virtual counterpart.
+%We use the prefix v to refer to virtual objects. % in blue?
+
+# Can we lump P C F together to only talk about the viewpoint objects?
+# For filtering, we don't really care about whether they come from C, F or P, so one definition is enough
+
+A viewpoint is a metamodel (P,C,F) constructed from a set of metamodels (Pi,Ci,Fi)i=1..n and a weaving model (Vc,Vf,visible), where:
+# Combine source model packages and apply filters
+- the package of the viewpoint contains all visible virtualized source packages and an additional virtual package Vp :
+    P = { virtual(p) for p in visible(Pi) } U { Vp }
+- Vp owns all virtual classes from the weaving model: forall c in Vc, owner(c) = Vp
+- C contains virtual counterparts of visible source classes : C = { virtual(c) for c in visible(Ci) } U Vc
+- F contains virtual counterparts of visible source features: F = { virtual(f) for f in visible(Fi) } U Vf
+
+Note that for the viewpoint to obey structural constraints, we want:
+- all viewpoint objects have an owner in the viewpoint: forall o in P U C U F, owner(o) in P U C U F
+
+visible may violate this constraint:
+metamodel ({p},{a},{f}), with owner(a) = p and owner(f) = a
+weaving model ({},{a},{},w) => viewpoint({},{virtual(a)},{}), and now owner(virtual(a)) = virtual(p) but virtual(p) not in P
+
+If we care about restoring structural constraints, we can either:
+1. remove a
+2. include p
+
+Choice 2 makes more sense in a whitelist, since the user wanted a to be in.
+
+Similarly, if we use a blacklist => viewpoint({virtual(p)},{},{virtual(f)}), and owner(virtual(f)) = virtual(a) but virtual(a) not in C
+
+We can again:
+1. remove f
+2. include a
+
+Here, choice 2 would be against the user wish, so choice 1 is better.
+
+So, in whitelist:
+
+- P U C U F = { virtual(o) | visible(o) or exists o2: o = owner(o2) and o2 in P U C U F }
+
+(note that this is transitive: visible(f) will add a to PUCUF, and a will add p)
+
+(this suggests building sets P, then C, then F)
+
+in blacklist:
+
+- P U C U F = { virtual(o) | visible(o) and owner(o) in PUCUF }
+
+%% If we care about distinguishing attributes from references, then the EType of references also impacts these constructions
+
+
+%% We probably want to treat viewpoint/views as the same, with the same structural constraints
+%% this gets home the point that EMF Views acts on them in the same way
