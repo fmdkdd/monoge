@@ -16809,8 +16809,21 @@ in blacklist:
 
 - P U C U F = { virtual(o) | visible(o) and owner(o) in PUCUF }
 
-%% If we care about distinguishing attributes from references, then the EType of references also impacts these constructions
+# If we care about distinguishing attributes from references, then the EType of references also impacts these constructions
 
 
-%% We probably want to treat viewpoint/views as the same, with the same structural constraints
-%% this gets home the point that EMF Views acts on them in the same way
+# We probably want to treat viewpoint/views as the same, with the same structural constraints
+# this gets home the point that EMF Views acts on them in the same way
+
+* [2019-08-19 lun.]
+** Finalizing the formalization                          :formalism:emfviews:
+One thing that I thought about yesterday: currently the formalization is a bit
+disconnected from the previous sections.  Especially, the weaving model looks a
+bit different than what we have shown in the previous section.
+
+We could add a paragraph saying how we can map the weaving model operators
+(virtual associations, virtual reference, etc.) to synthetic objects and values.
+
+Hmm, in the end, there is already that info in the text: we explicitly say that
+virtual concepts are represented by synthetic objects in the formalism.  Good
+enough.
