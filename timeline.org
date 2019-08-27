@@ -16827,3 +16827,94 @@ We could add a paragraph saying how we can map the weaving model operators
 Hmm, in the end, there is already that info in the text: we explicitly say that
 virtual concepts are represented by synthetic objects in the formalism.  Good
 enough.
+
+* [2019-08-27 mar.]
+** Comparing ModelJoin to EMF Views                      :modeljoin:emfviews:
+Trying to build the EMF Views tutorial view in ModelJoin.  I only need to write
+a modeljoin query:
+
+#+BEGIN_SRC modeljoin
+import "platform:/resource/emfviews-tutorial/metamodels/Book.ecore"
+import "platform:/resource/emfviews-tutorial/metamodels/Publication.ecore"
+
+target "http://mjtest/test-emfviews"
+
+natural join Publication.Publication with Book.Book
+       as jointarget.PubAndBooks {
+  keep attributes Publication.Publication.author,
+  		  Publication.Publication.publisher,
+  		  Publication.Publication.year
+
+  keep outgoing Book.Book.chapters {
+    keep attributes Book.Chapter.title
+  }
+}
+#+END_SRC
+
+This generates a target metamodel and a trace metamodel, an OCL file for
+validity and a QVTo transformation.  Running the QVTo transformation yields a
+trace model and a target model.  The target model is the same as the EMF Views
+tutorial one, except that the 'bookChapters' virtual association is actually
+just the 'chapters' relation that is kept from the Book class.
+
+There's a hitch in my version: the generated QVTo transformation is invalid due
+to a mysterious error:
+
+: the type jointarget::Book does not conform to the type jointarget::Book
+
+A workaround is to comment out these parts of the transformation, which breaks
+the generated trace.
+
+In the query we have to state out all the attributes we want to keep, but
+otherwise it works well.
+
+So, for comparison: in EMF Views the allChapter view can be described with one
+VPDL file plus one eview file:
+
+#+BEGIN_SRC vpdl
+create view publicationsAndBooks as
+
+select publication.Publication.*,
+       publication.Publication join book.Chapter as bookChapters,
+       book.Book.*,
+       book.Chapter.title,
+
+from 'http://publication' as publication,
+     'http://book' as book,
+
+where s.title = t.eContainer().title for bookChapters
+#+END_SRC
+
+#+BEGIN_SRC eview
+contributingModels=publication::../models/publication.xmi,\
+                   book::../models/book.xmi
+viewpoint=../viewpoints/publicationsAndBooks.eviewpoint
+matchingModel=allChapters.ecl
+#+END_SRC
+
+Although, arguably the eview file contains the same information as the launch
+configuration for the QVTo transformation in Modeljoin.  So both are similar in
+the amount of setup required.
+
+EMF Views does not generate a trace or an OCL file, and it does not generate a
+target metamodel as an Ecore file either.  One does not need to run a
+transformation: opening the eview file with a model editor builds the view which
+can then be navigated.  A consequence is that one can change the source models
+and just open the eview file again to get an updated view, rather than
+relaunching the transformations (although this could be a one-click step with an
+Mwe2 workflow, as suggested by the Modeljoin authors).
+
+VPDL requires you to state explicitly which attributes or references to include,
+although note that wildcards are a convenience to include all of them.
+
+The WHERE clause does the same as the one in a theta join, and supports an OCL
+subset.  EMF Views has no concept of natural join where models are joined on
+similarly-named fields.
+
+This was for the allChapters view.  For the firstChapter, I can't find a way to
+express it.  We would need some kind of selection on the kept outgoing
+reference, or a way to compute the reference from scratch (what EMF Views does).
+There is a ~keep calculated attributes~ but it doesn't apply to references.
+
+On the other hand, EMF Views cannot express aggregated attributes as in the
+Modeljoin tutorial example.
