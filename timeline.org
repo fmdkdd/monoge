@@ -16918,3 +16918,32 @@ There is a ~keep calculated attributes~ but it doesn't apply to references.
 
 On the other hand, EMF Views cannot express aggregated attributes as in the
 Modeljoin tutorial example.
+
+* [2019-09-02 lun.]
+** Trying to bench modeljoin                                      :modeljoin:
+Using the 4-models views of the MODELS paper...
+
+Have to install a bunch of stuff in that Eclipse workspace so I don't pollute
+mine.
+
+The Java model needs MoDisco, which needs... EMF Facet.  Where is that?
+[[https://download.eclipse.org/facet/updates/release/1.3.0/][Separate update site]].  Yes, MoDisco installs after that.
+
+Hmm, the view needs ReqIF.  I can add the JAR containing the metamodel to the
+target platform, and it works.  But the reqif model is using the PROR metamodel
+instead...
+
+Well, it's fine.  I can just use the Java + Trace models for the view.  That's
+the stress-test part anyway.
+
+I can run the UML+Java+Log view fine.  Trying to build a modeljoin query doing
+the same...
+
+First hurdle: the import statement appears to not work with metamodel URIs.
+Urgh.  Can't find a way to pass them.  So have to retreat to Ecore files.  Is
+there one for MoDisco/Java?  Ah yes there are.  Hmm the UML ones is for
+3.0.0... will start with the Log/Java connection.
+
+Of course I have to use a theta join with a QVT-O query.  And it doesn't have
+String.split.  Grmbl.  Finding the [[https://www.omg.org/cgi-bin/doc?ptc/2007-07-07][QVT-O reference]].  There is String:match which
+takes a Java regexp.  Good enough.
