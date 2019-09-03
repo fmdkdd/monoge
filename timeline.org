@@ -16947,3 +16947,40 @@ there one for MoDisco/Java?  Ah yes there are.  Hmm the UML ones is for
 Of course I have to use a theta join with a QVT-O query.  And it doesn't have
 String.split.  Grmbl.  Finding the [[https://www.omg.org/cgi-bin/doc?ptc/2007-07-07][QVT-O reference]].  There is String:match which
 takes a Java regexp.  Good enough.
+
+* [2019-09-03 mar.]
+** Trying to bench modeljoin (contd.)                             :modeljoin:
+I wanted to add the component part in the Modeljoin query.  Modeljoin supports
+multiple joins in the same query, but it doesn't accept joining on target
+element created by other joins.  So we can't join Log and ClassDeclaration as
+LogClass then join that with uml.Component.
+
+So I guess I have to join them separately.
+
+Hmm, keeping Component.packagedElements is not enough to see anything.  There's
+a warning saying that reference has no concrete subclass, and indeed I don't see
+any Usage class in there.  Well that's okay.  I'll test the scalability of the
+thing instead.
+
+Running the QVT-O transformation with a 100k trace: 108s.  Opening it in MoDisco
+takes just a few seconds.
+
+More than 600sec for EMF Views to try to open the view and then I ran out of the
+patience.  The O(n^2) ECL matching is killing us.
+
+Trying to find a workaround... but there is no quick one.  Lazily populating the
+virtual values is the Right Thing To Do.  But it's also more error-prone, and it
+requires to change the interface a bit: we need to know, for each virtual
+feature, what is the corresponding query that can be used to populate it.  We
+also need to know that a feature will be populated at a later point, for
+compatibility with view weaving models which contain explicit links.
+
+That means a third mechanism to populate views: 1) pre-computed weaving
+models, 2) matching models, 3) lazy matching models.
+
+And, it's not even the optimal solution which I outlined before, which was to
+provide an EOL file that builds the weaving model.  It is strictly better
+because with separate lazy matching queries, we may have redundant computation
+that we cannot easily detect and share.  With the EOL file, the user is in
+control and can avoid the redundant computation.  But it is less user-friendly
+than VPDL.
