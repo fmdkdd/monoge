@@ -16984,3 +16984,42 @@ because with separate lazy matching queries, we may have redundant computation
 that we cannot easily detect and share.  With the EOL file, the user is in
 control and can avoid the redundant computation.  But it is less user-friendly
 than VPDL.
+
+* [2019-09-04 mer.]
+** Lazily matching ECL rules                         :ecl:modeljoin:emfviews:
+Discussing with H., I'll try to implement the lazy loading of ECL matchers by
+default.  Which still requires some work to do correctly, but at least we don't
+have to change the interface.
+
+I think it's a good call, since the default matching algorithm is never the
+thing you want anyway.
+
+So new plan: when a matching model is provided, do not execute it in
+ViewResource to build a weaving model.  Instead, parse it and grab the match
+rules out of it and register the corresponding features as lazy (a good place to
+do some sanity checks).
+
+Then, when the feature is eGet on virtual objects, check if it's lazy, and ask
+ECL to execute only that rule for the current object.  Cache the result and we
+are done.
+
+Does ECL have an API for executing only a match rule instead of a whole ECL
+module?
+
+Tried on a prototype, and it seems we can ask Epsilon to parse the ECL, get
+matching rules objects, and there's an API to execute these on plain objects
+coming from models.
+
+One thing I still need to check: can we easily pass a VirtualEObject to
+MatchRule.match?  Otherwise we'll need to pass these as Epsilon EMF objects,
+which can be clunkier.
+
+It works if we pass DynamicEObject straight from resources.  We still need to
+add these resources as InMemoryEmfModels to the ECL module so that the correct
+getters and setters can be used to probe the resources.
+
+So it's just a matter of separating the two pieces of that work in EMF Views:
+doing the parsing/setting up the module and extracting the rules when loading
+the viewresource, and then letting the virtual objects call in to the
+virtualizer to do the remainder of the work by actually executing the rules,
+and populate the feature from the match results.
