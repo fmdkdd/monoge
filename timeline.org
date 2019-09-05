@@ -17023,3 +17023,45 @@ doing the parsing/setting up the module and extracting the rules when loading
 the viewresource, and then letting the virtual objects call in to the
 virtualizer to do the remainder of the work by actually executing the rules,
 and populate the feature from the match results.
+
+* [2019-09-05 jeu.]
+** Implementing lazily matched ECL rules                       :ecl:emfviews:
+Seems to work.  At least I can open a 100k view without waiting for 10min.  It
+takes just a few seconds now.  And opening a virtual feature yields the expected
+links without a noticeable delay.
+
+MoDisco is slugglish on the view though, not just for virtual features.  And the
+Sample Editor just hangs when unfolding the Trace element...
+
+Well, MoDisco is also sluggish with the Modeljoin output, so it's not EMF Views
+then.  And the Sample Editor hangs when /opening/ the MJ output.  We are fine.
+
+I forgot one crucial ingredient though: we can navigate virtual features via
+their opposite!  Which should also trigger the lazy rule execution.
+
+And it's tricky to get right.  We only have one rule for each virtual
+association in ECL.  When accessing the feature that has the same name as the
+rule, it works.  When accessing the opposite feature, it has no corresponding
+rule.
+
+We can detect that situation.  Let's say I have component<->javaPackages virtual
+associations, and a component ECL rule.  Accessing javaPackages, I can see it
+has an opposite, and execute the component ECL rule.  The thing is, I'm doing
+that from the VirtualEObject that represent a java Package instance, so it makes
+no sense to execute the component rule on it!
+
+But luckily, arguments to ECL rule commute: I can use the /same/ rule and pass
+the current object as the right-side parameter instead of the left-side.  I
+check if the feature has an opposite, and execute the rule the other way around.
+
+Hmm, okay it works... but I get duplicated values in features.  Looks like I'm
+adding, then the addInverse from the opposite kicks off.
+
+Fixed it by using addWithoutInverse.
+
+But there's still one issue: we initialize the virtual feature on A and B side
+correctly, but we are only telling A that the initialization has been done, so
+accessing B will execute the rule again.
+
+We need to ensure all instances correctly set the initialized bit for values
+coming from lazy rules.
