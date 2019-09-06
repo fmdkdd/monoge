@@ -17065,3 +17065,25 @@ accessing B will execute the rule again.
 
 We need to ensure all instances correctly set the initialized bit for values
 coming from lazy rules.
+
+* [2019-09-06 ven.]
+** Implementing lazily matched ECL rules with opposites        :ecl:emfviews:
+... is a nightmare.
+
+I think I've got most of it covered, I wrote tests covering the single-valued
+and many-valued features cases, with opposites.  All green.
+
+Then MoDisco barfs at me when unfolding a ClassDecl with a ClassCastException!
+
+Debugging...
+
+AH!  I think I got it.  I missed the case where we have one single-valued
+feature opposite a many-valued one (which is the case of the simple view used in
+the benchmarks).
+
+/Now/ I got it.  It was even trickier than I expected... dealing with opposites
+is very nasty.  I should probably refactor that code into something readable.
+It's long overdue.
+
+But at least it works!  And my first test on the 100k view is pretty fast.  No
+noticeable delay to browse the lazy features.
