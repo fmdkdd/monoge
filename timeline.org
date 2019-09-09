@@ -17087,3 +17087,75 @@ It's long overdue.
 
 But at least it works!  And my first test on the 100k view is pretty fast.  No
 noticeable delay to browse the lazy features.
+
+* [2019-09-09 lun.]
+** Master flaw in lazy ECL rules                               :ecl:emfviews:
+So I thought everything was fine.  But no!
+
+When executing a rule that populates a virtual feature with an opposite, we
+should /not/ mark the rule as executed on the opposite.  It's incorrect.  See:
+
+#+BEGIN_SRC ecl
+rule javaClass
+match l : trace!Log
+with  c : java!ClassDeclaration
+{
+  compare
+  {
+    return l.source.split("\\.")[0] = c.name;
+  }
+}
+#+END_SRC
+
+When browsing from Log A, we execute the rule on l:A with c: all ClassDecl.
+That is correct.  Let's say we match on a ClassDecl B.  When browsing from c:B,
+we expect to see l:A in there, but not only!  We could match with other
+instances of Log, and in fact that's the case in this specific view.
+
+So the fix is to not populate the opposite feature, and just re-execute the
+match rule when browsing it.  Premature optimization, root of all evil, I tell
+you!
+
+At least I'm happy about getting rid of that spaghetti mess dealing with
+opposites.
+
+** Faster ECL matching                                                  :ecl:
+Now, the funny thing is that opening a javaClass virtual feature from a Log to a
+ClassDecl is instantaneous.  There are only 180 classes to test after all.
+Opening the ClassDecl though... takes around 15 seconds to test the 100k Log
+instances.
+
+Surely interpreting the whole predicate again for each instance is slow.  To
+speed this up further, we could interpret the predicate once into a lambda
+(partial eval), and execute it directly on all instances.  Not sure how to turn
+the ECL into a lambda though...
+
+Quick check: if I hardcode the rule above as:
+
+#+BEGIN_SRC java
+ruleJavaClass(Log l, ClassDeclaration c) {
+  return l.getSource().split("\\.")[0].equals(c.getName());
+}
+#+END_SRC
+
+how much faster is it?
+
+I went with the slightly more generic and roundabout:
+
+#+BEGIN_SRC java
+public Match ruleJavaClass(EObject log, EObject classDecl) {
+  String source = (String) log.eGet(log.eClass().getEStructuralFeature("source"));
+  String name = (String) classDecl.eGet(classDecl.eClass().getEStructuralFeature("name"));
+
+  return new Match(log, classDecl, source.split("\\.")[0].equals(name));
+}
+#+END_SRC
+
+because I didn't have the metamodels loaded.  Still, it's nearly instantaneous
+to match the 100k instances, and takes less than 1sec to match 1M of them!
+
+I think it would be possible to write an Epsilon driver that turns a match AST
+into a Java lambda... For genericity, it might be best.  Otherwise, it would
+also be possible to walk the AST and produce one ourselves.  The first case
+would be a great hack though... not unsimilar to what the Epsilon people did
+for SQL queries (created from EOL queries).
