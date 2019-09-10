@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -99,6 +100,87 @@ public class CompileECLMatchRule {
     Object exec(Object o) throws EolRuntimeException;
   }
 
+  static abstract class LambdaCollection implements Lambda, Collection<Object> {
+
+    @Override
+    public int size() {
+      // TODO: Auto-generated method stub
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean isEmpty() {
+      // TODO: Auto-generated method stub
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean contains(Object o) {
+      // TODO: Auto-generated method stub
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Iterator<Object> iterator() {
+      // TODO: Auto-generated method stub
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Object[] toArray() {
+      // @RIP: can't do anything here!
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <T> T[] toArray(T[] a) {
+      // TODO: Auto-generated method stub
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean add(Object e) {
+      // TODO: Auto-generated method stub
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean remove(Object o) {
+      // TODO: Auto-generated method stub
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean containsAll(Collection<?> c) {
+      // TODO: Auto-generated method stub
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean addAll(Collection<? extends Object> c) {
+      // TODO: Auto-generated method stub
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> c) {
+      // TODO: Auto-generated method stub
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean retainAll(Collection<?> c) {
+      // TODO: Auto-generated method stub
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void clear() {
+      // TODO: Auto-generated method stub
+      throw new UnsupportedOperationException();
+    }
+  }
+
   static class SockPropGetter implements IPropertyGetter {
 
     IEolContext context;
@@ -113,7 +195,12 @@ public class CompileECLMatchRule {
     @Override
     public Object invoke(Object object, String property) throws EolRuntimeException {
       System.out.printf("invoke %s on %s\n", property, object);
-      return (Lambda) (obj -> delegate.invoke(object, property));
+      return new LambdaCollection() {
+        @Override
+        public Object exec(Object o) throws EolRuntimeException {
+          return delegate.invoke(object, property);
+        }
+      };
     }
 
     @Override
@@ -149,14 +236,17 @@ public class CompileECLMatchRule {
 
     @Override
     public Object execute(Object[] parameters, ModuleElement ast) throws EolRuntimeException {
-      return (Lambda) (obj -> {
-        Object o = receiver.exec(obj);
-        try {
-          return ReflectionUtil.invokeMethod(o, name, Arrays.asList(parameters));
-        } catch (Exception ex) {
-          throw new EolRuntimeException("Failed to execute reflected method " + name);
+      return new LambdaCollection() {
+        @Override
+        public Object exec(Object obj) throws EolRuntimeException {
+          Object o = receiver.exec(obj);
+          try {
+            return ReflectionUtil.invokeMethod(o, name, Arrays.asList(parameters));
+          } catch (Exception ex) {
+            throw new EolRuntimeException("Failed to execute reflected method " + name);
+          }
         }
-      });
+      };
     }
 
   }

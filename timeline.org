@@ -17212,3 +17212,37 @@ left,right -> (
     (left,right)).get(0))(left,right))
   .equals((left,right -> right.eGet("name"))(left,right))
 #+END_SRC
+
+which is less efficient.
+
+Also, the array index is an interesting case.  In the EOL interpreter, it is
+interpreted by the class ItemSelectorExpression, which does this:
+
+#+BEGIN_SRC java
+Object expression = context.getExecutorFactory().execute(targetExpression, context);
+Object index = context.getExecutorFactory().execute(indexExpression, context);
+
+if ((expression instanceof Collection)) {
+  if (!(index instanceof Integer))
+    throw new EolRuntimeException("Collection index must be an integer but " + index + " was provided instead.", indexExpression);
+  else return CollectionUtil.asList(expression).get((Integer)index);
+}
+#+END_SRC
+
+Execute eagerly the arguments, then test them and get the index from it.
+Now, the way I've implemented things so far in the prototype is that
+~expression~ is a lambda.  So of course it's not a collection.  I can return a
+lambda that also implements the Collection interface, but then
+CollectionUtil.asList will invoke the toArray method on the lambda, and I don't
+know how large the returned array should be!
+
+Had it returned a list, which was still an object, I could have returned a dummy
+list which would have turned the ~get~ into a thunk.  But I can't deal with an
+array.
+
+So it seems the only way to do the transformation would be writing my own lazy
+EOL interpreter.
+
+Trying to hardcode the javaClass ECL rule as the thunkified version above to see
+if the performance gain would be worth it in this form...  But it doesn't work!
+For some reason, the feature is not populated.
