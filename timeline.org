@@ -16651,7 +16651,7 @@ That was it.  After installing 1.7.2 and regenerating the Xtext artifacts for
 viewmodel.language, I get no errors.
 
 Looking through the benchmarks code... most of the viewmodel thing is driven by
-the Java API.  It does seem to produce an XMI, but I seem to execute the
+the Java API.  It does seem to produce an XMI, but I can't seem to execute the
 benchmarks.
 
 Maybe I can try a smaller example?
@@ -17159,3 +17159,56 @@ into a Java lambda... For genericity, it might be best.  Otherwise, it would
 also be possible to walk the AST and produce one ourselves.  The first case
 would be a great hack though... not unsimilar to what the Epsilon people did
 for SQL queries (created from EOL queries).
+
+* [2019-09-10 mar.]
+** Partial evaluation of ECL matching rules                             :ecl:
+Trying to do a prototype: load an ECL file, extract rules, recompile the rule,
+and execute the compiled rule.
+
+Wading through the maze of EOL interpreter... and trying to return suspended
+lambdas.
+
+For the compare block:
+
+: return s.name.split("\\.")[0] = t.name;
+
+Ideally I want to turn it into this:
+
+#+BEGIN_SRC java
+left, right -> {
+  ((String) left.eGet("name"))
+  .split("\\.")
+  [0].equals(right.eGet("name"))
+#+END_SRC
+
+Now the problem is that I'm interpreting the AST, which is something like:
+
+#+BEGIN_SRC elisp
+(equals (aref 0 (call (get s "name") "split" "\\."))
+        (get t "name"))
+#+END_SRC
+
+When interpreting ~equals~, the general form gets ~left~ and ~right~ arguments.
+In a traditional eager interpreter, ~equals~ would get a string on the left, and
+a string on the right, and would call equals on them.
+
+In this lazy interpreter design, I get thunks:
+
+#+BEGIN_SRC java
+(get source prop) := if (source == left) left,right -> left.eGet(prop)
+                     else                left,right -> right.eGet(prop)
+(call receiver method ...args) := left,right -> invokeMethod(receiver, method, args)
+(aref n array) := left,right -> Arrays.asList(array).get(n)
+(equals l r) := left,right -> l.equals(r)
+#+END_SRC
+
+Which means that in a recursive interpreter we have thunks calling thunks,
+instead of a just one statement block:
+
+#+BEGIN_SRC java
+left,right -> (
+  (left,right -> Arrays.asList(
+    (left,right -> invokeMethod((left,right -> left.eGet("name"))(left,right), "split", ["\\."]))
+    (left,right)).get(0))(left,right))
+  .equals((left,right -> right.eGet("name"))(left,right))
+#+END_SRC
