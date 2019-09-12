@@ -17246,3 +17246,65 @@ EOL interpreter.
 Trying to hardcode the javaClass ECL rule as the thunkified version above to see
 if the performance gain would be worth it in this form...  But it doesn't work!
 For some reason, the feature is not populated.
+
+Here are the hardcoded classes, saved for later maybe:
+
+#+BEGIN_SRC java
+public Match ruleJavaClass(EObject log, EObject classDecl) {
+  String source = (String) log.eGet(log.eClass().getEStructuralFeature("source"));
+  String name = (String) classDecl.eGet(classDecl.eClass().getEStructuralFeature("name"));
+
+  return new Match(log, classDecl, source.split("\\.")[0].equals(name));
+}
+
+static interface Lambda {
+  Object exec(EObject left, EObject right) throws EolRuntimeException;
+}
+
+public Match ruleJavaClassWithThunks(EObject left, EObject right) throws EolRuntimeException {
+  Object source = ((Lambda) ((l,r) -> l.eGet(l.eClass().getEStructuralFeature("source")))).exec(left, right);
+  Object name = ((Lambda) ((l,r) -> r.eGet(r.eClass().getEStructuralFeature("name")))).exec(left, right);
+
+  Object split = ((Lambda) ((l,r) -> ReflectionUtil.invokeMethodSafe(source, "split", Arrays.asList("\\.")))).exec(left, right);
+  Object aref = ((Lambda) ((l,r) -> Arrays.asList(split).get(0))).exec(left, right);
+  Object res = ((Lambda) ((l,r) -> aref.equals(name))).exec(left, right);
+
+  return new Match(left, right, (boolean) res);
+}
+#+END_SRC
+
+* [2019-09-11 mer.]
+** Benching ModelJoin                                    :modeljoin:emfviews:
+Timings in seconds, sizes in bytes:
+
+| Tool      | Trace size | Transform | Cold open | Hot open | Cold browse | Hot browse |  Disk size |
+|           |        <r> |       <r> |       <r> |      <r> |         <r> |        <r> |        <r> |
+|-----------+------------+-----------+-----------+----------+-------------+------------+------------|
+| ModelJoin |       100k |       100 |         4 |        2 |          <1 |         <1 | 11,270,306 |
+| ModelJoin |         1M |     >3600 |         - |        - |           - |          - |          - |
+|-----------+------------+-----------+-----------+----------+-------------+------------+------------|
+| EMF Views |       100k |         - |         3 |        2 |      43--92 |         <1 |        247 |
+|           |         1M |         - |           |          |             |            |        248 |
+
+What I did:
+
+- Transform :: click on the run button for the launch task of the QVT-O
+     transformation, wait for it to end.
+- Cold open :: open the jointarget model in MoDisco, wait for the "loading"
+     messages to disappear
+- Hot open :: close the jointarget and open it again, wait for the "loading"
+     messages to disappear
+- Cold browse :: time to open the traces virtual features on a ClassDecl
+- Hot browse ::  ibidem, but opening the same feature a second time
+
+* [2019-09-12 jeu.]
+** Benching ModelJoin                                    :modeljoin:emfviews:
+Results for cold browsing virtual features are nice but not great.  Browsing all
+virtual features except ~traces~ is instantaneous, but the overhead of ECL
+interpretation is killing us in this case.
+
+So I tried to implement a partial evaluator that turns the ECL compare block
+into lambdas.  And it works!  Only 3sec to unfold the javaClass feature on the
+1M trace model.
+
+Now to document all that...
