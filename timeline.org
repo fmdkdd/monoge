@@ -17308,3 +17308,56 @@ into lambdas.  And it works!  Only 3sec to unfold the javaClass feature on the
 1M trace model.
 
 Now to document all that...
+
+* [2019-09-13 ven.]
+** Partial evaluation of ECL rules                             :ecl:emfviews:
+Sometimes I feel like a wizard.
+
+The ECL interpretation overhead was killing us, but with 150 lines of code I
+wrote a partial evaluator that returns a lambda to be executed with left and
+right elements to be compared, and it's at least 20 times faster.
+
+I think it could be even faster if we compiled to Java bytecode directly, but
+that would require a less straightforward transformation.
+
+Right now, I should make it a bit more correct.  Yesterday I hardcoded the
+~split~ and ~toLowerCase~ operations, but that doesn't work generally unless we
+know the receiver is a string.  In general, we have to find the method via
+reflection at runtime (in the lambda), which is slower.  If we had static type
+information, then we could at least extract the method ahead of time, and just
+do the reflective execution at runtime.
+
+It looks like ECL can resolve types of expressions via a ~compile~ method.  Now
+to figure how to make it work.
+
+Found a way to pass the type of the parameters, by loading the metamodels,
+finding the class, and setting that into the EOL compilation context.  But the
+static analysis chokes on EEnum having no instance class.
+
+So here we go again.  I can roll my own static analysis that will get me the
+type of the expression, and if that type is unknown, then I can fallback on a
+reflective call.  But that may be too much work for now.  Let's roll with the
+reflective call and see if that is too slow.
+
+
+| Tool      | Trace size | Transform | Cold open | Hot open | Cold browse | Hot browse |  Disk size |
+|           |        <r> |       <r> |       <r> |      <r> |         <r> |        <r> |        <r> |
+|-----------+------------+-----------+-----------+----------+-------------+------------+------------|
+| ModelJoin |       100k |       100 |         4 |        2 |          <1 |         <1 | 11,270,306 |
+| ModelJoin |         1M |     >3600 |         - |        - |           - |          - |          - |
+|-----------+------------+-----------+-----------+----------+-------------+------------+------------|
+| EMF Views |       100k |         - |           |          |             |            |        247 |
+|           |         1M |         - |           |          |             |            |        248 |
+|-----------+------------+-----------+-----------+----------+-------------+------------+------------|
+| EMF Views |       100k |         - |         3 |        2 |      43--92 |         <1 |        247 |
+| lazy      |         1M |         - |         - |        - |           - |          - |        248 |
+|-----------+------------+-----------+-----------+----------+-------------+------------+------------|
+| EMF Views |       100k |         - |         3 |        3 |           1 |         <1 |        247 |
+| compiled  |         1M |         - |        12 |       12 |           4 |         <1 |        248 |
+
+It's noticeable at the 1M level, unfortunately.  Here we have only one virtual
+feature in the model object, but if we had several... could be slow.  Still,
+that's a 50 to 100x speedup!
+
+In fact, now that ECL rules are compiled, we could probably compute them at view
+loading time again reasonably.  But lazy might be the better default choice.
